@@ -1,6 +1,6 @@
 {
   "name": "html2pdf.js",
-  "version": "0.12.1",
+  "version": "0.12.2",
   "description": "Client-side HTML-to-PDF rendering using pure JS",
   "main": "dist/html2pdf.js",
   "types": "./type.d.ts",
@@ -28,7 +28,7 @@
   },
   "homepage": "https://ekoopmans.github.io/html2pdf.js/",
   "dependencies": {
-    "html2canvas": "^1.0.0",
+    "html2canvas-pro": "^1.6.3",
     "jspdf": "^3.0.0"
   },
   "devDependencies": {
@@ -50,7 +50,7 @@
   "scripts": {
     "build": "npm run clean && webpack --env=prod",
     "build:analyze": "npm run clean && webpack --env=prod --env=analyzer",
-    "clean": "rimraf dist/*",
+    "clean": "rimraf dist",
     "dev": "webpack --env=dev",
     "dev:analyze": "webpack --env=dev --env=analyzer",
     "start": "web-dev-server --open demo/ --node-resolve --watch",
