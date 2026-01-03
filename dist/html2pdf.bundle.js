@@ -1,6 +1,6 @@
 /*!
- * html2pdf.js v0.12.1
- * Copyright (c) 2025 Erik Koopmans
+ * html2pdf.js v0.12.2
+ * Copyright (c) 2026 Erik Koopmans
  * Released under the MIT License.
  */
 (function webpackUniversalModuleDefinition(root, factory) {
@@ -7606,6 +7606,7 @@ try {
       SAFE_CLOSING = true;
     }
   };
+  // eslint-disable-next-line unicorn/no-immediate-mutation -- ES3 syntax limitation
   iteratorWithReturn[ITERATOR] = function () {
     return this;
   };
@@ -7620,6 +7621,7 @@ module.exports = function (exec, SKIP_CLOSING) {
   var ITERATION_SUPPORT = false;
   try {
     var object = {};
+    // eslint-disable-next-line unicorn/no-immediate-mutation -- ES3 syntax limitation
     object[ITERATOR] = function () {
       return {
         next: function () {
@@ -8721,6 +8723,7 @@ module.exports = function (KEY, exec, FORCED, SHAM) {
   var DELEGATES_TO_SYMBOL = !fails(function () {
     // String methods call symbol-named RegExp methods
     var O = {};
+    // eslint-disable-next-line unicorn/no-immediate-mutation -- ES3 syntax limitation
     O[SYMBOL] = function () { return 7; };
     return ''[KEY](O) !== 7;
   });
@@ -8734,12 +8737,13 @@ module.exports = function (KEY, exec, FORCED, SHAM) {
       // We can't use real regex here since it causes deoptimization
       // and serious performance degradation in V8
       // https://github.com/zloirock/core-js/issues/306
-      re = {};
       // RegExp[@@split] doesn't call the regex's exec method, but first creates
       // a new one. We need to return the patched regex when creating the new one.
-      re.constructor = {};
-      re.constructor[SPECIES] = function () { return re; };
-      re.flags = '';
+      var constructor = {};
+      // eslint-disable-next-line unicorn/no-immediate-mutation -- ES3 syntax limitation
+      constructor[SPECIES] = function () { return re; };
+      re = { constructor: constructor, flags: '' };
+      // eslint-disable-next-line unicorn/no-immediate-mutation -- ES3 syntax limitation
       re[SYMBOL] = /./[SYMBOL];
     }
 
@@ -9069,47 +9073,6 @@ module.exports = function (argument, usingIterator) {
   var iteratorMethod = arguments.length < 2 ? getIteratorMethod(argument) : usingIterator;
   if (aCallable(iteratorMethod)) return anObject(call(iteratorMethod, argument));
   throw new $TypeError(tryToString(argument) + ' is not iterable');
-};
-
-
-/***/ }),
-
-/***/ "./node_modules/core-js/internals/get-json-replacer-function.js":
-/*!**********************************************************************!*\
-  !*** ./node_modules/core-js/internals/get-json-replacer-function.js ***!
-  \**********************************************************************/
-/***/ (function(module, __unused_webpack_exports, __webpack_require__) {
-
-"use strict";
-
-var uncurryThis = __webpack_require__(/*! ../internals/function-uncurry-this */ "./node_modules/core-js/internals/function-uncurry-this.js");
-var isArray = __webpack_require__(/*! ../internals/is-array */ "./node_modules/core-js/internals/is-array.js");
-var isCallable = __webpack_require__(/*! ../internals/is-callable */ "./node_modules/core-js/internals/is-callable.js");
-var classof = __webpack_require__(/*! ../internals/classof-raw */ "./node_modules/core-js/internals/classof-raw.js");
-var toString = __webpack_require__(/*! ../internals/to-string */ "./node_modules/core-js/internals/to-string.js");
-
-var push = uncurryThis([].push);
-
-module.exports = function (replacer) {
-  if (isCallable(replacer)) return replacer;
-  if (!isArray(replacer)) return;
-  var rawLength = replacer.length;
-  var keys = [];
-  for (var i = 0; i < rawLength; i++) {
-    var element = replacer[i];
-    if (typeof element == 'string') push(keys, element);
-    else if (typeof element == 'number' || classof(element) === 'Number' || classof(element) === 'String') push(keys, toString(element));
-  }
-  var keysLength = keys.length;
-  var root = true;
-  return function (key, value) {
-    if (root) {
-      root = false;
-      return value;
-    }
-    if (isArray(this)) return value;
-    for (var j = 0; j < keysLength; j++) if (keys[j] === key) return value;
-  };
 };
 
 
@@ -9515,6 +9478,7 @@ var enable = function () {
   var getOwnPropertyNames = getOwnPropertyNamesModule.f;
   var splice = uncurryThis([].splice);
   var test = {};
+  // eslint-disable-next-line unicorn/no-immediate-mutation -- ES3 syntax limitation
   test[METADATA] = 1;
 
   // prevent exposing of metadata key
@@ -9879,6 +9843,26 @@ module.exports = function (argument) {
 "use strict";
 
 module.exports = false;
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/is-raw-json.js":
+/*!*******************************************************!*\
+  !*** ./node_modules/core-js/internals/is-raw-json.js ***!
+  \*******************************************************/
+/***/ (function(module, __unused_webpack_exports, __webpack_require__) {
+
+"use strict";
+
+var isObject = __webpack_require__(/*! ../internals/is-object */ "./node_modules/core-js/internals/is-object.js");
+var getInternalState = (__webpack_require__(/*! ../internals/internal-state */ "./node_modules/core-js/internals/internal-state.js").get);
+
+module.exports = function isRawJSON(O) {
+  if (!isObject(O)) return false;
+  var state = getInternalState(O);
+  return !!state && state.type === 'RawJSON';
+};
 
 
 /***/ }),
@@ -10661,6 +10645,28 @@ module.exports = microtask;
 
 /***/ }),
 
+/***/ "./node_modules/core-js/internals/native-raw-json.js":
+/*!***********************************************************!*\
+  !*** ./node_modules/core-js/internals/native-raw-json.js ***!
+  \***********************************************************/
+/***/ (function(module, __unused_webpack_exports, __webpack_require__) {
+
+"use strict";
+
+/* eslint-disable es/no-json -- safe */
+var fails = __webpack_require__(/*! ../internals/fails */ "./node_modules/core-js/internals/fails.js");
+
+module.exports = !fails(function () {
+  var unsafeInt = '9007199254740993';
+  // eslint-disable-next-line es/no-nonstandard-json-properties -- feature detection
+  var raw = JSON.rawJSON(unsafeInt);
+  // eslint-disable-next-line es/no-nonstandard-json-properties -- feature detection
+  return !JSON.isRawJSON(raw) || JSON.stringify(raw) !== unsafeInt;
+});
+
+
+/***/ }),
+
 /***/ "./node_modules/core-js/internals/new-promise-capability.js":
 /*!******************************************************************!*\
   !*** ./node_modules/core-js/internals/new-promise-capability.js ***!
@@ -11334,6 +11340,73 @@ module.exports = getBuiltIn('Reflect', 'ownKeys') || function ownKeys(it) {
   var keys = getOwnPropertyNamesModule.f(anObject(it));
   var getOwnPropertySymbols = getOwnPropertySymbolsModule.f;
   return getOwnPropertySymbols ? concat(keys, getOwnPropertySymbols(it)) : keys;
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/core-js/internals/parse-json-string.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/core-js/internals/parse-json-string.js ***!
+  \*************************************************************/
+/***/ (function(module, __unused_webpack_exports, __webpack_require__) {
+
+"use strict";
+
+var uncurryThis = __webpack_require__(/*! ../internals/function-uncurry-this */ "./node_modules/core-js/internals/function-uncurry-this.js");
+var hasOwn = __webpack_require__(/*! ../internals/has-own-property */ "./node_modules/core-js/internals/has-own-property.js");
+
+var $SyntaxError = SyntaxError;
+var $parseInt = parseInt;
+var fromCharCode = String.fromCharCode;
+var at = uncurryThis(''.charAt);
+var slice = uncurryThis(''.slice);
+var exec = uncurryThis(/./.exec);
+
+var codePoints = {
+  '\\"': '"',
+  '\\\\': '\\',
+  '\\/': '/',
+  '\\b': '\b',
+  '\\f': '\f',
+  '\\n': '\n',
+  '\\r': '\r',
+  '\\t': '\t'
+};
+
+var IS_4_HEX_DIGITS = /^[\da-f]{4}$/i;
+// eslint-disable-next-line regexp/no-control-character -- safe
+var IS_C0_CONTROL_CODE = /^[\u0000-\u001F]$/;
+
+module.exports = function (source, i) {
+  var unterminated = true;
+  var value = '';
+  while (i < source.length) {
+    var chr = at(source, i);
+    if (chr === '\\') {
+      var twoChars = slice(source, i, i + 2);
+      if (hasOwn(codePoints, twoChars)) {
+        value += codePoints[twoChars];
+        i += 2;
+      } else if (twoChars === '\\u') {
+        i += 2;
+        var fourHexDigits = slice(source, i, i + 4);
+        if (!exec(IS_4_HEX_DIGITS, fourHexDigits)) throw new $SyntaxError('Bad Unicode escape at: ' + i);
+        value += fromCharCode($parseInt(fourHexDigits, 16));
+        i += 4;
+      } else throw new $SyntaxError('Unknown escape sequence: "' + twoChars + '"');
+    } else if (chr === '"') {
+      unterminated = false;
+      i++;
+      break;
+    } else {
+      if (exec(IS_C0_CONTROL_CODE, chr)) throw new $SyntaxError('Bad control character in string literal at: ' + i);
+      value += chr;
+      i++;
+    }
+  }
+  if (unterminated) throw new $SyntaxError('Unterminated string at: ' + i);
+  return { value: value, end: i };
 };
 
 
@@ -12388,10 +12461,10 @@ var SHARED = '__core-js_shared__';
 var store = module.exports = globalThis[SHARED] || defineGlobalProperty(SHARED, {});
 
 (store.versions || (store.versions = [])).push({
-  version: '3.45.1',
+  version: '3.47.0',
   mode: IS_PURE ? 'pure' : 'global',
-  copyright: '© 2014-2025 Denis Pushkarev (zloirock.ru)',
-  license: 'https://github.com/zloirock/core-js/blob/v3.45.1/LICENSE',
+  copyright: '© 2014-2025 Denis Pushkarev (zloirock.ru), 2025 CoreJS Company (core-js.io)',
+  license: 'https://github.com/zloirock/core-js/blob/v3.47.0/LICENSE',
   source: 'https://github.com/zloirock/core-js'
 });
 
@@ -13011,7 +13084,7 @@ var wellKnownSymbol = __webpack_require__(/*! ../internals/well-known-symbol */ 
 
 var TO_STRING_TAG = wellKnownSymbol('toStringTag');
 var test = {};
-
+// eslint-disable-next-line unicorn/no-immediate-mutation -- ES3 syntax limitation
 test[TO_STRING_TAG] = 'z';
 
 module.exports = String(test) === '[object z]';
@@ -13846,11 +13919,17 @@ var apply = __webpack_require__(/*! ../internals/function-apply */ "./node_modul
 var call = __webpack_require__(/*! ../internals/function-call */ "./node_modules/core-js/internals/function-call.js");
 var uncurryThis = __webpack_require__(/*! ../internals/function-uncurry-this */ "./node_modules/core-js/internals/function-uncurry-this.js");
 var fails = __webpack_require__(/*! ../internals/fails */ "./node_modules/core-js/internals/fails.js");
+var isArray = __webpack_require__(/*! ../internals/is-array */ "./node_modules/core-js/internals/is-array.js");
 var isCallable = __webpack_require__(/*! ../internals/is-callable */ "./node_modules/core-js/internals/is-callable.js");
+var isRawJSON = __webpack_require__(/*! ../internals/is-raw-json */ "./node_modules/core-js/internals/is-raw-json.js");
 var isSymbol = __webpack_require__(/*! ../internals/is-symbol */ "./node_modules/core-js/internals/is-symbol.js");
+var classof = __webpack_require__(/*! ../internals/classof-raw */ "./node_modules/core-js/internals/classof-raw.js");
+var toString = __webpack_require__(/*! ../internals/to-string */ "./node_modules/core-js/internals/to-string.js");
 var arraySlice = __webpack_require__(/*! ../internals/array-slice */ "./node_modules/core-js/internals/array-slice.js");
-var getReplacerFunction = __webpack_require__(/*! ../internals/get-json-replacer-function */ "./node_modules/core-js/internals/get-json-replacer-function.js");
+var parseJSONString = __webpack_require__(/*! ../internals/parse-json-string */ "./node_modules/core-js/internals/parse-json-string.js");
+var uid = __webpack_require__(/*! ../internals/uid */ "./node_modules/core-js/internals/uid.js");
 var NATIVE_SYMBOL = __webpack_require__(/*! ../internals/symbol-constructor-detection */ "./node_modules/core-js/internals/symbol-constructor-detection.js");
+var NATIVE_RAW_JSON = __webpack_require__(/*! ../internals/native-raw-json */ "./node_modules/core-js/internals/native-raw-json.js");
 
 var $String = String;
 var $stringify = getBuiltIn('JSON', 'stringify');
@@ -13858,11 +13937,16 @@ var exec = uncurryThis(/./.exec);
 var charAt = uncurryThis(''.charAt);
 var charCodeAt = uncurryThis(''.charCodeAt);
 var replace = uncurryThis(''.replace);
+var slice = uncurryThis(''.slice);
+var push = uncurryThis([].push);
 var numberToString = uncurryThis(1.1.toString);
 
-var tester = /[\uD800-\uDFFF]/g;
-var low = /^[\uD800-\uDBFF]$/;
-var hi = /^[\uDC00-\uDFFF]$/;
+var surrogates = /[\uD800-\uDFFF]/g;
+var lowSurrogates = /^[\uD800-\uDBFF]$/;
+var hiSurrogates = /^[\uDC00-\uDFFF]$/;
+
+var MARK = uid();
+var MARK_LENGTH = MARK.length;
 
 var WRONG_SYMBOLS_CONVERSION = !NATIVE_SYMBOL || fails(function () {
   var symbol = getBuiltIn('Symbol')('stringify detection');
@@ -13880,7 +13964,7 @@ var ILL_FORMED_UNICODE = fails(function () {
     || $stringify('\uDEAD') !== '"\\udead"';
 });
 
-var stringifyWithSymbolsFix = function (it, replacer) {
+var stringifyWithProperSymbolsConversion = WRONG_SYMBOLS_CONVERSION ? function (it, replacer) {
   var args = arraySlice(arguments);
   var $replacer = getReplacerFunction(replacer);
   if (!isCallable($replacer) && (it === undefined || isSymbol(it))) return; // IE8 returns string on undefined
@@ -13890,28 +13974,76 @@ var stringifyWithSymbolsFix = function (it, replacer) {
     if (!isSymbol(value)) return value;
   };
   return apply($stringify, null, args);
-};
+} : $stringify;
 
-var fixIllFormed = function (match, offset, string) {
+var fixIllFormedJSON = function (match, offset, string) {
   var prev = charAt(string, offset - 1);
   var next = charAt(string, offset + 1);
-  if ((exec(low, match) && !exec(hi, next)) || (exec(hi, match) && !exec(low, prev))) {
+  if ((exec(lowSurrogates, match) && !exec(hiSurrogates, next)) || (exec(hiSurrogates, match) && !exec(lowSurrogates, prev))) {
     return '\\u' + numberToString(charCodeAt(match, 0), 16);
   } return match;
 };
 
-if ($stringify) {
-  // `JSON.stringify` method
-  // https://tc39.es/ecma262/#sec-json.stringify
-  $({ target: 'JSON', stat: true, arity: 3, forced: WRONG_SYMBOLS_CONVERSION || ILL_FORMED_UNICODE }, {
-    // eslint-disable-next-line no-unused-vars -- required for `.length`
-    stringify: function stringify(it, replacer, space) {
-      var args = arraySlice(arguments);
-      var result = apply(WRONG_SYMBOLS_CONVERSION ? stringifyWithSymbolsFix : $stringify, null, args);
-      return ILL_FORMED_UNICODE && typeof result == 'string' ? replace(result, tester, fixIllFormed) : result;
+var getReplacerFunction = function (replacer) {
+  if (isCallable(replacer)) return replacer;
+  if (!isArray(replacer)) return;
+  var rawLength = replacer.length;
+  var keys = [];
+  for (var i = 0; i < rawLength; i++) {
+    var element = replacer[i];
+    if (typeof element == 'string') push(keys, element);
+    else if (typeof element == 'number' || classof(element) === 'Number' || classof(element) === 'String') push(keys, toString(element));
+  }
+  var keysLength = keys.length;
+  var root = true;
+  return function (key, value) {
+    if (root) {
+      root = false;
+      return value;
     }
-  });
-}
+    if (isArray(this)) return value;
+    for (var j = 0; j < keysLength; j++) if (keys[j] === key) return value;
+  };
+};
+
+// `JSON.stringify` method
+// https://tc39.es/ecma262/#sec-json.stringify
+// https://github.com/tc39/proposal-json-parse-with-source
+if ($stringify) $({ target: 'JSON', stat: true, arity: 3, forced: WRONG_SYMBOLS_CONVERSION || ILL_FORMED_UNICODE || !NATIVE_RAW_JSON }, {
+  stringify: function stringify(text, replacer, space) {
+    var replacerFunction = getReplacerFunction(replacer);
+    var rawStrings = [];
+
+    var json = stringifyWithProperSymbolsConversion(text, function (key, value) {
+      // some old implementations (like WebKit) could pass numbers as keys
+      var v = isCallable(replacerFunction) ? call(replacerFunction, this, $String(key), value) : value;
+      return !NATIVE_RAW_JSON && isRawJSON(v) ? MARK + (push(rawStrings, v.rawJSON) - 1) : v;
+    }, space);
+
+    if (typeof json != 'string') return json;
+
+    if (ILL_FORMED_UNICODE) json = replace(json, surrogates, fixIllFormedJSON);
+
+    if (NATIVE_RAW_JSON) return json;
+
+    var result = '';
+    var length = json.length;
+
+    for (var i = 0; i < length; i++) {
+      var chr = charAt(json, i);
+      if (chr === '"') {
+        var end = parseJSONString(json, ++i).end - 1;
+        var string = slice(json, i, end);
+        result += slice(string, 0, MARK_LENGTH) === MARK
+          ? rawStrings[slice(string, MARK_LENGTH)]
+          : '"' + string + '"';
+        i = end;
+      } else result += chr;
+    }
+
+    return result;
+  }
+});
 
 
 /***/ }),
@@ -16424,7 +16556,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": function() { return /* binding */ purify; }
 /* harmony export */ });
-/*! @license DOMPurify 3.2.6 | (c) Cure53 and other contributors | Released under the Apache license 2.0 and Mozilla Public License 2.0 | github.com/cure53/DOMPurify/blob/3.2.6/LICENSE */
+/*! @license DOMPurify 3.3.0 | (c) Cure53 and other contributors | Released under the Apache license 2.0 and Mozilla Public License 2.0 | github.com/cure53/DOMPurify/blob/3.3.0/LICENSE */
 
 const {
   entries,
@@ -16453,12 +16585,18 @@ if (!seal) {
   };
 }
 if (!apply) {
-  apply = function apply(fun, thisValue, args) {
-    return fun.apply(thisValue, args);
+  apply = function apply(func, thisArg) {
+    for (var _len = arguments.length, args = new Array(_len > 2 ? _len - 2 : 0), _key = 2; _key < _len; _key++) {
+      args[_key - 2] = arguments[_key];
+    }
+    return func.apply(thisArg, args);
   };
 }
 if (!construct) {
-  construct = function construct(Func, args) {
+  construct = function construct(Func) {
+    for (var _len2 = arguments.length, args = new Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
+      args[_key2 - 1] = arguments[_key2];
+    }
     return new Func(...args);
   };
 }
@@ -16487,8 +16625,8 @@ function unapply(func) {
     if (thisArg instanceof RegExp) {
       thisArg.lastIndex = 0;
     }
-    for (var _len = arguments.length, args = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-      args[_key - 1] = arguments[_key];
+    for (var _len3 = arguments.length, args = new Array(_len3 > 1 ? _len3 - 1 : 0), _key3 = 1; _key3 < _len3; _key3++) {
+      args[_key3 - 1] = arguments[_key3];
     }
     return apply(func, thisArg, args);
   };
@@ -16499,12 +16637,12 @@ function unapply(func) {
  * @param func - The constructor function to be wrapped and called.
  * @returns A new function that constructs an instance of the given constructor function with the provided arguments.
  */
-function unconstruct(func) {
+function unconstruct(Func) {
   return function () {
-    for (var _len2 = arguments.length, args = new Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
-      args[_key2] = arguments[_key2];
+    for (var _len4 = arguments.length, args = new Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
+      args[_key4] = arguments[_key4];
     }
-    return construct(func, args);
+    return construct(Func, args);
   };
 }
 /**
@@ -16603,8 +16741,8 @@ function lookupGetter(object, prop) {
   return fallbackValue;
 }
 
-const html$1 = freeze(['a', 'abbr', 'acronym', 'address', 'area', 'article', 'aside', 'audio', 'b', 'bdi', 'bdo', 'big', 'blink', 'blockquote', 'body', 'br', 'button', 'canvas', 'caption', 'center', 'cite', 'code', 'col', 'colgroup', 'content', 'data', 'datalist', 'dd', 'decorator', 'del', 'details', 'dfn', 'dialog', 'dir', 'div', 'dl', 'dt', 'element', 'em', 'fieldset', 'figcaption', 'figure', 'font', 'footer', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'header', 'hgroup', 'hr', 'html', 'i', 'img', 'input', 'ins', 'kbd', 'label', 'legend', 'li', 'main', 'map', 'mark', 'marquee', 'menu', 'menuitem', 'meter', 'nav', 'nobr', 'ol', 'optgroup', 'option', 'output', 'p', 'picture', 'pre', 'progress', 'q', 'rp', 'rt', 'ruby', 's', 'samp', 'section', 'select', 'shadow', 'small', 'source', 'spacer', 'span', 'strike', 'strong', 'style', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'template', 'textarea', 'tfoot', 'th', 'thead', 'time', 'tr', 'track', 'tt', 'u', 'ul', 'var', 'video', 'wbr']);
-const svg$1 = freeze(['svg', 'a', 'altglyph', 'altglyphdef', 'altglyphitem', 'animatecolor', 'animatemotion', 'animatetransform', 'circle', 'clippath', 'defs', 'desc', 'ellipse', 'filter', 'font', 'g', 'glyph', 'glyphref', 'hkern', 'image', 'line', 'lineargradient', 'marker', 'mask', 'metadata', 'mpath', 'path', 'pattern', 'polygon', 'polyline', 'radialgradient', 'rect', 'stop', 'style', 'switch', 'symbol', 'text', 'textpath', 'title', 'tref', 'tspan', 'view', 'vkern']);
+const html$1 = freeze(['a', 'abbr', 'acronym', 'address', 'area', 'article', 'aside', 'audio', 'b', 'bdi', 'bdo', 'big', 'blink', 'blockquote', 'body', 'br', 'button', 'canvas', 'caption', 'center', 'cite', 'code', 'col', 'colgroup', 'content', 'data', 'datalist', 'dd', 'decorator', 'del', 'details', 'dfn', 'dialog', 'dir', 'div', 'dl', 'dt', 'element', 'em', 'fieldset', 'figcaption', 'figure', 'font', 'footer', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'header', 'hgroup', 'hr', 'html', 'i', 'img', 'input', 'ins', 'kbd', 'label', 'legend', 'li', 'main', 'map', 'mark', 'marquee', 'menu', 'menuitem', 'meter', 'nav', 'nobr', 'ol', 'optgroup', 'option', 'output', 'p', 'picture', 'pre', 'progress', 'q', 'rp', 'rt', 'ruby', 's', 'samp', 'search', 'section', 'select', 'shadow', 'slot', 'small', 'source', 'spacer', 'span', 'strike', 'strong', 'style', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'template', 'textarea', 'tfoot', 'th', 'thead', 'time', 'tr', 'track', 'tt', 'u', 'ul', 'var', 'video', 'wbr']);
+const svg$1 = freeze(['svg', 'a', 'altglyph', 'altglyphdef', 'altglyphitem', 'animatecolor', 'animatemotion', 'animatetransform', 'circle', 'clippath', 'defs', 'desc', 'ellipse', 'enterkeyhint', 'exportparts', 'filter', 'font', 'g', 'glyph', 'glyphref', 'hkern', 'image', 'inputmode', 'line', 'lineargradient', 'marker', 'mask', 'metadata', 'mpath', 'part', 'path', 'pattern', 'polygon', 'polyline', 'radialgradient', 'rect', 'stop', 'style', 'switch', 'symbol', 'text', 'textpath', 'title', 'tref', 'tspan', 'view', 'vkern']);
 const svgFilters = freeze(['feBlend', 'feColorMatrix', 'feComponentTransfer', 'feComposite', 'feConvolveMatrix', 'feDiffuseLighting', 'feDisplacementMap', 'feDistantLight', 'feDropShadow', 'feFlood', 'feFuncA', 'feFuncB', 'feFuncG', 'feFuncR', 'feGaussianBlur', 'feImage', 'feMerge', 'feMergeNode', 'feMorphology', 'feOffset', 'fePointLight', 'feSpecularLighting', 'feSpotLight', 'feTile', 'feTurbulence']);
 // List of SVG elements that are disallowed by default.
 // We still need to know them so that we can do namespace
@@ -16617,8 +16755,8 @@ const mathMl$1 = freeze(['math', 'menclose', 'merror', 'mfenced', 'mfrac', 'mgly
 const mathMlDisallowed = freeze(['maction', 'maligngroup', 'malignmark', 'mlongdiv', 'mscarries', 'mscarry', 'msgroup', 'mstack', 'msline', 'msrow', 'semantics', 'annotation', 'annotation-xml', 'mprescripts', 'none']);
 const text = freeze(['#text']);
 
-const html = freeze(['accept', 'action', 'align', 'alt', 'autocapitalize', 'autocomplete', 'autopictureinpicture', 'autoplay', 'background', 'bgcolor', 'border', 'capture', 'cellpadding', 'cellspacing', 'checked', 'cite', 'class', 'clear', 'color', 'cols', 'colspan', 'controls', 'controlslist', 'coords', 'crossorigin', 'datetime', 'decoding', 'default', 'dir', 'disabled', 'disablepictureinpicture', 'disableremoteplayback', 'download', 'draggable', 'enctype', 'enterkeyhint', 'face', 'for', 'headers', 'height', 'hidden', 'high', 'href', 'hreflang', 'id', 'inputmode', 'integrity', 'ismap', 'kind', 'label', 'lang', 'list', 'loading', 'loop', 'low', 'max', 'maxlength', 'media', 'method', 'min', 'minlength', 'multiple', 'muted', 'name', 'nonce', 'noshade', 'novalidate', 'nowrap', 'open', 'optimum', 'pattern', 'placeholder', 'playsinline', 'popover', 'popovertarget', 'popovertargetaction', 'poster', 'preload', 'pubdate', 'radiogroup', 'readonly', 'rel', 'required', 'rev', 'reversed', 'role', 'rows', 'rowspan', 'spellcheck', 'scope', 'selected', 'shape', 'size', 'sizes', 'span', 'srclang', 'start', 'src', 'srcset', 'step', 'style', 'summary', 'tabindex', 'title', 'translate', 'type', 'usemap', 'valign', 'value', 'width', 'wrap', 'xmlns', 'slot']);
-const svg = freeze(['accent-height', 'accumulate', 'additive', 'alignment-baseline', 'amplitude', 'ascent', 'attributename', 'attributetype', 'azimuth', 'basefrequency', 'baseline-shift', 'begin', 'bias', 'by', 'class', 'clip', 'clippathunits', 'clip-path', 'clip-rule', 'color', 'color-interpolation', 'color-interpolation-filters', 'color-profile', 'color-rendering', 'cx', 'cy', 'd', 'dx', 'dy', 'diffuseconstant', 'direction', 'display', 'divisor', 'dur', 'edgemode', 'elevation', 'end', 'exponent', 'fill', 'fill-opacity', 'fill-rule', 'filter', 'filterunits', 'flood-color', 'flood-opacity', 'font-family', 'font-size', 'font-size-adjust', 'font-stretch', 'font-style', 'font-variant', 'font-weight', 'fx', 'fy', 'g1', 'g2', 'glyph-name', 'glyphref', 'gradientunits', 'gradienttransform', 'height', 'href', 'id', 'image-rendering', 'in', 'in2', 'intercept', 'k', 'k1', 'k2', 'k3', 'k4', 'kerning', 'keypoints', 'keysplines', 'keytimes', 'lang', 'lengthadjust', 'letter-spacing', 'kernelmatrix', 'kernelunitlength', 'lighting-color', 'local', 'marker-end', 'marker-mid', 'marker-start', 'markerheight', 'markerunits', 'markerwidth', 'maskcontentunits', 'maskunits', 'max', 'mask', 'media', 'method', 'mode', 'min', 'name', 'numoctaves', 'offset', 'operator', 'opacity', 'order', 'orient', 'orientation', 'origin', 'overflow', 'paint-order', 'path', 'pathlength', 'patterncontentunits', 'patterntransform', 'patternunits', 'points', 'preservealpha', 'preserveaspectratio', 'primitiveunits', 'r', 'rx', 'ry', 'radius', 'refx', 'refy', 'repeatcount', 'repeatdur', 'restart', 'result', 'rotate', 'scale', 'seed', 'shape-rendering', 'slope', 'specularconstant', 'specularexponent', 'spreadmethod', 'startoffset', 'stddeviation', 'stitchtiles', 'stop-color', 'stop-opacity', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'stroke-opacity', 'stroke', 'stroke-width', 'style', 'surfacescale', 'systemlanguage', 'tabindex', 'tablevalues', 'targetx', 'targety', 'transform', 'transform-origin', 'text-anchor', 'text-decoration', 'text-rendering', 'textlength', 'type', 'u1', 'u2', 'unicode', 'values', 'viewbox', 'visibility', 'version', 'vert-adv-y', 'vert-origin-x', 'vert-origin-y', 'width', 'word-spacing', 'wrap', 'writing-mode', 'xchannelselector', 'ychannelselector', 'x', 'x1', 'x2', 'xmlns', 'y', 'y1', 'y2', 'z', 'zoomandpan']);
+const html = freeze(['accept', 'action', 'align', 'alt', 'autocapitalize', 'autocomplete', 'autopictureinpicture', 'autoplay', 'background', 'bgcolor', 'border', 'capture', 'cellpadding', 'cellspacing', 'checked', 'cite', 'class', 'clear', 'color', 'cols', 'colspan', 'controls', 'controlslist', 'coords', 'crossorigin', 'datetime', 'decoding', 'default', 'dir', 'disabled', 'disablepictureinpicture', 'disableremoteplayback', 'download', 'draggable', 'enctype', 'enterkeyhint', 'exportparts', 'face', 'for', 'headers', 'height', 'hidden', 'high', 'href', 'hreflang', 'id', 'inert', 'inputmode', 'integrity', 'ismap', 'kind', 'label', 'lang', 'list', 'loading', 'loop', 'low', 'max', 'maxlength', 'media', 'method', 'min', 'minlength', 'multiple', 'muted', 'name', 'nonce', 'noshade', 'novalidate', 'nowrap', 'open', 'optimum', 'part', 'pattern', 'placeholder', 'playsinline', 'popover', 'popovertarget', 'popovertargetaction', 'poster', 'preload', 'pubdate', 'radiogroup', 'readonly', 'rel', 'required', 'rev', 'reversed', 'role', 'rows', 'rowspan', 'spellcheck', 'scope', 'selected', 'shape', 'size', 'sizes', 'slot', 'span', 'srclang', 'start', 'src', 'srcset', 'step', 'style', 'summary', 'tabindex', 'title', 'translate', 'type', 'usemap', 'valign', 'value', 'width', 'wrap', 'xmlns', 'slot']);
+const svg = freeze(['accent-height', 'accumulate', 'additive', 'alignment-baseline', 'amplitude', 'ascent', 'attributename', 'attributetype', 'azimuth', 'basefrequency', 'baseline-shift', 'begin', 'bias', 'by', 'class', 'clip', 'clippathunits', 'clip-path', 'clip-rule', 'color', 'color-interpolation', 'color-interpolation-filters', 'color-profile', 'color-rendering', 'cx', 'cy', 'd', 'dx', 'dy', 'diffuseconstant', 'direction', 'display', 'divisor', 'dur', 'edgemode', 'elevation', 'end', 'exponent', 'fill', 'fill-opacity', 'fill-rule', 'filter', 'filterunits', 'flood-color', 'flood-opacity', 'font-family', 'font-size', 'font-size-adjust', 'font-stretch', 'font-style', 'font-variant', 'font-weight', 'fx', 'fy', 'g1', 'g2', 'glyph-name', 'glyphref', 'gradientunits', 'gradienttransform', 'height', 'href', 'id', 'image-rendering', 'in', 'in2', 'intercept', 'k', 'k1', 'k2', 'k3', 'k4', 'kerning', 'keypoints', 'keysplines', 'keytimes', 'lang', 'lengthadjust', 'letter-spacing', 'kernelmatrix', 'kernelunitlength', 'lighting-color', 'local', 'marker-end', 'marker-mid', 'marker-start', 'markerheight', 'markerunits', 'markerwidth', 'maskcontentunits', 'maskunits', 'max', 'mask', 'mask-type', 'media', 'method', 'mode', 'min', 'name', 'numoctaves', 'offset', 'operator', 'opacity', 'order', 'orient', 'orientation', 'origin', 'overflow', 'paint-order', 'path', 'pathlength', 'patterncontentunits', 'patterntransform', 'patternunits', 'points', 'preservealpha', 'preserveaspectratio', 'primitiveunits', 'r', 'rx', 'ry', 'radius', 'refx', 'refy', 'repeatcount', 'repeatdur', 'restart', 'result', 'rotate', 'scale', 'seed', 'shape-rendering', 'slope', 'specularconstant', 'specularexponent', 'spreadmethod', 'startoffset', 'stddeviation', 'stitchtiles', 'stop-color', 'stop-opacity', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'stroke-opacity', 'stroke', 'stroke-width', 'style', 'surfacescale', 'systemlanguage', 'tabindex', 'tablevalues', 'targetx', 'targety', 'transform', 'transform-origin', 'text-anchor', 'text-decoration', 'text-rendering', 'textlength', 'type', 'u1', 'u2', 'unicode', 'values', 'viewbox', 'visibility', 'version', 'vert-adv-y', 'vert-origin-x', 'vert-origin-y', 'width', 'word-spacing', 'wrap', 'writing-mode', 'xchannelselector', 'ychannelselector', 'x', 'x1', 'x2', 'xmlns', 'y', 'y1', 'y2', 'z', 'zoomandpan']);
 const mathMl = freeze(['accent', 'accentunder', 'align', 'bevelled', 'close', 'columnsalign', 'columnlines', 'columnspan', 'denomalign', 'depth', 'dir', 'display', 'displaystyle', 'encoding', 'fence', 'frame', 'height', 'href', 'id', 'largeop', 'length', 'linethickness', 'lspace', 'lquote', 'mathbackground', 'mathcolor', 'mathsize', 'mathvariant', 'maxsize', 'minsize', 'movablelimits', 'notation', 'numalign', 'open', 'rowalign', 'rowlines', 'rowspacing', 'rowspan', 'rspace', 'rquote', 'scriptlevel', 'scriptminsize', 'scriptsizemultiplier', 'selection', 'separator', 'separators', 'stretchy', 'subscriptshift', 'supscriptshift', 'symmetric', 'voffset', 'width', 'xmlns']);
 const xml = freeze(['xlink:href', 'xml:id', 'xlink:title', 'xml:space', 'xmlns:xlink']);
 
@@ -16725,7 +16863,7 @@ const _createHooksMap = function _createHooksMap() {
 function createDOMPurify() {
   let window = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : getGlobal();
   const DOMPurify = root => createDOMPurify(root);
-  DOMPurify.version = '3.2.6';
+  DOMPurify.version = '3.3.0';
   DOMPurify.removed = [];
   if (!window || !window.document || window.document.nodeType !== NODE_TYPE.document || !window.Element) {
     // Not running in a browser, provide a factory function
@@ -16836,6 +16974,21 @@ function createDOMPurify() {
   let FORBID_TAGS = null;
   /* Explicitly forbidden attributes (overrides ALLOWED_ATTR/ADD_ATTR) */
   let FORBID_ATTR = null;
+  /* Config object to store ADD_TAGS/ADD_ATTR functions (when used as functions) */
+  const EXTRA_ELEMENT_HANDLING = Object.seal(create(null, {
+    tagCheck: {
+      writable: true,
+      configurable: false,
+      enumerable: true,
+      value: null
+    },
+    attributeCheck: {
+      writable: true,
+      configurable: false,
+      enumerable: true,
+      value: null
+    }
+  }));
   /* Decide if ARIA attributes are okay */
   let ALLOW_ARIA_ATTR = true;
   /* Decide if custom data attributes are okay */
@@ -17028,16 +17181,24 @@ function createDOMPurify() {
     }
     /* Merge configuration parameters */
     if (cfg.ADD_TAGS) {
-      if (ALLOWED_TAGS === DEFAULT_ALLOWED_TAGS) {
-        ALLOWED_TAGS = clone(ALLOWED_TAGS);
+      if (typeof cfg.ADD_TAGS === 'function') {
+        EXTRA_ELEMENT_HANDLING.tagCheck = cfg.ADD_TAGS;
+      } else {
+        if (ALLOWED_TAGS === DEFAULT_ALLOWED_TAGS) {
+          ALLOWED_TAGS = clone(ALLOWED_TAGS);
+        }
+        addToSet(ALLOWED_TAGS, cfg.ADD_TAGS, transformCaseFunc);
       }
-      addToSet(ALLOWED_TAGS, cfg.ADD_TAGS, transformCaseFunc);
     }
     if (cfg.ADD_ATTR) {
-      if (ALLOWED_ATTR === DEFAULT_ALLOWED_ATTR) {
-        ALLOWED_ATTR = clone(ALLOWED_ATTR);
+      if (typeof cfg.ADD_ATTR === 'function') {
+        EXTRA_ELEMENT_HANDLING.attributeCheck = cfg.ADD_ATTR;
+      } else {
+        if (ALLOWED_ATTR === DEFAULT_ALLOWED_ATTR) {
+          ALLOWED_ATTR = clone(ALLOWED_ATTR);
+        }
+        addToSet(ALLOWED_ATTR, cfg.ADD_ATTR, transformCaseFunc);
       }
-      addToSet(ALLOWED_ATTR, cfg.ADD_ATTR, transformCaseFunc);
     }
     if (cfg.ADD_URI_SAFE_ATTR) {
       addToSet(URI_SAFE_ATTRIBUTES, cfg.ADD_URI_SAFE_ATTR, transformCaseFunc);
@@ -17345,7 +17506,7 @@ function createDOMPurify() {
       return true;
     }
     /* Remove element if anything forbids its presence */
-    if (!ALLOWED_TAGS[tagName] || FORBID_TAGS[tagName]) {
+    if (!(EXTRA_ELEMENT_HANDLING.tagCheck instanceof Function && EXTRA_ELEMENT_HANDLING.tagCheck(tagName)) && (!ALLOWED_TAGS[tagName] || FORBID_TAGS[tagName])) {
       /* Check if we have a custom element to handle */
       if (!FORBID_TAGS[tagName] && _isBasicCustomElement(tagName)) {
         if (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, tagName)) {
@@ -17417,12 +17578,12 @@ function createDOMPurify() {
         (https://html.spec.whatwg.org/multipage/dom.html#embedding-custom-non-visible-data-with-the-data-*-attributes)
         XML-compatible (https://html.spec.whatwg.org/multipage/infrastructure.html#xml-compatible and http://www.w3.org/TR/xml/#d0e804)
         We don't need to check the value; it's always URI safe. */
-    if (ALLOW_DATA_ATTR && !FORBID_ATTR[lcName] && regExpTest(DATA_ATTR, lcName)) ; else if (ALLOW_ARIA_ATTR && regExpTest(ARIA_ATTR, lcName)) ; else if (!ALLOWED_ATTR[lcName] || FORBID_ATTR[lcName]) {
+    if (ALLOW_DATA_ATTR && !FORBID_ATTR[lcName] && regExpTest(DATA_ATTR, lcName)) ; else if (ALLOW_ARIA_ATTR && regExpTest(ARIA_ATTR, lcName)) ; else if (EXTRA_ELEMENT_HANDLING.attributeCheck instanceof Function && EXTRA_ELEMENT_HANDLING.attributeCheck(lcName, lcTag)) ; else if (!ALLOWED_ATTR[lcName] || FORBID_ATTR[lcName]) {
       if (
       // First condition does a very basic check if a) it's basically a valid custom element tagname AND
       // b) if the tagName passes whatever the user has configured for CUSTOM_ELEMENT_HANDLING.tagNameCheck
       // and c) if the attribute name passes whatever the user has configured for CUSTOM_ELEMENT_HANDLING.attributeNameCheck
-      _isBasicCustomElement(lcTag) && (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, lcTag) || CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(lcTag)) && (CUSTOM_ELEMENT_HANDLING.attributeNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.attributeNameCheck, lcName) || CUSTOM_ELEMENT_HANDLING.attributeNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.attributeNameCheck(lcName)) ||
+      _isBasicCustomElement(lcTag) && (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, lcTag) || CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(lcTag)) && (CUSTOM_ELEMENT_HANDLING.attributeNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.attributeNameCheck, lcName) || CUSTOM_ELEMENT_HANDLING.attributeNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.attributeNameCheck(lcName, lcTag)) ||
       // Alternative, second condition checks if it's an `is`-attribute, AND
       // the value passes whatever the user has configured for CUSTOM_ELEMENT_HANDLING.tagNameCheck
       lcName === 'is' && CUSTOM_ELEMENT_HANDLING.allowCustomizedBuiltInElements && (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, value) || CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(value))) ; else {
@@ -17501,7 +17662,12 @@ function createDOMPurify() {
         value = SANITIZE_NAMED_PROPS_PREFIX + value;
       }
       /* Work around a security issue with comments inside attributes */
-      if (SAFE_FOR_XML && regExpTest(/((--!?|])>)|<\/(style|title)/i, value)) {
+      if (SAFE_FOR_XML && regExpTest(/((--!?|])>)|<\/(style|title|textarea)/i, value)) {
+        _removeAttribute(name, currentNode);
+        continue;
+      }
+      /* Make sure we cannot easily use animated hrefs, even if animations are allowed */
+      if (lcName === 'attributename' && stringMatch(value, 'href')) {
         _removeAttribute(name, currentNode);
         continue;
       }
@@ -21966,6 +22132,8490 @@ function unzipSync(data, opts) {
     }
     return files;
 }
+
+
+/***/ }),
+
+/***/ "./node_modules/html2canvas-pro/dist/html2canvas-pro.esm.js":
+/*!******************************************************************!*\
+  !*** ./node_modules/html2canvas-pro/dist/html2canvas-pro.esm.js ***!
+  \******************************************************************/
+/***/ (function(__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": function() { return /* binding */ html2canvas; },
+/* harmony export */   html2canvas: function() { return /* binding */ html2canvas; }
+/* harmony export */ });
+/*!
+ * html2canvas-pro 1.6.3 <https://yorickshan.github.io/html2canvas-pro/>
+ * Copyright (c) 2024-present yorickshan and html2canvas-pro contributors
+ * Released under MIT License
+ */
+class Bounds {
+    constructor(left, top, width, height) {
+        this.left = left;
+        this.top = top;
+        this.width = width;
+        this.height = height;
+    }
+    add(x, y, w, h) {
+        return new Bounds(this.left + x, this.top + y, this.width + w, this.height + h);
+    }
+    static fromClientRect(context, clientRect) {
+        return new Bounds(clientRect.left + context.windowBounds.left, clientRect.top + context.windowBounds.top, clientRect.width, clientRect.height);
+    }
+    static fromDOMRectList(context, domRectList) {
+        const rects = Array.from(domRectList);
+        // First try to find a rect with non-zero width
+        let domRect = rects.find((rect) => rect.width !== 0);
+        // If not found, try to find a rect with non-zero height
+        // This handles cases like inline-flex with single child where width might be 0
+        if (!domRect) {
+            domRect = rects.find((rect) => rect.height !== 0);
+        }
+        // If still not found but rects exist, use the first rect
+        // Position info (left, top) might still be valid even if dimensions are 0
+        if (!domRect && rects.length > 0) {
+            domRect = rects[0];
+        }
+        return domRect
+            ? new Bounds(domRect.left + context.windowBounds.left, domRect.top + context.windowBounds.top, domRect.width, domRect.height)
+            : Bounds.EMPTY;
+    }
+}
+Bounds.EMPTY = new Bounds(0, 0, 0, 0);
+const parseBounds = (context, node) => {
+    return Bounds.fromClientRect(context, node.getBoundingClientRect());
+};
+const parseDocumentSize = (document) => {
+    const body = document.body;
+    const documentElement = document.documentElement;
+    if (!body || !documentElement) {
+        throw new Error(`Unable to get document size`);
+    }
+    const width = Math.max(Math.max(body.scrollWidth, documentElement.scrollWidth), Math.max(body.offsetWidth, documentElement.offsetWidth), Math.max(body.clientWidth, documentElement.clientWidth));
+    const height = Math.max(Math.max(body.scrollHeight, documentElement.scrollHeight), Math.max(body.offsetHeight, documentElement.offsetHeight), Math.max(body.clientHeight, documentElement.clientHeight));
+    return new Bounds(0, 0, width, height);
+};
+
+/*
+ * css-line-break 2.1.0 <https://github.com/niklasvh/css-line-break#readme>
+ * Copyright (c) 2022 Niklas von Hertzen <https://hertzen.com>
+ * Released under MIT License
+ */
+var toCodePoints$1 = function (str) {
+    var codePoints = [];
+    var i = 0;
+    var length = str.length;
+    while (i < length) {
+        var value = str.charCodeAt(i++);
+        if (value >= 0xd800 && value <= 0xdbff && i < length) {
+            var extra = str.charCodeAt(i++);
+            if ((extra & 0xfc00) === 0xdc00) {
+                codePoints.push(((value & 0x3ff) << 10) + (extra & 0x3ff) + 0x10000);
+            }
+            else {
+                codePoints.push(value);
+                i--;
+            }
+        }
+        else {
+            codePoints.push(value);
+        }
+    }
+    return codePoints;
+};
+var fromCodePoint$1 = function () {
+    var codePoints = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        codePoints[_i] = arguments[_i];
+    }
+    if (String.fromCodePoint) {
+        return String.fromCodePoint.apply(String, codePoints);
+    }
+    var length = codePoints.length;
+    if (!length) {
+        return '';
+    }
+    var codeUnits = [];
+    var index = -1;
+    var result = '';
+    while (++index < length) {
+        var codePoint = codePoints[index];
+        if (codePoint <= 0xffff) {
+            codeUnits.push(codePoint);
+        }
+        else {
+            codePoint -= 0x10000;
+            codeUnits.push((codePoint >> 10) + 0xd800, (codePoint % 0x400) + 0xdc00);
+        }
+        if (index + 1 === length || codeUnits.length > 0x4000) {
+            result += String.fromCharCode.apply(String, codeUnits);
+            codeUnits.length = 0;
+        }
+    }
+    return result;
+};
+var chars$2 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+// Use a lookup table to find the index.
+var lookup$2 = typeof Uint8Array === 'undefined' ? [] : new Uint8Array(256);
+for (var i$2 = 0; i$2 < chars$2.length; i$2++) {
+    lookup$2[chars$2.charCodeAt(i$2)] = i$2;
+}
+
+/*
+ * utrie 1.0.2 <https://github.com/niklasvh/utrie>
+ * Copyright (c) 2022 Niklas von Hertzen <https://hertzen.com>
+ * Released under MIT License
+ */
+var chars$1$1 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+// Use a lookup table to find the index.
+var lookup$1$1 = typeof Uint8Array === 'undefined' ? [] : new Uint8Array(256);
+for (var i$1$1 = 0; i$1$1 < chars$1$1.length; i$1$1++) {
+    lookup$1$1[chars$1$1.charCodeAt(i$1$1)] = i$1$1;
+}
+var decode$1 = function (base64) {
+    var bufferLength = base64.length * 0.75, len = base64.length, i, p = 0, encoded1, encoded2, encoded3, encoded4;
+    if (base64[base64.length - 1] === '=') {
+        bufferLength--;
+        if (base64[base64.length - 2] === '=') {
+            bufferLength--;
+        }
+    }
+    var buffer = typeof ArrayBuffer !== 'undefined' &&
+        typeof Uint8Array !== 'undefined' &&
+        typeof Uint8Array.prototype.slice !== 'undefined'
+        ? new ArrayBuffer(bufferLength)
+        : new Array(bufferLength);
+    var bytes = Array.isArray(buffer) ? buffer : new Uint8Array(buffer);
+    for (i = 0; i < len; i += 4) {
+        encoded1 = lookup$1$1[base64.charCodeAt(i)];
+        encoded2 = lookup$1$1[base64.charCodeAt(i + 1)];
+        encoded3 = lookup$1$1[base64.charCodeAt(i + 2)];
+        encoded4 = lookup$1$1[base64.charCodeAt(i + 3)];
+        bytes[p++] = (encoded1 << 2) | (encoded2 >> 4);
+        bytes[p++] = ((encoded2 & 15) << 4) | (encoded3 >> 2);
+        bytes[p++] = ((encoded3 & 3) << 6) | (encoded4 & 63);
+    }
+    return buffer;
+};
+var polyUint16Array$1 = function (buffer) {
+    var length = buffer.length;
+    var bytes = [];
+    for (var i = 0; i < length; i += 2) {
+        bytes.push((buffer[i + 1] << 8) | buffer[i]);
+    }
+    return bytes;
+};
+var polyUint32Array$1 = function (buffer) {
+    var length = buffer.length;
+    var bytes = [];
+    for (var i = 0; i < length; i += 4) {
+        bytes.push((buffer[i + 3] << 24) | (buffer[i + 2] << 16) | (buffer[i + 1] << 8) | buffer[i]);
+    }
+    return bytes;
+};
+
+/** Shift size for getting the index-2 table offset. */
+var UTRIE2_SHIFT_2$1 = 5;
+/** Shift size for getting the index-1 table offset. */
+var UTRIE2_SHIFT_1$1 = 6 + 5;
+/**
+ * Shift size for shifting left the index array values.
+ * Increases possible data size with 16-bit index values at the cost
+ * of compactability.
+ * This requires data blocks to be aligned by UTRIE2_DATA_GRANULARITY.
+ */
+var UTRIE2_INDEX_SHIFT$1 = 2;
+/**
+ * Difference between the two shift sizes,
+ * for getting an index-1 offset from an index-2 offset. 6=11-5
+ */
+var UTRIE2_SHIFT_1_2$1 = UTRIE2_SHIFT_1$1 - UTRIE2_SHIFT_2$1;
+/**
+ * The part of the index-2 table for U+D800..U+DBFF stores values for
+ * lead surrogate code _units_ not code _points_.
+ * Values for lead surrogate code _points_ are indexed with this portion of the table.
+ * Length=32=0x20=0x400>>UTRIE2_SHIFT_2. (There are 1024=0x400 lead surrogates.)
+ */
+var UTRIE2_LSCP_INDEX_2_OFFSET$1 = 0x10000 >> UTRIE2_SHIFT_2$1;
+/** Number of entries in a data block. 32=0x20 */
+var UTRIE2_DATA_BLOCK_LENGTH$1 = 1 << UTRIE2_SHIFT_2$1;
+/** Mask for getting the lower bits for the in-data-block offset. */
+var UTRIE2_DATA_MASK$1 = UTRIE2_DATA_BLOCK_LENGTH$1 - 1;
+var UTRIE2_LSCP_INDEX_2_LENGTH$1 = 0x400 >> UTRIE2_SHIFT_2$1;
+/** Count the lengths of both BMP pieces. 2080=0x820 */
+var UTRIE2_INDEX_2_BMP_LENGTH$1 = UTRIE2_LSCP_INDEX_2_OFFSET$1 + UTRIE2_LSCP_INDEX_2_LENGTH$1;
+/**
+ * The 2-byte UTF-8 version of the index-2 table follows at offset 2080=0x820.
+ * Length 32=0x20 for lead bytes C0..DF, regardless of UTRIE2_SHIFT_2.
+ */
+var UTRIE2_UTF8_2B_INDEX_2_OFFSET$1 = UTRIE2_INDEX_2_BMP_LENGTH$1;
+var UTRIE2_UTF8_2B_INDEX_2_LENGTH$1 = 0x800 >> 6; /* U+0800 is the first code point after 2-byte UTF-8 */
+/**
+ * The index-1 table, only used for supplementary code points, at offset 2112=0x840.
+ * Variable length, for code points up to highStart, where the last single-value range starts.
+ * Maximum length 512=0x200=0x100000>>UTRIE2_SHIFT_1.
+ * (For 0x100000 supplementary code points U+10000..U+10ffff.)
+ *
+ * The part of the index-2 table for supplementary code points starts
+ * after this index-1 table.
+ *
+ * Both the index-1 table and the following part of the index-2 table
+ * are omitted completely if there is only BMP data.
+ */
+var UTRIE2_INDEX_1_OFFSET$1 = UTRIE2_UTF8_2B_INDEX_2_OFFSET$1 + UTRIE2_UTF8_2B_INDEX_2_LENGTH$1;
+/**
+ * Number of index-1 entries for the BMP. 32=0x20
+ * This part of the index-1 table is omitted from the serialized form.
+ */
+var UTRIE2_OMITTED_BMP_INDEX_1_LENGTH$1 = 0x10000 >> UTRIE2_SHIFT_1$1;
+/** Number of entries in an index-2 block. 64=0x40 */
+var UTRIE2_INDEX_2_BLOCK_LENGTH$1 = 1 << UTRIE2_SHIFT_1_2$1;
+/** Mask for getting the lower bits for the in-index-2-block offset. */
+var UTRIE2_INDEX_2_MASK$1 = UTRIE2_INDEX_2_BLOCK_LENGTH$1 - 1;
+var slice16$1 = function (view, start, end) {
+    if (view.slice) {
+        return view.slice(start, end);
+    }
+    return new Uint16Array(Array.prototype.slice.call(view, start, end));
+};
+var slice32$1 = function (view, start, end) {
+    if (view.slice) {
+        return view.slice(start, end);
+    }
+    return new Uint32Array(Array.prototype.slice.call(view, start, end));
+};
+var createTrieFromBase64$1 = function (base64, _byteLength) {
+    var buffer = decode$1(base64);
+    var view32 = Array.isArray(buffer) ? polyUint32Array$1(buffer) : new Uint32Array(buffer);
+    var view16 = Array.isArray(buffer) ? polyUint16Array$1(buffer) : new Uint16Array(buffer);
+    var headerLength = 24;
+    var index = slice16$1(view16, headerLength / 2, view32[4] / 2);
+    var data = view32[5] === 2
+        ? slice16$1(view16, (headerLength + view32[4]) / 2)
+        : slice32$1(view32, Math.ceil((headerLength + view32[4]) / 4));
+    return new Trie$1(view32[0], view32[1], view32[2], view32[3], index, data);
+};
+var Trie$1 = /** @class */ (function () {
+    function Trie(initialValue, errorValue, highStart, highValueIndex, index, data) {
+        this.initialValue = initialValue;
+        this.errorValue = errorValue;
+        this.highStart = highStart;
+        this.highValueIndex = highValueIndex;
+        this.index = index;
+        this.data = data;
+    }
+    /**
+     * Get the value for a code point as stored in the Trie.
+     *
+     * @param codePoint the code point
+     * @return the value
+     */
+    Trie.prototype.get = function (codePoint) {
+        var ix;
+        if (codePoint >= 0) {
+            if (codePoint < 0x0d800 || (codePoint > 0x0dbff && codePoint <= 0x0ffff)) {
+                // Ordinary BMP code point, excluding leading surrogates.
+                // BMP uses a single level lookup.  BMP index starts at offset 0 in the Trie2 index.
+                // 16 bit data is stored in the index array itself.
+                ix = this.index[codePoint >> UTRIE2_SHIFT_2$1];
+                ix = (ix << UTRIE2_INDEX_SHIFT$1) + (codePoint & UTRIE2_DATA_MASK$1);
+                return this.data[ix];
+            }
+            if (codePoint <= 0xffff) {
+                // Lead Surrogate Code Point.  A Separate index section is stored for
+                // lead surrogate code units and code points.
+                //   The main index has the code unit data.
+                //   For this function, we need the code point data.
+                // Note: this expression could be refactored for slightly improved efficiency, but
+                //       surrogate code points will be so rare in practice that it's not worth it.
+                ix = this.index[UTRIE2_LSCP_INDEX_2_OFFSET$1 + ((codePoint - 0xd800) >> UTRIE2_SHIFT_2$1)];
+                ix = (ix << UTRIE2_INDEX_SHIFT$1) + (codePoint & UTRIE2_DATA_MASK$1);
+                return this.data[ix];
+            }
+            if (codePoint < this.highStart) {
+                // Supplemental code point, use two-level lookup.
+                ix = UTRIE2_INDEX_1_OFFSET$1 - UTRIE2_OMITTED_BMP_INDEX_1_LENGTH$1 + (codePoint >> UTRIE2_SHIFT_1$1);
+                ix = this.index[ix];
+                ix += (codePoint >> UTRIE2_SHIFT_2$1) & UTRIE2_INDEX_2_MASK$1;
+                ix = this.index[ix];
+                ix = (ix << UTRIE2_INDEX_SHIFT$1) + (codePoint & UTRIE2_DATA_MASK$1);
+                return this.data[ix];
+            }
+            if (codePoint <= 0x10ffff) {
+                return this.data[this.highValueIndex];
+            }
+        }
+        // Fall through.  The code point is outside of the legal range of 0..0x10ffff.
+        return this.errorValue;
+    };
+    return Trie;
+}());
+
+/*
+ * base64-arraybuffer 1.0.2 <https://github.com/niklasvh/base64-arraybuffer>
+ * Copyright (c) 2022 Niklas von Hertzen <https://hertzen.com>
+ * Released under MIT License
+ */
+var chars$3 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+// Use a lookup table to find the index.
+var lookup$3 = typeof Uint8Array === 'undefined' ? [] : new Uint8Array(256);
+for (var i$3 = 0; i$3 < chars$3.length; i$3++) {
+    lookup$3[chars$3.charCodeAt(i$3)] = i$3;
+}
+
+var base64$1 = 'KwAAAAAAAAAACA4AUD0AADAgAAACAAAAAAAIABAAGABAAEgAUABYAGAAaABgAGgAYgBqAF8AZwBgAGgAcQB5AHUAfQCFAI0AlQCdAKIAqgCyALoAYABoAGAAaABgAGgAwgDKAGAAaADGAM4A0wDbAOEA6QDxAPkAAQEJAQ8BFwF1AH0AHAEkASwBNAE6AUIBQQFJAVEBWQFhAWgBcAF4ATAAgAGGAY4BlQGXAZ8BpwGvAbUBvQHFAc0B0wHbAeMB6wHxAfkBAQIJAvEBEQIZAiECKQIxAjgCQAJGAk4CVgJeAmQCbAJ0AnwCgQKJApECmQKgAqgCsAK4ArwCxAIwAMwC0wLbAjAA4wLrAvMC+AIAAwcDDwMwABcDHQMlAy0DNQN1AD0DQQNJA0kDSQNRA1EDVwNZA1kDdQB1AGEDdQBpA20DdQN1AHsDdQCBA4kDkQN1AHUAmQOhA3UAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AKYDrgN1AHUAtgO+A8YDzgPWAxcD3gPjA+sD8wN1AHUA+wMDBAkEdQANBBUEHQQlBCoEFwMyBDgEYABABBcDSARQBFgEYARoBDAAcAQzAXgEgASIBJAEdQCXBHUAnwSnBK4EtgS6BMIEyAR1AHUAdQB1AHUAdQCVANAEYABgAGAAYABgAGAAYABgANgEYADcBOQEYADsBPQE/AQEBQwFFAUcBSQFLAU0BWQEPAVEBUsFUwVbBWAAYgVgAGoFcgV6BYIFigWRBWAAmQWfBaYFYABgAGAAYABgAKoFYACxBbAFuQW6BcEFwQXHBcEFwQXPBdMF2wXjBeoF8gX6BQIGCgYSBhoGIgYqBjIGOgZgAD4GRgZMBmAAUwZaBmAAYABgAGAAYABgAGAAYABgAGAAYABgAGIGYABpBnAGYABgAGAAYABgAGAAYABgAGAAYAB4Bn8GhQZgAGAAYAB1AHcDFQSLBmAAYABgAJMGdQA9A3UAmwajBqsGqwaVALMGuwbDBjAAywbSBtIG1QbSBtIG0gbSBtIG0gbdBuMG6wbzBvsGAwcLBxMHAwcbByMHJwcsBywHMQcsB9IGOAdAB0gHTgfSBkgHVgfSBtIG0gbSBtIG0gbSBtIG0gbSBiwHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAdgAGAALAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAdbB2MHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsB2kH0gZwB64EdQB1AHUAdQB1AHUAdQB1AHUHfQdgAIUHjQd1AHUAlQedB2AAYAClB6sHYACzB7YHvgfGB3UAzgfWBzMB3gfmB1EB7gf1B/0HlQENAQUIDQh1ABUIHQglCBcDLQg1CD0IRQhNCEEDUwh1AHUAdQBbCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIcAh3CHoIMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwAIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIgggwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAALAcsBywHLAcsBywHLAcsBywHLAcsB4oILAcsB44I0gaWCJ4Ipgh1AHUAqgiyCHUAdQB1AHUAdQB1AHUAdQB1AHUAtwh8AXUAvwh1AMUIyQjRCNkI4AjoCHUAdQB1AO4I9gj+CAYJDgkTCS0HGwkjCYIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiAAIAAAAFAAYABgAGIAXwBgAHEAdQBFAJUAogCyAKAAYABgAEIA4ABGANMA4QDxAMEBDwE1AFwBLAE6AQEBUQF4QkhCmEKoQrhCgAHIQsAB0MLAAcABwAHAAeDC6ABoAHDCwMMAAcABwAHAAdDDGMMAAcAB6MM4wwjDWMNow3jDaABoAGgAaABoAGgAaABoAGgAaABoAGgAaABoAGgAaABoAGgAaABoAEjDqABWw6bDqABpg6gAaABoAHcDvwOPA+gAaABfA/8DvwO/A78DvwO/A78DvwO/A78DvwO/A78DvwO/A78DvwO/A78DvwO/A78DvwO/A78DvwO/A78DpcPAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcAB9cPKwkyCToJMAB1AHUAdQBCCUoJTQl1AFUJXAljCWcJawkwADAAMAAwAHMJdQB2CX4JdQCECYoJjgmWCXUAngkwAGAAYABxAHUApgn3A64JtAl1ALkJdQDACTAAMAAwADAAdQB1AHUAdQB1AHUAdQB1AHUAowYNBMUIMAAwADAAMADICcsJ0wnZCRUE4QkwAOkJ8An4CTAAMAB1AAAKvwh1AAgKDwoXCh8KdQAwACcKLgp1ADYKqAmICT4KRgowADAAdQB1AE4KMAB1AFYKdQBeCnUAZQowADAAMAAwADAAMAAwADAAMAAVBHUAbQowADAAdQC5CXUKMAAwAHwBxAijBogEMgF9CoQKiASMCpQKmgqIBKIKqgquCogEDQG2Cr4KxgrLCjAAMADTCtsKCgHjCusK8Qr5CgELMAAwADAAMAB1AIsECQsRC3UANAEZCzAAMAAwADAAMAB1ACELKQswAHUANAExCzkLdQBBC0kLMABRC1kLMAAwADAAMAAwADAAdQBhCzAAMAAwAGAAYABpC3ELdwt/CzAAMACHC4sLkwubC58Lpwt1AK4Ltgt1APsDMAAwADAAMAAwADAAMAAwAL4LwwvLC9IL1wvdCzAAMADlC+kL8Qv5C/8LSQswADAAMAAwADAAMAAwADAAMAAHDDAAMAAwADAAMAAODBYMHgx1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1ACYMMAAwADAAdQB1AHUALgx1AHUAdQB1AHUAdQA2DDAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwAHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AD4MdQBGDHUAdQB1AHUAdQB1AEkMdQB1AHUAdQB1AFAMMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwAHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQBYDHUAdQB1AF8MMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUA+wMVBGcMMAAwAHwBbwx1AHcMfwyHDI8MMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAYABgAJcMMAAwADAAdQB1AJ8MlQClDDAAMACtDCwHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsB7UMLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AA0EMAC9DDAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAsBywHLAcsBywHLAcsBywHLQcwAMEMyAwsBywHLAcsBywHLAcsBywHLAcsBywHzAwwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwAHUAdQB1ANQM2QzhDDAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMABgAGAAYABgAGAAYABgAOkMYADxDGAA+AwADQYNYABhCWAAYAAODTAAMAAwADAAFg1gAGAAHg37AzAAMAAwADAAYABgACYNYAAsDTQNPA1gAEMNPg1LDWAAYABgAGAAYABgAGAAYABgAGAAUg1aDYsGVglhDV0NcQBnDW0NdQ15DWAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAlQCBDZUAiA2PDZcNMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAnw2nDTAAMAAwADAAMAAwAHUArw23DTAAMAAwADAAMAAwADAAMAAwADAAMAB1AL8NMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAB1AHUAdQB1AHUAdQDHDTAAYABgAM8NMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAA1w11ANwNMAAwAD0B5A0wADAAMAAwADAAMADsDfQN/A0EDgwOFA4wABsOMAAwADAAMAAwADAAMAAwANIG0gbSBtIG0gbSBtIG0gYjDigOwQUuDsEFMw7SBjoO0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIGQg5KDlIOVg7SBtIGXg5lDm0OdQ7SBtIGfQ6EDooOjQ6UDtIGmg6hDtIG0gaoDqwO0ga0DrwO0gZgAGAAYADEDmAAYAAkBtIGzA5gANIOYADaDokO0gbSBt8O5w7SBu8O0gb1DvwO0gZgAGAAxA7SBtIG0gbSBtIGYABgAGAAYAAED2AAsAUMD9IG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIGFA8sBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAccD9IGLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHJA8sBywHLAcsBywHLAccDywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywPLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAc0D9IG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIGLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAccD9IG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIGFA8sBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHPA/SBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gYUD0QPlQCVAJUAMAAwADAAMACVAJUAlQCVAJUAlQCVAEwPMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAA//8EAAQABAAEAAQABAAEAAQABAANAAMAAQABAAIABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQACgATABcAHgAbABoAHgAXABYAEgAeABsAGAAPABgAHABLAEsASwBLAEsASwBLAEsASwBLABgAGAAeAB4AHgATAB4AUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQABYAGwASAB4AHgAeAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAWAA0AEQAeAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAAQABAAEAAQABAAFAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAJABYAGgAbABsAGwAeAB0AHQAeAE8AFwAeAA0AHgAeABoAGwBPAE8ADgBQAB0AHQAdAE8ATwAXAE8ATwBPABYAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAdAFAAUABQAFAAUABQAFAAUAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAFAAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAeAB4AHgAeAFAATwBAAE8ATwBPAEAATwBQAFAATwBQAB4AHgAeAB4AHgAeAB0AHQAdAB0AHgAdAB4ADgBQAFAAUABQAFAAHgAeAB4AHgAeAB4AHgBQAB4AUAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4ABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAJAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAkACQAJAAkACQAJAAkABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAeAB4AHgAeAFAAHgAeAB4AKwArAFAAUABQAFAAGABQACsAKwArACsAHgAeAFAAHgBQAFAAUAArAFAAKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4ABAAEAAQABAAEAAQABAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAUAAeAB4AHgAeAB4AHgBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAYAA0AKwArAB4AHgAbACsABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQADQAEAB4ABAAEAB4ABAAEABMABAArACsAKwArACsAKwArACsAVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAKwArACsAKwBWAFYAVgBWAB4AHgArACsAKwArACsAKwArACsAKwArACsAHgAeAB4AHgAeAB4AHgAeAB4AGgAaABoAGAAYAB4AHgAEAAQABAAEAAQABAAEAAQABAAEAAQAEwAEACsAEwATAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABABLAEsASwBLAEsASwBLAEsASwBLABoAGQAZAB4AUABQAAQAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQABMAUAAEAAQABAAEAAQABAAEAB4AHgAEAAQABAAEAAQABABQAFAABAAEAB4ABAAEAAQABABQAFAASwBLAEsASwBLAEsASwBLAEsASwBQAFAAUAAeAB4AUAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwAeAFAABABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAAQABAAEAFAAKwArACsAKwArACsAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAAQAUABQAB4AHgAYABMAUAArACsABAAbABsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAFAABAAEAAQABAAEAFAABAAEAAQAUAAEAAQABAAEAAQAKwArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAArACsAHgArAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwArACsAKwArAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAB4ABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAFAABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAUAAEAAQABAAEAAQABAAEAFAAUABQAFAAUABQAFAAUABQAFAABAAEAA0ADQBLAEsASwBLAEsASwBLAEsASwBLAB4AUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAArAFAAUABQAFAAUABQAFAAUAArACsAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQACsAUAArACsAKwBQAFAAUABQACsAKwAEAFAABAAEAAQABAAEAAQABAArACsABAAEACsAKwAEAAQABABQACsAKwArACsAKwArACsAKwAEACsAKwArACsAUABQACsAUABQAFAABAAEACsAKwBLAEsASwBLAEsASwBLAEsASwBLAFAAUAAaABoAUABQAFAAUABQAEwAHgAbAFAAHgAEACsAKwAEAAQABAArAFAAUABQAFAAUABQACsAKwArACsAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQACsAUABQACsAUABQACsAUABQACsAKwAEACsABAAEAAQABAAEACsAKwArACsABAAEACsAKwAEAAQABAArACsAKwAEACsAKwArACsAKwArACsAUABQAFAAUAArAFAAKwArACsAKwArACsAKwBLAEsASwBLAEsASwBLAEsASwBLAAQABABQAFAAUAAEAB4AKwArACsAKwArACsAKwArACsAKwAEAAQABAArAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQACsAUABQACsAUABQAFAAUABQACsAKwAEAFAABAAEAAQABAAEAAQABAAEACsABAAEAAQAKwAEAAQABAArACsAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAABAAEACsAKwBLAEsASwBLAEsASwBLAEsASwBLAB4AGwArACsAKwArACsAKwArAFAABAAEAAQABAAEAAQAKwAEAAQABAArAFAAUABQAFAAUABQAFAAUAArACsAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAArACsABAAEACsAKwAEAAQABAArACsAKwArACsAKwArAAQABAAEACsAKwArACsAUABQACsAUABQAFAABAAEACsAKwBLAEsASwBLAEsASwBLAEsASwBLAB4AUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArAAQAUAArAFAAUABQAFAAUABQACsAKwArAFAAUABQACsAUABQAFAAUAArACsAKwBQAFAAKwBQACsAUABQACsAKwArAFAAUAArACsAKwBQAFAAUAArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArAAQABAAEAAQABAArACsAKwAEAAQABAArAAQABAAEAAQAKwArAFAAKwArACsAKwArACsABAArACsAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAUABQAFAAHgAeAB4AHgAeAB4AGwAeACsAKwArACsAKwAEAAQABAAEAAQAUABQAFAAUABQAFAAUABQACsAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAUAAEAAQABAAEAAQABAAEACsABAAEAAQAKwAEAAQABAAEACsAKwArACsAKwArACsABAAEACsAUABQAFAAKwArACsAKwArAFAAUAAEAAQAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAKwAOAFAAUABQAFAAUABQAFAAHgBQAAQABAAEAA4AUABQAFAAUABQAFAAUABQACsAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAKwArAAQAUAAEAAQABAAEAAQABAAEACsABAAEAAQAKwAEAAQABAAEACsAKwArACsAKwArACsABAAEACsAKwArACsAKwArACsAUAArAFAAUAAEAAQAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwBQAFAAKwArACsAKwArACsAKwArACsAKwArACsAKwAEAAQABAAEAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAFAABAAEAAQABAAEAAQABAArAAQABAAEACsABAAEAAQABABQAB4AKwArACsAKwBQAFAAUAAEAFAAUABQAFAAUABQAFAAUABQAFAABAAEACsAKwBLAEsASwBLAEsASwBLAEsASwBLAFAAUABQAFAAUABQAFAAUABQABoAUABQAFAAUABQAFAAKwAEAAQABAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQACsAUAArACsAUABQAFAAUABQAFAAUAArACsAKwAEACsAKwArACsABAAEAAQABAAEAAQAKwAEACsABAAEAAQABAAEAAQABAAEACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArAAQABAAeACsAKwArACsAKwArACsAKwArACsAKwArAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXAAqAFwAXAAqACoAKgAqACoAKgAqACsAKwArACsAGwBcAFwAXABcAFwAXABcACoAKgAqACoAKgAqACoAKgAeAEsASwBLAEsASwBLAEsASwBLAEsADQANACsAKwArACsAKwBcAFwAKwBcACsAXABcAFwAXABcACsAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcACsAXAArAFwAXABcAFwAXABcAFwAXABcAFwAKgBcAFwAKgAqACoAKgAqACoAKgAqACoAXAArACsAXABcAFwAXABcACsAXAArACoAKgAqACoAKgAqACsAKwBLAEsASwBLAEsASwBLAEsASwBLACsAKwBcAFwAXABcAFAADgAOAA4ADgAeAA4ADgAJAA4ADgANAAkAEwATABMAEwATAAkAHgATAB4AHgAeAAQABAAeAB4AHgAeAB4AHgBLAEsASwBLAEsASwBLAEsASwBLAFAAUABQAFAAUABQAFAAUABQAFAADQAEAB4ABAAeAAQAFgARABYAEQAEAAQAUABQAFAAUABQAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQADQAEAAQABAAEAAQADQAEAAQAUABQAFAAUABQAAQABAAEAAQABAAEAAQABAAEAAQABAArAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAArAA0ADQAeAB4AHgAeAB4AHgAEAB4AHgAeAB4AHgAeACsAHgAeAA4ADgANAA4AHgAeAB4AHgAeAAkACQArACsAKwArACsAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgBcAEsASwBLAEsASwBLAEsASwBLAEsADQANAB4AHgAeAB4AXABcAFwAXABcAFwAKgAqACoAKgBcAFwAXABcACoAKgAqAFwAKgAqACoAXABcACoAKgAqACoAKgAqACoAXABcAFwAKgAqACoAKgBcAFwAXABcAFwAXABcAFwAXABcAFwAXABcACoAKgAqACoAKgAqACoAKgAqACoAKgAqAFwAKgBLAEsASwBLAEsASwBLAEsASwBLACoAKgAqACoAKgAqAFAAUABQAFAAUABQACsAUAArACsAKwArACsAUAArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAHgBQAFAAUABQAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAUAArACsAUABQAFAAUABQAFAAUAArAFAAKwBQAFAAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAKwArAFAAUABQAFAAUABQAFAAKwBQACsAUABQAFAAUAArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsABAAEAAQAHgANAB4AHgAeAB4AHgAeAB4AUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwBQAFAAUABQAFAAUAArACsADQBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAHgAeAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAANAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAWABEAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAA0ADQANAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAAQABAAEACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAANAA0AKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEACsAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUAArAAQABAArACsAKwArACsAKwArACsAKwArACsAKwBcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqAA0ADQAVAFwADQAeAA0AGwBcACoAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwAeAB4AEwATAA0ADQAOAB4AEwATAB4ABAAEAAQACQArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArAFAAUABQAFAAUAAEAAQAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQAUAArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwAEAAQABAAEAAQABAAEAAQABAAEAAQABAArACsAKwArAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsAKwArACsAHgArACsAKwATABMASwBLAEsASwBLAEsASwBLAEsASwBcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXAArACsAXABcAFwAXABcACsAKwArACsAKwArACsAKwArACsAKwBcAFwAXABcAFwAXABcAFwAXABcAFwAXAArACsAKwArAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAXAArACsAKwAqACoAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAArACsAHgAeAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcACoAKgAqACoAKgAqACoAKgAqACoAKwAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKwArAAQASwBLAEsASwBLAEsASwBLAEsASwArACsAKwArACsAKwBLAEsASwBLAEsASwBLAEsASwBLACsAKwArACsAKwArACoAKgAqACoAKgAqACoAXAAqACoAKgAqACoAKgArACsABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsABAAEAAQABAAEAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABABQAFAAUABQAFAAUABQACsAKwArACsASwBLAEsASwBLAEsASwBLAEsASwANAA0AHgANAA0ADQANAB4AHgAeAB4AHgAeAB4AHgAeAB4ABAAEAAQABAAEAAQABAAEAAQAHgAeAB4AHgAeAB4AHgAeAB4AKwArACsABAAEAAQAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAAQABAAEAAQABABQAFAASwBLAEsASwBLAEsASwBLAEsASwBQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsAKwArACsAKwArACsAKwAeAB4AHgAeAFAAUABQAFAABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsAKwArAA0ADQANAA0ADQBLAEsASwBLAEsASwBLAEsASwBLACsAKwArAFAAUABQAEsASwBLAEsASwBLAEsASwBLAEsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAA0ADQBQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwBQAFAAUAAeAB4AHgAeAB4AHgAeAB4AKwArACsAKwArACsAKwArAAQABAAEAB4ABAAEAAQABAAEAAQABAAEAAQABAAEAAQABABQAFAAUABQAAQAUABQAFAAUABQAFAABABQAFAABAAEAAQAUAArACsAKwArACsABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsABAAEAAQABAAEAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwArAFAAUABQAFAAUABQACsAKwBQAFAAUABQAFAAUABQAFAAKwBQACsAUAArAFAAKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeACsAKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArAB4AHgAeAB4AHgAeAB4AHgBQAB4AHgAeAFAAUABQACsAHgAeAB4AHgAeAB4AHgAeAB4AHgBQAFAAUABQACsAKwAeAB4AHgAeAB4AHgArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwArAFAAUABQACsAHgAeAB4AHgAeAB4AHgAOAB4AKwANAA0ADQANAA0ADQANAAkADQANAA0ACAAEAAsABAAEAA0ACQANAA0ADAAdAB0AHgAXABcAFgAXABcAFwAWABcAHQAdAB4AHgAUABQAFAANAAEAAQAEAAQABAAEAAQACQAaABoAGgAaABoAGgAaABoAHgAXABcAHQAVABUAHgAeAB4AHgAeAB4AGAAWABEAFQAVABUAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4ADQAeAA0ADQANAA0AHgANAA0ADQAHAB4AHgAeAB4AKwAEAAQABAAEAAQABAAEAAQABAAEAFAAUAArACsATwBQAFAAUABQAFAAHgAeAB4AFgARAE8AUABPAE8ATwBPAFAAUABQAFAAUAAeAB4AHgAWABEAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArABsAGwAbABsAGwAbABsAGgAbABsAGwAbABsAGwAbABsAGwAbABsAGwAbABsAGgAbABsAGwAbABoAGwAbABoAGwAbABsAGwAbABsAGwAbABsAGwAbABsAGwAbABsAGwAbAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAHgAeAFAAGgAeAB0AHgBQAB4AGgAeAB4AHgAeAB4AHgAeAB4AHgBPAB4AUAAbAB4AHgBQAFAAUABQAFAAHgAeAB4AHQAdAB4AUAAeAFAAHgBQAB4AUABPAFAAUAAeAB4AHgAeAB4AHgAeAFAAUABQAFAAUAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAFAAHgBQAFAAUABQAE8ATwBQAFAAUABQAFAATwBQAFAATwBQAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAFAAUABQAFAATwBPAE8ATwBPAE8ATwBPAE8ATwBQAFAAUABQAFAAUABQAFAAUAAeAB4AUABQAFAAUABPAB4AHgArACsAKwArAB0AHQAdAB0AHQAdAB0AHQAdAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB0AHgAdAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAdAB4AHQAdAB4AHgAeAB0AHQAeAB4AHQAeAB4AHgAdAB4AHQAbABsAHgAdAB4AHgAeAB4AHQAeAB4AHQAdAB0AHQAeAB4AHQAeAB0AHgAdAB0AHQAdAB0AHQAeAB0AHgAeAB4AHgAeAB0AHQAdAB0AHgAeAB4AHgAdAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAdAB4AHgAeAB0AHgAeAB4AHgAeAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAdAB0AHgAeAB0AHQAdAB0AHgAeAB0AHQAeAB4AHQAdAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB0AHQAeAB4AHQAdAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHQAeAB4AHgAdAB4AHgAeAB4AHgAeAB4AHQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AFAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeABYAEQAWABEAHgAeAB4AHgAeAB4AHQAeAB4AHgAeAB4AHgAeACUAJQAeAB4AHgAeAB4AHgAeAB4AHgAWABEAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AJQAlACUAJQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAFAAHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHgAeAB4AHgAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAeAB4AHQAdAB0AHQAeAB4AHgAeAB4AHgAeAB4AHgAeAB0AHQAeAB0AHQAdAB0AHQAdAB0AHgAeAB4AHgAeAB4AHgAeAB0AHQAeAB4AHQAdAB4AHgAeAB4AHQAdAB4AHgAeAB4AHQAdAB0AHgAeAB0AHgAeAB0AHQAdAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAdAB0AHQAdAB4AHgAeAB4AHgAeAB4AHgAeAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAlACUAJQAlAB4AHQAdAB4AHgAdAB4AHgAeAB4AHQAdAB4AHgAeAB4AJQAlAB0AHQAlAB4AJQAlACUAIAAlACUAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAlACUAJQAeAB4AHgAeAB0AHgAdAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAdAB0AHgAdAB0AHQAeAB0AJQAdAB0AHgAdAB0AHgAdAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeACUAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHQAdAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAlACUAJQAlACUAJQAlACUAJQAlACUAJQAdAB0AHQAdACUAHgAlACUAJQAdACUAJQAdAB0AHQAlACUAHQAdACUAHQAdACUAJQAlAB4AHQAeAB4AHgAeAB0AHQAlAB0AHQAdAB0AHQAdACUAJQAlACUAJQAdACUAJQAgACUAHQAdACUAJQAlACUAJQAlACUAJQAeAB4AHgAlACUAIAAgACAAIAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB0AHgAeAB4AFwAXABcAFwAXABcAHgATABMAJQAeAB4AHgAWABEAFgARABYAEQAWABEAFgARABYAEQAWABEATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeABYAEQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAWABEAFgARABYAEQAWABEAFgARAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AFgARABYAEQAWABEAFgARABYAEQAWABEAFgARABYAEQAWABEAFgARABYAEQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAWABEAFgARAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AFgARAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAdAB0AHQAdAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AUABQAFAAUAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAEAAQABAAeAB4AKwArACsAKwArABMADQANAA0AUAATAA0AUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAUAANACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAEAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQACsAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQACsAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXAA0ADQANAA0ADQANAA0ADQAeAA0AFgANAB4AHgAXABcAHgAeABcAFwAWABEAFgARABYAEQAWABEADQANAA0ADQATAFAADQANAB4ADQANAB4AHgAeAB4AHgAMAAwADQANAA0AHgANAA0AFgANAA0ADQANAA0ADQANAA0AHgANAB4ADQANAB4AHgAeACsAKwArACsAKwArACsAKwArACsAKwArACsAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACsAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAKwArACsAKwArACsAKwArACsAKwArACsAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAlACUAJQAlACUAJQAlACUAJQAlACUAJQArACsAKwArAA0AEQARACUAJQBHAFcAVwAWABEAFgARABYAEQAWABEAFgARACUAJQAWABEAFgARABYAEQAWABEAFQAWABEAEQAlAFcAVwBXAFcAVwBXAFcAVwBXAAQABAAEAAQABAAEACUAVwBXAFcAVwA2ACUAJQBXAFcAVwBHAEcAJQAlACUAKwBRAFcAUQBXAFEAVwBRAFcAUQBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFEAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBRAFcAUQBXAFEAVwBXAFcAVwBXAFcAUQBXAFcAVwBXAFcAVwBRAFEAKwArAAQABAAVABUARwBHAFcAFQBRAFcAUQBXAFEAVwBRAFcAUQBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFEAVwBRAFcAUQBXAFcAVwBXAFcAVwBRAFcAVwBXAFcAVwBXAFEAUQBXAFcAVwBXABUAUQBHAEcAVwArACsAKwArACsAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAKwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAKwAlACUAVwBXAFcAVwAlACUAJQAlACUAJQAlACUAJQAlACsAKwArACsAKwArACsAKwArACsAKwArAFEAUQBRAFEAUQBRAFEAUQBRAFEAUQBRAFEAUQBRAFEAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQArAFcAVwBXAFcAVwBXAFcAVwBXAFcAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQBPAE8ATwBPAE8ATwBPAE8AJQBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXACUAJQAlAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAEcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAKwArACsAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAADQATAA0AUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABLAEsASwBLAEsASwBLAEsASwBLAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAFAABAAEAAQABAAeAAQABAAEAAQABAAEAAQABAAEAAQAHgBQAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AUABQAAQABABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAeAA0ADQANAA0ADQArACsAKwArACsAKwArACsAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAFAAUABQAFAAUABQAFAAUABQAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AUAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgBQAB4AHgAeAB4AHgAeAFAAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAHgAeAB4AHgAeAB4AHgAeAB4AKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAeAB4AUABQAFAAUABQAFAAUABQAFAAUABQAAQAUABQAFAABABQAFAAUABQAAQAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAAeAB4AHgAeAAQAKwArACsAUABQAFAAUABQAFAAHgAeABoAHgArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAADgAOABMAEwArACsAKwArACsAKwArACsABAAEAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAAEACsAKwArACsAKwArACsAKwANAA0ASwBLAEsASwBLAEsASwBLAEsASwArACsAKwArACsAKwAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABABQAFAAUABQAFAAUAAeAB4AHgBQAA4AUABQAAQAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAA0ADQBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAKwArACsAKwArACsAKwArACsAKwArAB4AWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYACsAKwArAAQAHgAeAB4AHgAeAB4ADQANAA0AHgAeAB4AHgArAFAASwBLAEsASwBLAEsASwBLAEsASwArACsAKwArAB4AHgBcAFwAXABcAFwAKgBcAFwAXABcAFwAXABcAFwAXABcAEsASwBLAEsASwBLAEsASwBLAEsAXABcAFwAXABcACsAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsAKwArACsAKwArACsAKwArAFAAUABQAAQAUABQAFAAUABQAFAAUABQAAQABAArACsASwBLAEsASwBLAEsASwBLAEsASwArACsAHgANAA0ADQBcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAKgAqACoAXAAqACoAKgBcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXAAqAFwAKgAqACoAXABcACoAKgBcAFwAXABcAFwAKgAqAFwAKgBcACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFwAXABcACoAKgBQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAA0ADQBQAFAAUAAEAAQAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUAArACsAUABQAFAAUABQAFAAKwArAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAHgAeACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQADQAEAAQAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAVABVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBUAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVACsAKwArACsAKwArACsAKwArACsAKwArAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAKwArACsAKwBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAKwArACsAKwAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXACUAJQBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAJQAlACUAJQAlACUAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAKwArACsAKwArAFYABABWAFYAVgBWAFYAVgBWAFYAVgBWAB4AVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAVgArAFYAVgBWAFYAVgArAFYAKwBWAFYAKwBWAFYAKwBWAFYAVgBWAFYAVgBWAFYAVgBWAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAEQAWAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUAAaAB4AKwArAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAGAARABEAGAAYABMAEwAWABEAFAArACsAKwArACsAKwAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACUAJQAlACUAJQAWABEAFgARABYAEQAWABEAFgARABYAEQAlACUAFgARACUAJQAlACUAJQAlACUAEQAlABEAKwAVABUAEwATACUAFgARABYAEQAWABEAJQAlACUAJQAlACUAJQAlACsAJQAbABoAJQArACsAKwArAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArAAcAKwATACUAJQAbABoAJQAlABYAEQAlACUAEQAlABEAJQBXAFcAVwBXAFcAVwBXAFcAVwBXABUAFQAlACUAJQATACUAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXABYAJQARACUAJQAlAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwAWACUAEQAlABYAEQARABYAEQARABUAVwBRAFEAUQBRAFEAUQBRAFEAUQBRAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAEcARwArACsAVwBXAFcAVwBXAFcAKwArAFcAVwBXAFcAVwBXACsAKwBXAFcAVwBXAFcAVwArACsAVwBXAFcAKwArACsAGgAbACUAJQAlABsAGwArAB4AHgAeAB4AHgAeAB4AKwArACsAKwArACsAKwArACsAKwAEAAQABAAQAB0AKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsADQANAA0AKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArAB4AHgAeAB4AHgAeAB4AHgAeAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgBQAFAAHgAeAB4AKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAAQAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAEAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAA0AUABQAFAAUAArACsAKwArAFAAUABQAFAAUABQAFAAUAANAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwArACsAKwAeACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAKwArAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUAArACsAKwBQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwANAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAeAB4AUABQAFAAUABQAFAAUAArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUAArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArAA0AUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwAeAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAUABQAFAAUABQAAQABAAEACsABAAEACsAKwArACsAKwAEAAQABAAEAFAAUABQAFAAKwBQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArAAQABAAEACsAKwArACsABABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArAA0ADQANAA0ADQANAA0ADQAeACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAeAFAAUABQAFAAUABQAFAAUAAeAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAArACsAKwArAFAAUABQAFAAUAANAA0ADQANAA0ADQAUACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsADQANAA0ADQANAA0ADQBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArAB4AHgAeAB4AKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArAFAAUABQAFAAUABQAAQABAAEAAQAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUAArAAQABAANACsAKwBQAFAAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAAQABAAEAAQABAAEAAQABAAEAAQABABQAFAAUABQAB4AHgAeAB4AHgArACsAKwArACsAKwAEAAQABAAEAAQABAAEAA0ADQAeAB4AHgAeAB4AKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsABABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAAEAAQABAAEAAQABAAeAB4AHgANAA0ADQANACsAKwArACsAKwArACsAKwArACsAKwAeACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwBLAEsASwBLAEsASwBLAEsASwBLACsAKwArACsAKwArAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsASwBLAEsASwBLAEsASwBLAEsASwANAA0ADQANAFAABAAEAFAAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAeAA4AUAArACsAKwArACsAKwArACsAKwAEAFAAUABQAFAADQANAB4ADQAEAAQABAAEAB4ABAAEAEsASwBLAEsASwBLAEsASwBLAEsAUAAOAFAADQANAA0AKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQABAAEAAQABAANAA0AHgANAA0AHgAEACsAUABQAFAAUABQAFAAUAArAFAAKwBQAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAA0AKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQABAAEAAQAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsABAAEAAQABAArAFAAUABQAFAAUABQAFAAUAArACsAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQACsAUABQACsAUABQAFAAUABQACsABAAEAFAABAAEAAQABAAEAAQABAArACsABAAEACsAKwAEAAQABAArACsAUAArACsAKwArACsAKwAEACsAKwArACsAKwBQAFAAUABQAFAABAAEACsAKwAEAAQABAAEAAQABAAEACsAKwArAAQABAAEAAQABAArACsAKwArACsAKwArACsAKwArACsABAAEAAQABAAEAAQABABQAFAAUABQAA0ADQANAA0AHgBLAEsASwBLAEsASwBLAEsASwBLAA0ADQArAB4ABABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAEAAQABAAEAFAAUAAeAFAAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAArACsABAAEAAQABAAEAAQABAAEAAQADgANAA0AEwATAB4AHgAeAA0ADQANAA0ADQANAA0ADQANAA0ADQANAA0ADQANAFAAUABQAFAABAAEACsAKwAEAA0ADQAeAFAAKwArACsAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAFAAKwArACsAKwArACsAKwBLAEsASwBLAEsASwBLAEsASwBLACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAKwArACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACsAKwArACsASwBLAEsASwBLAEsASwBLAEsASwBcAFwADQANAA0AKgBQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAeACsAKwArACsASwBLAEsASwBLAEsASwBLAEsASwBQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAKwArAFAAKwArAFAAUABQAFAAUABQAFAAUAArAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQAKwAEAAQAKwArAAQABAAEAAQAUAAEAFAABAAEAA0ADQANACsAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAArACsABAAEAAQABAAEAAQABABQAA4AUAAEACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFAABAAEAAQABAAEAAQABAAEAAQABABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAFAABAAEAAQABAAOAB4ADQANAA0ADQAOAB4ABAArACsAKwArACsAKwArACsAUAAEAAQABAAEAAQABAAEAAQABAAEAAQAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAA0ADQANAFAADgAOAA4ADQANACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEACsABAAEAAQABAAEAAQABAAEAFAADQANAA0ADQANACsAKwArACsAKwArACsAKwArACsASwBLAEsASwBLAEsASwBLAEsASwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwAOABMAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAArAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQACsAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAArACsAKwAEACsABAAEACsABAAEAAQABAAEAAQABABQAAQAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAUABQAFAAUABQAFAAKwBQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQAKwAEAAQAKwAEAAQABAAEAAQAUAArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAeAB4AKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAB4AHgAeAB4AHgAeAB4AHgAaABoAGgAaAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAKwArACsAKwArACsAKwArACsAKwArAA0AUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsADQANAA0ADQANACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAASABIAEgAQwBDAEMAUABQAFAAUABDAFAAUABQAEgAQwBIAEMAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAASABDAEMAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwAJAAkACQAJAAkACQAJABYAEQArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABIAEMAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwANAA0AKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArAAQABAAEAAQABAANACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAA0ADQANAB4AHgAeAB4AHgAeAFAAUABQAFAADQAeACsAKwArACsAKwArACsAKwArACsASwBLAEsASwBLAEsASwBLAEsASwArAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAANAA0AHgAeACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwAEAFAABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAKwArACsAKwArACsAKwAEAAQABAAEAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAARwBHABUARwAJACsAKwArACsAKwArACsAKwArACsAKwAEAAQAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXACsAKwArACsAKwArACsAKwBXAFcAVwBXAFcAVwBXAFcAVwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAUQBRAFEAKwArACsAKwArACsAKwArACsAKwArACsAKwBRAFEAUQBRACsAKwArACsAKwArACsAKwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUAArACsAHgAEAAQADQAEAAQABAAEACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAKwArACsAKwArACsAKwArAB4AHgAeAB4AHgAeAB4AKwArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAAQABAAEAAQABAAeAB4AHgAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAB4AHgAEAAQABAAEAAQABAAEAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4ABAAEAAQABAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4ABAAEAAQAHgArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwArACsAKwArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAKwArACsAKwArACsAKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwBQAFAAKwArAFAAKwArAFAAUAArACsAUABQAFAAUAArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeACsAUAArAFAAUABQAFAAUABQAFAAKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwBQAFAAUABQACsAKwBQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQACsAHgAeAFAAUABQAFAAUAArAFAAKwArACsAUABQAFAAUABQAFAAUAArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAHgBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgBQAFAAUABQAFAAUABQAFAAUABQAFAAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAB4AHgAeAB4AHgAeAB4AHgAeACsAKwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAeAB4AHgAeAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAeAB4AHgAeAB4AHgAeAB4ABAAeAB4AHgAeAB4AHgAeAB4AHgAeAAQAHgAeAA0ADQANAA0AHgArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAEAAQABAAEAAQAKwAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAAQABAAEAAQABAAEAAQAKwAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAKwArAAQABAAEAAQABAAEAAQAKwAEAAQAKwAEAAQABAAEAAQAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwAEAAQABAAEAAQABAAEAFAAUABQAFAAUABQAFAAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwBQAB4AKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArABsAUABQAFAAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEACsAKwArACsAKwArACsAKwArAB4AHgAeAB4ABAAEAAQABAAEAAQABABQACsAKwArACsASwBLAEsASwBLAEsASwBLAEsASwArACsAKwArABYAFgArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAGgBQAFAAUAAaAFAAUABQAFAAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAeAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwBQAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAKwBQACsAKwBQACsAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAKwBQACsAUAArACsAKwArACsAKwBQACsAKwArACsAUAArAFAAKwBQACsAUABQAFAAKwBQAFAAKwBQACsAKwBQACsAUAArAFAAKwBQACsAUAArAFAAUAArAFAAKwArAFAAUABQAFAAKwBQAFAAUABQAFAAUABQACsAUABQAFAAUAArAFAAUABQAFAAKwBQACsAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAUABQAFAAKwBQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAeAB4AKwArACsAKwArACsAKwArACsAKwArACsAKwArAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8AJQAlACUAHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHgAeAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB4AHgAeACUAJQAlAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQApACkAKQApACkAKQApACkAKQApACkAKQApACkAKQApACkAKQApACkAKQApACkAKQApACkAJQAlACUAJQAlACAAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAeAB4AJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlAB4AHgAlACUAJQAlACUAHgAlACUAJQAlACUAIAAgACAAJQAlACAAJQAlACAAIAAgACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACEAIQAhACEAIQAlACUAIAAgACUAJQAgACAAIAAgACAAIAAgACAAIAAgACAAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAJQAlACUAIAAlACUAJQAlACAAIAAgACUAIAAgACAAJQAlACUAJQAlACUAJQAgACUAIAAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAHgAlAB4AJQAeACUAJQAlACUAJQAgACUAJQAlACUAHgAlAB4AHgAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlAB4AHgAeAB4AHgAeAB4AJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAeAB4AHgAeAB4AHgAeAB4AHgAeACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACAAIAAlACUAJQAlACAAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACAAJQAlACUAJQAgACAAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAHgAeAB4AHgAeAB4AHgAeACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAeAB4AHgAeAB4AHgAlACUAJQAlACUAJQAlACAAIAAgACUAJQAlACAAIAAgACAAIAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeABcAFwAXABUAFQAVAB4AHgAeAB4AJQAlACUAIAAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACAAIAAgACUAJQAlACUAJQAlACUAJQAlACAAJQAlACUAJQAlACUAJQAlACUAJQAlACAAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AJQAlACUAJQAlACUAJQAlACUAJQAlACUAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AJQAlACUAJQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeACUAJQAlACUAJQAlACUAJQAeAB4AHgAeAB4AHgAeAB4AHgAeACUAJQAlACUAJQAlAB4AHgAeAB4AHgAeAB4AHgAlACUAJQAlACUAJQAlACUAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAgACUAJQAgACUAJQAlACUAJQAlACUAJQAgACAAIAAgACAAIAAgACAAJQAlACUAJQAlACUAIAAlACUAJQAlACUAJQAlACUAJQAgACAAIAAgACAAIAAgACAAIAAgACUAJQAgACAAIAAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAgACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACAAIAAlACAAIAAlACAAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAgACAAIAAlACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAJQAlAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAKwArAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXACUAJQBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwAlACUAJQAlACUAJQAlACUAJQAlACUAVwBXACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAKwAEACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAA==';
+
+var LETTER_NUMBER_MODIFIER = 50;
+// Non-tailorable Line Breaking Classes
+var BK = 1; //  Cause a line break (after)
+var CR$1 = 2; //  Cause a line break (after), except between CR and LF
+var LF$1 = 3; //  Cause a line break (after)
+var CM = 4; //  Prohibit a line break between the character and the preceding character
+var NL = 5; //  Cause a line break (after)
+var WJ = 7; //  Prohibit line breaks before and after
+var ZW = 8; //  Provide a break opportunity
+var GL = 9; //  Prohibit line breaks before and after
+var SP = 10; // Enable indirect line breaks
+var ZWJ$1 = 11; // Prohibit line breaks within joiner sequences
+// Break Opportunities
+var B2 = 12; //  Provide a line break opportunity before and after the character
+var BA = 13; //  Generally provide a line break opportunity after the character
+var BB = 14; //  Generally provide a line break opportunity before the character
+var HY = 15; //  Provide a line break opportunity after the character, except in numeric context
+var CB = 16; //   Provide a line break opportunity contingent on additional information
+// Characters Prohibiting Certain Breaks
+var CL = 17; //  Prohibit line breaks before
+var CP = 18; //  Prohibit line breaks before
+var EX = 19; //  Prohibit line breaks before
+var IN = 20; //  Allow only indirect line breaks between pairs
+var NS = 21; //  Allow only indirect line breaks before
+var OP = 22; //  Prohibit line breaks after
+var QU = 23; //  Act like they are both opening and closing
+// Numeric Context
+var IS = 24; //  Prevent breaks after any and before numeric
+var NU = 25; //  Form numeric expressions for line breaking purposes
+var PO = 26; //  Do not break following a numeric expression
+var PR = 27; //  Do not break in front of a numeric expression
+var SY = 28; //  Prevent a break before; and allow a break after
+// Other Characters
+var AI = 29; //  Act like AL when the resolvedEAW is N; otherwise; act as ID
+var AL = 30; //  Are alphabetic characters or symbols that are used with alphabetic characters
+var CJ = 31; //  Treat as NS or ID for strict or normal breaking.
+var EB = 32; //  Do not break from following Emoji Modifier
+var EM = 33; //  Do not break from preceding Emoji Base
+var H2 = 34; //  Form Korean syllable blocks
+var H3 = 35; //  Form Korean syllable blocks
+var HL = 36; //  Do not break around a following hyphen; otherwise act as Alphabetic
+var ID = 37; //  Break before or after; except in some numeric context
+var JL = 38; //  Form Korean syllable blocks
+var JV = 39; //  Form Korean syllable blocks
+var JT = 40; //  Form Korean syllable blocks
+var RI$1 = 41; //  Keep pairs together. For pairs; break before and after other classes
+var SA = 42; //  Provide a line break opportunity contingent on additional, language-specific context analysis
+var XX = 43; //  Have as yet unknown line breaking behavior or unassigned code positions
+var ea_OP = [0x2329, 0xff08];
+var BREAK_MANDATORY = '!';
+var BREAK_NOT_ALLOWED$1 = '×';
+var BREAK_ALLOWED$1 = '÷';
+var UnicodeTrie$1 = createTrieFromBase64$1(base64$1);
+var ALPHABETICS = [AL, HL];
+var HARD_LINE_BREAKS = [BK, CR$1, LF$1, NL];
+var SPACE$1 = [SP, ZW];
+var PREFIX_POSTFIX = [PR, PO];
+var LINE_BREAKS = HARD_LINE_BREAKS.concat(SPACE$1);
+var KOREAN_SYLLABLE_BLOCK = [JL, JV, JT, H2, H3];
+var HYPHEN = [HY, BA];
+var codePointsToCharacterClasses = function (codePoints, lineBreak) {
+    if (lineBreak === void 0) { lineBreak = 'strict'; }
+    var types = [];
+    var indices = [];
+    var categories = [];
+    codePoints.forEach(function (codePoint, index) {
+        var classType = UnicodeTrie$1.get(codePoint);
+        if (classType > LETTER_NUMBER_MODIFIER) {
+            categories.push(true);
+            classType -= LETTER_NUMBER_MODIFIER;
+        }
+        else {
+            categories.push(false);
+        }
+        if (['normal', 'auto', 'loose'].indexOf(lineBreak) !== -1) {
+            // U+2010, – U+2013, 〜 U+301C, ゠ U+30A0
+            if ([0x2010, 0x2013, 0x301c, 0x30a0].indexOf(codePoint) !== -1) {
+                indices.push(index);
+                return types.push(CB);
+            }
+        }
+        if (classType === CM || classType === ZWJ$1) {
+            // LB10 Treat any remaining combining mark or ZWJ as AL.
+            if (index === 0) {
+                indices.push(index);
+                return types.push(AL);
+            }
+            // LB9 Do not break a combining character sequence; treat it as if it has the line breaking class of
+            // the base character in all of the following rules. Treat ZWJ as if it were CM.
+            var prev = types[index - 1];
+            if (LINE_BREAKS.indexOf(prev) === -1) {
+                indices.push(indices[index - 1]);
+                return types.push(prev);
+            }
+            indices.push(index);
+            return types.push(AL);
+        }
+        indices.push(index);
+        if (classType === CJ) {
+            return types.push(lineBreak === 'strict' ? NS : ID);
+        }
+        if (classType === SA) {
+            return types.push(AL);
+        }
+        if (classType === AI) {
+            return types.push(AL);
+        }
+        // For supplementary characters, a useful default is to treat characters in the range 10000..1FFFD as AL
+        // and characters in the ranges 20000..2FFFD and 30000..3FFFD as ID, until the implementation can be revised
+        // to take into account the actual line breaking properties for these characters.
+        if (classType === XX) {
+            if ((codePoint >= 0x20000 && codePoint <= 0x2fffd) || (codePoint >= 0x30000 && codePoint <= 0x3fffd)) {
+                return types.push(ID);
+            }
+            else {
+                return types.push(AL);
+            }
+        }
+        types.push(classType);
+    });
+    return [indices, types, categories];
+};
+var isAdjacentWithSpaceIgnored = function (a, b, currentIndex, classTypes) {
+    var current = classTypes[currentIndex];
+    if (Array.isArray(a) ? a.indexOf(current) !== -1 : a === current) {
+        var i = currentIndex;
+        while (i <= classTypes.length) {
+            i++;
+            var next = classTypes[i];
+            if (next === b) {
+                return true;
+            }
+            if (next !== SP) {
+                break;
+            }
+        }
+    }
+    if (current === SP) {
+        var i = currentIndex;
+        while (i > 0) {
+            i--;
+            var prev = classTypes[i];
+            if (Array.isArray(a) ? a.indexOf(prev) !== -1 : a === prev) {
+                var n = currentIndex;
+                while (n <= classTypes.length) {
+                    n++;
+                    var next = classTypes[n];
+                    if (next === b) {
+                        return true;
+                    }
+                    if (next !== SP) {
+                        break;
+                    }
+                }
+            }
+            if (prev !== SP) {
+                break;
+            }
+        }
+    }
+    return false;
+};
+var previousNonSpaceClassType = function (currentIndex, classTypes) {
+    var i = currentIndex;
+    while (i >= 0) {
+        var type = classTypes[i];
+        if (type === SP) {
+            i--;
+        }
+        else {
+            return type;
+        }
+    }
+    return 0;
+};
+var _lineBreakAtIndex = function (codePoints, classTypes, indicies, index, forbiddenBreaks) {
+    if (indicies[index] === 0) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    var currentIndex = index - 1;
+    if (Array.isArray(forbiddenBreaks) && forbiddenBreaks[currentIndex] === true) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    var beforeIndex = currentIndex - 1;
+    var afterIndex = currentIndex + 1;
+    var current = classTypes[currentIndex];
+    // LB4 Always break after hard line breaks.
+    // LB5 Treat CR followed by LF, as well as CR, LF, and NL as hard line breaks.
+    var before = beforeIndex >= 0 ? classTypes[beforeIndex] : 0;
+    var next = classTypes[afterIndex];
+    if (current === CR$1 && next === LF$1) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    if (HARD_LINE_BREAKS.indexOf(current) !== -1) {
+        return BREAK_MANDATORY;
+    }
+    // LB6 Do not break before hard line breaks.
+    if (HARD_LINE_BREAKS.indexOf(next) !== -1) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB7 Do not break before spaces or zero width space.
+    if (SPACE$1.indexOf(next) !== -1) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB8 Break before any character following a zero-width space, even if one or more spaces intervene.
+    if (previousNonSpaceClassType(currentIndex, classTypes) === ZW) {
+        return BREAK_ALLOWED$1;
+    }
+    // LB8a Do not break after a zero width joiner.
+    if (UnicodeTrie$1.get(codePoints[currentIndex]) === ZWJ$1) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // zwj emojis
+    if ((current === EB || current === EM) && UnicodeTrie$1.get(codePoints[afterIndex]) === ZWJ$1) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB11 Do not break before or after Word joiner and related characters.
+    if (current === WJ || next === WJ) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB12 Do not break after NBSP and related characters.
+    if (current === GL) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB12a Do not break before NBSP and related characters, except after spaces and hyphens.
+    if ([SP, BA, HY].indexOf(current) === -1 && next === GL) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB13 Do not break before ‘]’ or ‘!’ or ‘;’ or ‘/’, even after spaces.
+    if ([CL, CP, EX, IS, SY].indexOf(next) !== -1) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB14 Do not break after ‘[’, even after spaces.
+    if (previousNonSpaceClassType(currentIndex, classTypes) === OP) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB15 Do not break within ‘”[’, even with intervening spaces.
+    if (isAdjacentWithSpaceIgnored(QU, OP, currentIndex, classTypes)) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB16 Do not break between closing punctuation and a nonstarter (lb=NS), even with intervening spaces.
+    if (isAdjacentWithSpaceIgnored([CL, CP], NS, currentIndex, classTypes)) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB17 Do not break within ‘——’, even with intervening spaces.
+    if (isAdjacentWithSpaceIgnored(B2, B2, currentIndex, classTypes)) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB18 Break after spaces.
+    if (current === SP) {
+        return BREAK_ALLOWED$1;
+    }
+    // LB19 Do not break before or after quotation marks, such as ‘ ” ’.
+    if (current === QU || next === QU) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB20 Break before and after unresolved CB.
+    if (next === CB || current === CB) {
+        return BREAK_ALLOWED$1;
+    }
+    // LB21 Do not break before hyphen-minus, other hyphens, fixed-width spaces, small kana, and other non-starters, or after acute accents.
+    if ([BA, HY, NS].indexOf(next) !== -1 || current === BB) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB21a Don't break after Hebrew + Hyphen.
+    if (before === HL && HYPHEN.indexOf(current) !== -1) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB21b Don’t break between Solidus and Hebrew letters.
+    if (current === SY && next === HL) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB22 Do not break before ellipsis.
+    if (next === IN) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB23 Do not break between digits and letters.
+    if ((ALPHABETICS.indexOf(next) !== -1 && current === NU) || (ALPHABETICS.indexOf(current) !== -1 && next === NU)) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB23a Do not break between numeric prefixes and ideographs, or between ideographs and numeric postfixes.
+    if ((current === PR && [ID, EB, EM].indexOf(next) !== -1) ||
+        ([ID, EB, EM].indexOf(current) !== -1 && next === PO)) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB24 Do not break between numeric prefix/postfix and letters, or between letters and prefix/postfix.
+    if ((ALPHABETICS.indexOf(current) !== -1 && PREFIX_POSTFIX.indexOf(next) !== -1) ||
+        (PREFIX_POSTFIX.indexOf(current) !== -1 && ALPHABETICS.indexOf(next) !== -1)) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB25 Do not break between the following pairs of classes relevant to numbers:
+    if (
+    // (PR | PO) × ( OP | HY )? NU
+    ([PR, PO].indexOf(current) !== -1 &&
+        (next === NU || ([OP, HY].indexOf(next) !== -1 && classTypes[afterIndex + 1] === NU))) ||
+        // ( OP | HY ) × NU
+        ([OP, HY].indexOf(current) !== -1 && next === NU) ||
+        // NU ×	(NU | SY | IS)
+        (current === NU && [NU, SY, IS].indexOf(next) !== -1)) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // NU (NU | SY | IS)* × (NU | SY | IS | CL | CP)
+    if ([NU, SY, IS, CL, CP].indexOf(next) !== -1) {
+        var prevIndex = currentIndex;
+        while (prevIndex >= 0) {
+            var type = classTypes[prevIndex];
+            if (type === NU) {
+                return BREAK_NOT_ALLOWED$1;
+            }
+            else if ([SY, IS].indexOf(type) !== -1) {
+                prevIndex--;
+            }
+            else {
+                break;
+            }
+        }
+    }
+    // NU (NU | SY | IS)* (CL | CP)? × (PO | PR))
+    if ([PR, PO].indexOf(next) !== -1) {
+        var prevIndex = [CL, CP].indexOf(current) !== -1 ? beforeIndex : currentIndex;
+        while (prevIndex >= 0) {
+            var type = classTypes[prevIndex];
+            if (type === NU) {
+                return BREAK_NOT_ALLOWED$1;
+            }
+            else if ([SY, IS].indexOf(type) !== -1) {
+                prevIndex--;
+            }
+            else {
+                break;
+            }
+        }
+    }
+    // LB26 Do not break a Korean syllable.
+    if ((JL === current && [JL, JV, H2, H3].indexOf(next) !== -1) ||
+        ([JV, H2].indexOf(current) !== -1 && [JV, JT].indexOf(next) !== -1) ||
+        ([JT, H3].indexOf(current) !== -1 && next === JT)) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB27 Treat a Korean Syllable Block the same as ID.
+    if ((KOREAN_SYLLABLE_BLOCK.indexOf(current) !== -1 && [IN, PO].indexOf(next) !== -1) ||
+        (KOREAN_SYLLABLE_BLOCK.indexOf(next) !== -1 && current === PR)) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB28 Do not break between alphabetics (“at”).
+    if (ALPHABETICS.indexOf(current) !== -1 && ALPHABETICS.indexOf(next) !== -1) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB29 Do not break between numeric punctuation and alphabetics (“e.g.”).
+    if (current === IS && ALPHABETICS.indexOf(next) !== -1) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB30 Do not break between letters, numbers, or ordinary symbols and opening or closing parentheses.
+    if ((ALPHABETICS.concat(NU).indexOf(current) !== -1 &&
+        next === OP &&
+        ea_OP.indexOf(codePoints[afterIndex]) === -1) ||
+        (ALPHABETICS.concat(NU).indexOf(next) !== -1 && current === CP)) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    // LB30a Break between two regional indicator symbols if and only if there are an even number of regional
+    // indicators preceding the position of the break.
+    if (current === RI$1 && next === RI$1) {
+        var i = indicies[currentIndex];
+        var count = 1;
+        while (i > 0) {
+            i--;
+            if (classTypes[i] === RI$1) {
+                count++;
+            }
+            else {
+                break;
+            }
+        }
+        if (count % 2 !== 0) {
+            return BREAK_NOT_ALLOWED$1;
+        }
+    }
+    // LB30b Do not break between an emoji base and an emoji modifier.
+    if (current === EB && next === EM) {
+        return BREAK_NOT_ALLOWED$1;
+    }
+    return BREAK_ALLOWED$1;
+};
+var cssFormattedClasses = function (codePoints, options) {
+    if (!options) {
+        options = { lineBreak: 'normal', wordBreak: 'normal' };
+    }
+    var _a = codePointsToCharacterClasses(codePoints, options.lineBreak), indicies = _a[0], classTypes = _a[1], isLetterNumber = _a[2];
+    if (options.wordBreak === 'break-all' || options.wordBreak === 'break-word') {
+        classTypes = classTypes.map(function (type) { return ([NU, AL, SA].indexOf(type) !== -1 ? ID : type); });
+    }
+    var forbiddenBreakpoints = options.wordBreak === 'keep-all'
+        ? isLetterNumber.map(function (letterNumber, i) {
+            return letterNumber && codePoints[i] >= 0x4e00 && codePoints[i] <= 0x9fff;
+        })
+        : undefined;
+    return [indicies, classTypes, forbiddenBreakpoints];
+};
+var Break = /** @class */ (function () {
+    function Break(codePoints, lineBreak, start, end) {
+        this.codePoints = codePoints;
+        this.required = lineBreak === BREAK_MANDATORY;
+        this.start = start;
+        this.end = end;
+    }
+    Break.prototype.slice = function () {
+        return fromCodePoint$1.apply(void 0, this.codePoints.slice(this.start, this.end));
+    };
+    return Break;
+}());
+var LineBreaker = function (str, options) {
+    var codePoints = toCodePoints$1(str);
+    var _a = cssFormattedClasses(codePoints, options), indicies = _a[0], classTypes = _a[1], forbiddenBreakpoints = _a[2];
+    var length = codePoints.length;
+    var lastEnd = 0;
+    var nextIndex = 0;
+    return {
+        next: function () {
+            if (nextIndex >= length) {
+                return { done: true, value: null };
+            }
+            var lineBreak = BREAK_NOT_ALLOWED$1;
+            while (nextIndex < length &&
+                (lineBreak = _lineBreakAtIndex(codePoints, classTypes, indicies, ++nextIndex, forbiddenBreakpoints)) ===
+                    BREAK_NOT_ALLOWED$1) { }
+            if (lineBreak !== BREAK_NOT_ALLOWED$1 || nextIndex === length) {
+                var value = new Break(codePoints, lineBreak, lastEnd, nextIndex);
+                lastEnd = nextIndex;
+                return { value: value, done: false };
+            }
+            return { done: true, value: null };
+        },
+    };
+};
+
+// https://www.w3.org/TR/css-syntax-3
+const FLAG_UNRESTRICTED = 1 << 0;
+const FLAG_ID = 1 << 1;
+const FLAG_INTEGER = 1 << 2;
+const FLAG_NUMBER = 1 << 3;
+const LINE_FEED = 0x000a;
+const SOLIDUS = 0x002f;
+const REVERSE_SOLIDUS = 0x005c;
+const CHARACTER_TABULATION = 0x0009;
+const SPACE = 0x0020;
+const QUOTATION_MARK = 0x0022;
+const EQUALS_SIGN = 0x003d;
+const NUMBER_SIGN = 0x0023;
+const DOLLAR_SIGN = 0x0024;
+const PERCENTAGE_SIGN = 0x0025;
+const APOSTROPHE = 0x0027;
+const LEFT_PARENTHESIS = 0x0028;
+const RIGHT_PARENTHESIS = 0x0029;
+const LOW_LINE = 0x005f;
+const HYPHEN_MINUS = 0x002d;
+const EXCLAMATION_MARK = 0x0021;
+const LESS_THAN_SIGN = 0x003c;
+const GREATER_THAN_SIGN = 0x003e;
+const COMMERCIAL_AT = 0x0040;
+const LEFT_SQUARE_BRACKET = 0x005b;
+const RIGHT_SQUARE_BRACKET = 0x005d;
+const CIRCUMFLEX_ACCENT = 0x003d;
+const LEFT_CURLY_BRACKET = 0x007b;
+const QUESTION_MARK = 0x003f;
+const RIGHT_CURLY_BRACKET = 0x007d;
+const VERTICAL_LINE = 0x007c;
+const TILDE = 0x007e;
+const CONTROL = 0x0080;
+const REPLACEMENT_CHARACTER = 0xfffd;
+const ASTERISK = 0x002a;
+const PLUS_SIGN = 0x002b;
+const COMMA = 0x002c;
+const COLON = 0x003a;
+const SEMICOLON = 0x003b;
+const FULL_STOP = 0x002e;
+const NULL = 0x0000;
+const BACKSPACE = 0x0008;
+const LINE_TABULATION = 0x000b;
+const SHIFT_OUT = 0x000e;
+const INFORMATION_SEPARATOR_ONE = 0x001f;
+const DELETE = 0x007f;
+const EOF = -1;
+const ZERO = 0x0030;
+const a = 0x0061;
+const e = 0x0065;
+const f = 0x0066;
+const u = 0x0075;
+const z = 0x007a;
+const A = 0x0041;
+const E = 0x0045;
+const F = 0x0046;
+const U = 0x0055;
+const Z = 0x005a;
+const isDigit = (codePoint) => codePoint >= ZERO && codePoint <= 0x0039;
+const isSurrogateCodePoint = (codePoint) => codePoint >= 0xd800 && codePoint <= 0xdfff;
+const isHex = (codePoint) => isDigit(codePoint) || (codePoint >= A && codePoint <= F) || (codePoint >= a && codePoint <= f);
+const isLowerCaseLetter = (codePoint) => codePoint >= a && codePoint <= z;
+const isUpperCaseLetter = (codePoint) => codePoint >= A && codePoint <= Z;
+const isLetter = (codePoint) => isLowerCaseLetter(codePoint) || isUpperCaseLetter(codePoint);
+const isNonASCIICodePoint = (codePoint) => codePoint >= CONTROL;
+const isWhiteSpace = (codePoint) => codePoint === LINE_FEED || codePoint === CHARACTER_TABULATION || codePoint === SPACE;
+const isNameStartCodePoint = (codePoint) => isLetter(codePoint) || isNonASCIICodePoint(codePoint) || codePoint === LOW_LINE;
+const isNameCodePoint = (codePoint) => isNameStartCodePoint(codePoint) || isDigit(codePoint) || codePoint === HYPHEN_MINUS;
+const isNonPrintableCodePoint = (codePoint) => {
+    return ((codePoint >= NULL && codePoint <= BACKSPACE) ||
+        codePoint === LINE_TABULATION ||
+        (codePoint >= SHIFT_OUT && codePoint <= INFORMATION_SEPARATOR_ONE) ||
+        codePoint === DELETE);
+};
+const isValidEscape = (c1, c2) => {
+    if (c1 !== REVERSE_SOLIDUS) {
+        return false;
+    }
+    return c2 !== LINE_FEED;
+};
+const isIdentifierStart = (c1, c2, c3) => {
+    if (c1 === HYPHEN_MINUS) {
+        return isNameStartCodePoint(c2) || isValidEscape(c2, c3);
+    }
+    else if (isNameStartCodePoint(c1)) {
+        return true;
+    }
+    else if (c1 === REVERSE_SOLIDUS && isValidEscape(c1, c2)) {
+        return true;
+    }
+    return false;
+};
+const isNumberStart = (c1, c2, c3) => {
+    if (c1 === PLUS_SIGN || c1 === HYPHEN_MINUS) {
+        if (isDigit(c2)) {
+            return true;
+        }
+        return c2 === FULL_STOP && isDigit(c3);
+    }
+    if (c1 === FULL_STOP) {
+        return isDigit(c2);
+    }
+    return isDigit(c1);
+};
+const stringToNumber = (codePoints) => {
+    let c = 0;
+    let sign = 1;
+    if (codePoints[c] === PLUS_SIGN || codePoints[c] === HYPHEN_MINUS) {
+        if (codePoints[c] === HYPHEN_MINUS) {
+            sign = -1;
+        }
+        c++;
+    }
+    const integers = [];
+    while (isDigit(codePoints[c])) {
+        integers.push(codePoints[c++]);
+    }
+    const int = integers.length ? parseInt(fromCodePoint$1(...integers), 10) : 0;
+    if (codePoints[c] === FULL_STOP) {
+        c++;
+    }
+    const fraction = [];
+    while (isDigit(codePoints[c])) {
+        fraction.push(codePoints[c++]);
+    }
+    const fracd = fraction.length;
+    const frac = fracd ? parseInt(fromCodePoint$1(...fraction), 10) : 0;
+    if (codePoints[c] === E || codePoints[c] === e) {
+        c++;
+    }
+    let expsign = 1;
+    if (codePoints[c] === PLUS_SIGN || codePoints[c] === HYPHEN_MINUS) {
+        if (codePoints[c] === HYPHEN_MINUS) {
+            expsign = -1;
+        }
+        c++;
+    }
+    const exponent = [];
+    while (isDigit(codePoints[c])) {
+        exponent.push(codePoints[c++]);
+    }
+    const exp = exponent.length ? parseInt(fromCodePoint$1(...exponent), 10) : 0;
+    return sign * (int + frac * Math.pow(10, -fracd)) * Math.pow(10, expsign * exp);
+};
+const LEFT_PARENTHESIS_TOKEN = {
+    type: 2 /* TokenType.LEFT_PARENTHESIS_TOKEN */
+};
+const RIGHT_PARENTHESIS_TOKEN = {
+    type: 3 /* TokenType.RIGHT_PARENTHESIS_TOKEN */
+};
+const COMMA_TOKEN = { type: 4 /* TokenType.COMMA_TOKEN */ };
+const SUFFIX_MATCH_TOKEN = { type: 13 /* TokenType.SUFFIX_MATCH_TOKEN */ };
+const PREFIX_MATCH_TOKEN = { type: 8 /* TokenType.PREFIX_MATCH_TOKEN */ };
+const COLUMN_TOKEN = { type: 21 /* TokenType.COLUMN_TOKEN */ };
+const DASH_MATCH_TOKEN = { type: 9 /* TokenType.DASH_MATCH_TOKEN */ };
+const INCLUDE_MATCH_TOKEN = { type: 10 /* TokenType.INCLUDE_MATCH_TOKEN */ };
+const LEFT_CURLY_BRACKET_TOKEN = {
+    type: 11 /* TokenType.LEFT_CURLY_BRACKET_TOKEN */
+};
+const RIGHT_CURLY_BRACKET_TOKEN = {
+    type: 12 /* TokenType.RIGHT_CURLY_BRACKET_TOKEN */
+};
+const SUBSTRING_MATCH_TOKEN = { type: 14 /* TokenType.SUBSTRING_MATCH_TOKEN */ };
+const BAD_URL_TOKEN = { type: 23 /* TokenType.BAD_URL_TOKEN */ };
+const BAD_STRING_TOKEN = { type: 1 /* TokenType.BAD_STRING_TOKEN */ };
+const CDO_TOKEN = { type: 25 /* TokenType.CDO_TOKEN */ };
+const CDC_TOKEN = { type: 24 /* TokenType.CDC_TOKEN */ };
+const COLON_TOKEN = { type: 26 /* TokenType.COLON_TOKEN */ };
+const SEMICOLON_TOKEN = { type: 27 /* TokenType.SEMICOLON_TOKEN */ };
+const LEFT_SQUARE_BRACKET_TOKEN = {
+    type: 28 /* TokenType.LEFT_SQUARE_BRACKET_TOKEN */
+};
+const RIGHT_SQUARE_BRACKET_TOKEN = {
+    type: 29 /* TokenType.RIGHT_SQUARE_BRACKET_TOKEN */
+};
+const WHITESPACE_TOKEN = { type: 31 /* TokenType.WHITESPACE_TOKEN */ };
+const EOF_TOKEN = { type: 32 /* TokenType.EOF_TOKEN */ };
+class Tokenizer {
+    constructor() {
+        this._value = [];
+    }
+    write(chunk) {
+        this._value = this._value.concat(toCodePoints$1(chunk));
+    }
+    read() {
+        const tokens = [];
+        let token = this.consumeToken();
+        while (token !== EOF_TOKEN) {
+            tokens.push(token);
+            token = this.consumeToken();
+        }
+        return tokens;
+    }
+    consumeToken() {
+        const codePoint = this.consumeCodePoint();
+        switch (codePoint) {
+            case QUOTATION_MARK:
+                return this.consumeStringToken(QUOTATION_MARK);
+            case NUMBER_SIGN:
+                const c1 = this.peekCodePoint(0);
+                const c2 = this.peekCodePoint(1);
+                const c3 = this.peekCodePoint(2);
+                if (isNameCodePoint(c1) || isValidEscape(c2, c3)) {
+                    const flags = isIdentifierStart(c1, c2, c3) ? FLAG_ID : FLAG_UNRESTRICTED;
+                    const value = this.consumeName();
+                    return { type: 5 /* TokenType.HASH_TOKEN */, value, flags };
+                }
+                break;
+            case DOLLAR_SIGN:
+                if (this.peekCodePoint(0) === EQUALS_SIGN) {
+                    this.consumeCodePoint();
+                    return SUFFIX_MATCH_TOKEN;
+                }
+                break;
+            case APOSTROPHE:
+                return this.consumeStringToken(APOSTROPHE);
+            case LEFT_PARENTHESIS:
+                return LEFT_PARENTHESIS_TOKEN;
+            case RIGHT_PARENTHESIS:
+                return RIGHT_PARENTHESIS_TOKEN;
+            case ASTERISK:
+                if (this.peekCodePoint(0) === EQUALS_SIGN) {
+                    this.consumeCodePoint();
+                    return SUBSTRING_MATCH_TOKEN;
+                }
+                break;
+            case PLUS_SIGN:
+                if (isNumberStart(codePoint, this.peekCodePoint(0), this.peekCodePoint(1))) {
+                    this.reconsumeCodePoint(codePoint);
+                    return this.consumeNumericToken();
+                }
+                break;
+            case COMMA:
+                return COMMA_TOKEN;
+            case HYPHEN_MINUS:
+                const e1 = codePoint;
+                const e2 = this.peekCodePoint(0);
+                const e3 = this.peekCodePoint(1);
+                if (isNumberStart(e1, e2, e3)) {
+                    this.reconsumeCodePoint(codePoint);
+                    return this.consumeNumericToken();
+                }
+                if (isIdentifierStart(e1, e2, e3)) {
+                    this.reconsumeCodePoint(codePoint);
+                    return this.consumeIdentLikeToken();
+                }
+                if (e2 === HYPHEN_MINUS && e3 === GREATER_THAN_SIGN) {
+                    this.consumeCodePoint();
+                    this.consumeCodePoint();
+                    return CDC_TOKEN;
+                }
+                break;
+            case FULL_STOP:
+                if (isNumberStart(codePoint, this.peekCodePoint(0), this.peekCodePoint(1))) {
+                    this.reconsumeCodePoint(codePoint);
+                    return this.consumeNumericToken();
+                }
+                break;
+            case SOLIDUS:
+                if (this.peekCodePoint(0) === ASTERISK) {
+                    this.consumeCodePoint();
+                    while (true) {
+                        let c = this.consumeCodePoint();
+                        if (c === ASTERISK) {
+                            c = this.consumeCodePoint();
+                            if (c === SOLIDUS) {
+                                return this.consumeToken();
+                            }
+                        }
+                        if (c === EOF) {
+                            return this.consumeToken();
+                        }
+                    }
+                }
+                break;
+            case COLON:
+                return COLON_TOKEN;
+            case SEMICOLON:
+                return SEMICOLON_TOKEN;
+            case LESS_THAN_SIGN:
+                if (this.peekCodePoint(0) === EXCLAMATION_MARK &&
+                    this.peekCodePoint(1) === HYPHEN_MINUS &&
+                    this.peekCodePoint(2) === HYPHEN_MINUS) {
+                    this.consumeCodePoint();
+                    this.consumeCodePoint();
+                    return CDO_TOKEN;
+                }
+                break;
+            case COMMERCIAL_AT:
+                const a1 = this.peekCodePoint(0);
+                const a2 = this.peekCodePoint(1);
+                const a3 = this.peekCodePoint(2);
+                if (isIdentifierStart(a1, a2, a3)) {
+                    const value = this.consumeName();
+                    return { type: 7 /* TokenType.AT_KEYWORD_TOKEN */, value };
+                }
+                break;
+            case LEFT_SQUARE_BRACKET:
+                return LEFT_SQUARE_BRACKET_TOKEN;
+            case REVERSE_SOLIDUS:
+                if (isValidEscape(codePoint, this.peekCodePoint(0))) {
+                    this.reconsumeCodePoint(codePoint);
+                    return this.consumeIdentLikeToken();
+                }
+                break;
+            case RIGHT_SQUARE_BRACKET:
+                return RIGHT_SQUARE_BRACKET_TOKEN;
+            case CIRCUMFLEX_ACCENT:
+                if (this.peekCodePoint(0) === EQUALS_SIGN) {
+                    this.consumeCodePoint();
+                    return PREFIX_MATCH_TOKEN;
+                }
+                break;
+            case LEFT_CURLY_BRACKET:
+                return LEFT_CURLY_BRACKET_TOKEN;
+            case RIGHT_CURLY_BRACKET:
+                return RIGHT_CURLY_BRACKET_TOKEN;
+            case u:
+            case U:
+                const u1 = this.peekCodePoint(0);
+                const u2 = this.peekCodePoint(1);
+                if (u1 === PLUS_SIGN && (isHex(u2) || u2 === QUESTION_MARK)) {
+                    this.consumeCodePoint();
+                    this.consumeUnicodeRangeToken();
+                }
+                this.reconsumeCodePoint(codePoint);
+                return this.consumeIdentLikeToken();
+            case VERTICAL_LINE:
+                if (this.peekCodePoint(0) === EQUALS_SIGN) {
+                    this.consumeCodePoint();
+                    return DASH_MATCH_TOKEN;
+                }
+                if (this.peekCodePoint(0) === VERTICAL_LINE) {
+                    this.consumeCodePoint();
+                    return COLUMN_TOKEN;
+                }
+                break;
+            case TILDE:
+                if (this.peekCodePoint(0) === EQUALS_SIGN) {
+                    this.consumeCodePoint();
+                    return INCLUDE_MATCH_TOKEN;
+                }
+                break;
+            case EOF:
+                return EOF_TOKEN;
+        }
+        if (isWhiteSpace(codePoint)) {
+            this.consumeWhiteSpace();
+            return WHITESPACE_TOKEN;
+        }
+        if (isDigit(codePoint)) {
+            this.reconsumeCodePoint(codePoint);
+            return this.consumeNumericToken();
+        }
+        if (isNameStartCodePoint(codePoint)) {
+            this.reconsumeCodePoint(codePoint);
+            return this.consumeIdentLikeToken();
+        }
+        return { type: 6 /* TokenType.DELIM_TOKEN */, value: fromCodePoint$1(codePoint) };
+    }
+    consumeCodePoint() {
+        const value = this._value.shift();
+        return typeof value === 'undefined' ? -1 : value;
+    }
+    reconsumeCodePoint(codePoint) {
+        this._value.unshift(codePoint);
+    }
+    peekCodePoint(delta) {
+        if (delta >= this._value.length) {
+            return -1;
+        }
+        return this._value[delta];
+    }
+    consumeUnicodeRangeToken() {
+        const digits = [];
+        let codePoint = this.consumeCodePoint();
+        while (isHex(codePoint) && digits.length < 6) {
+            digits.push(codePoint);
+            codePoint = this.consumeCodePoint();
+        }
+        let questionMarks = false;
+        while (codePoint === QUESTION_MARK && digits.length < 6) {
+            digits.push(codePoint);
+            codePoint = this.consumeCodePoint();
+            questionMarks = true;
+        }
+        if (questionMarks) {
+            const start = parseInt(fromCodePoint$1(...digits.map((digit) => (digit === QUESTION_MARK ? ZERO : digit))), 16);
+            const end = parseInt(fromCodePoint$1(...digits.map((digit) => (digit === QUESTION_MARK ? F : digit))), 16);
+            return { type: 30 /* TokenType.UNICODE_RANGE_TOKEN */, start, end };
+        }
+        const start = parseInt(fromCodePoint$1(...digits), 16);
+        if (this.peekCodePoint(0) === HYPHEN_MINUS && isHex(this.peekCodePoint(1))) {
+            this.consumeCodePoint();
+            codePoint = this.consumeCodePoint();
+            const endDigits = [];
+            while (isHex(codePoint) && endDigits.length < 6) {
+                endDigits.push(codePoint);
+                codePoint = this.consumeCodePoint();
+            }
+            const end = parseInt(fromCodePoint$1(...endDigits), 16);
+            return { type: 30 /* TokenType.UNICODE_RANGE_TOKEN */, start, end };
+        }
+        else {
+            return { type: 30 /* TokenType.UNICODE_RANGE_TOKEN */, start, end: start };
+        }
+    }
+    consumeIdentLikeToken() {
+        const value = this.consumeName();
+        if (value.toLowerCase() === 'url' && this.peekCodePoint(0) === LEFT_PARENTHESIS) {
+            this.consumeCodePoint();
+            return this.consumeUrlToken();
+        }
+        else if (this.peekCodePoint(0) === LEFT_PARENTHESIS) {
+            this.consumeCodePoint();
+            return { type: 19 /* TokenType.FUNCTION_TOKEN */, value };
+        }
+        return { type: 20 /* TokenType.IDENT_TOKEN */, value };
+    }
+    consumeUrlToken() {
+        const value = [];
+        this.consumeWhiteSpace();
+        if (this.peekCodePoint(0) === EOF) {
+            return { type: 22 /* TokenType.URL_TOKEN */, value: '' };
+        }
+        const next = this.peekCodePoint(0);
+        if (next === APOSTROPHE || next === QUOTATION_MARK) {
+            const stringToken = this.consumeStringToken(this.consumeCodePoint());
+            if (stringToken.type === 0 /* TokenType.STRING_TOKEN */) {
+                this.consumeWhiteSpace();
+                if (this.peekCodePoint(0) === EOF || this.peekCodePoint(0) === RIGHT_PARENTHESIS) {
+                    this.consumeCodePoint();
+                    return { type: 22 /* TokenType.URL_TOKEN */, value: stringToken.value };
+                }
+            }
+            this.consumeBadUrlRemnants();
+            return BAD_URL_TOKEN;
+        }
+        while (true) {
+            const codePoint = this.consumeCodePoint();
+            if (codePoint === EOF || codePoint === RIGHT_PARENTHESIS) {
+                return { type: 22 /* TokenType.URL_TOKEN */, value: fromCodePoint$1(...value) };
+            }
+            else if (isWhiteSpace(codePoint)) {
+                this.consumeWhiteSpace();
+                if (this.peekCodePoint(0) === EOF || this.peekCodePoint(0) === RIGHT_PARENTHESIS) {
+                    this.consumeCodePoint();
+                    return { type: 22 /* TokenType.URL_TOKEN */, value: fromCodePoint$1(...value) };
+                }
+                this.consumeBadUrlRemnants();
+                return BAD_URL_TOKEN;
+            }
+            else if (codePoint === QUOTATION_MARK ||
+                codePoint === APOSTROPHE ||
+                codePoint === LEFT_PARENTHESIS ||
+                isNonPrintableCodePoint(codePoint)) {
+                this.consumeBadUrlRemnants();
+                return BAD_URL_TOKEN;
+            }
+            else if (codePoint === REVERSE_SOLIDUS) {
+                if (isValidEscape(codePoint, this.peekCodePoint(0))) {
+                    value.push(this.consumeEscapedCodePoint());
+                }
+                else {
+                    this.consumeBadUrlRemnants();
+                    return BAD_URL_TOKEN;
+                }
+            }
+            else {
+                value.push(codePoint);
+            }
+        }
+    }
+    consumeWhiteSpace() {
+        while (isWhiteSpace(this.peekCodePoint(0))) {
+            this.consumeCodePoint();
+        }
+    }
+    consumeBadUrlRemnants() {
+        while (true) {
+            const codePoint = this.consumeCodePoint();
+            if (codePoint === RIGHT_PARENTHESIS || codePoint === EOF) {
+                return;
+            }
+            if (isValidEscape(codePoint, this.peekCodePoint(0))) {
+                this.consumeEscapedCodePoint();
+            }
+        }
+    }
+    consumeStringSlice(count) {
+        const SLICE_STACK_SIZE = 50000;
+        let value = '';
+        while (count > 0) {
+            const amount = Math.min(SLICE_STACK_SIZE, count);
+            value += fromCodePoint$1(...this._value.splice(0, amount));
+            count -= amount;
+        }
+        this._value.shift();
+        return value;
+    }
+    consumeStringToken(endingCodePoint) {
+        let value = '';
+        let i = 0;
+        do {
+            const codePoint = this._value[i];
+            if (codePoint === EOF || codePoint === undefined || codePoint === endingCodePoint) {
+                value += this.consumeStringSlice(i);
+                return { type: 0 /* TokenType.STRING_TOKEN */, value };
+            }
+            if (codePoint === LINE_FEED) {
+                this._value.splice(0, i);
+                return BAD_STRING_TOKEN;
+            }
+            if (codePoint === REVERSE_SOLIDUS) {
+                const next = this._value[i + 1];
+                if (next !== EOF && next !== undefined) {
+                    if (next === LINE_FEED) {
+                        value += this.consumeStringSlice(i);
+                        i = -1;
+                        this._value.shift();
+                    }
+                    else if (isValidEscape(codePoint, next)) {
+                        value += this.consumeStringSlice(i);
+                        value += fromCodePoint$1(this.consumeEscapedCodePoint());
+                        i = -1;
+                    }
+                }
+            }
+            i++;
+        } while (true);
+    }
+    consumeNumber() {
+        const repr = [];
+        let type = FLAG_INTEGER;
+        let c1 = this.peekCodePoint(0);
+        if (c1 === PLUS_SIGN || c1 === HYPHEN_MINUS) {
+            repr.push(this.consumeCodePoint());
+        }
+        while (isDigit(this.peekCodePoint(0))) {
+            repr.push(this.consumeCodePoint());
+        }
+        c1 = this.peekCodePoint(0);
+        let c2 = this.peekCodePoint(1);
+        if (c1 === FULL_STOP && isDigit(c2)) {
+            repr.push(this.consumeCodePoint(), this.consumeCodePoint());
+            type = FLAG_NUMBER;
+            while (isDigit(this.peekCodePoint(0))) {
+                repr.push(this.consumeCodePoint());
+            }
+        }
+        c1 = this.peekCodePoint(0);
+        c2 = this.peekCodePoint(1);
+        const c3 = this.peekCodePoint(2);
+        if ((c1 === E || c1 === e) && (((c2 === PLUS_SIGN || c2 === HYPHEN_MINUS) && isDigit(c3)) || isDigit(c2))) {
+            repr.push(this.consumeCodePoint(), this.consumeCodePoint());
+            type = FLAG_NUMBER;
+            while (isDigit(this.peekCodePoint(0))) {
+                repr.push(this.consumeCodePoint());
+            }
+        }
+        return [stringToNumber(repr), type];
+    }
+    consumeNumericToken() {
+        const [number, flags] = this.consumeNumber();
+        const c1 = this.peekCodePoint(0);
+        const c2 = this.peekCodePoint(1);
+        const c3 = this.peekCodePoint(2);
+        if (isIdentifierStart(c1, c2, c3)) {
+            const unit = this.consumeName();
+            return { type: 15 /* TokenType.DIMENSION_TOKEN */, number, flags, unit };
+        }
+        if (c1 === PERCENTAGE_SIGN) {
+            this.consumeCodePoint();
+            return { type: 16 /* TokenType.PERCENTAGE_TOKEN */, number, flags };
+        }
+        return { type: 17 /* TokenType.NUMBER_TOKEN */, number, flags };
+    }
+    consumeEscapedCodePoint() {
+        const codePoint = this.consumeCodePoint();
+        if (isHex(codePoint)) {
+            let hex = fromCodePoint$1(codePoint);
+            while (isHex(this.peekCodePoint(0)) && hex.length < 6) {
+                hex += fromCodePoint$1(this.consumeCodePoint());
+            }
+            if (isWhiteSpace(this.peekCodePoint(0))) {
+                this.consumeCodePoint();
+            }
+            const hexCodePoint = parseInt(hex, 16);
+            if (hexCodePoint === 0 || isSurrogateCodePoint(hexCodePoint) || hexCodePoint > 0x10ffff) {
+                return REPLACEMENT_CHARACTER;
+            }
+            return hexCodePoint;
+        }
+        if (codePoint === EOF) {
+            return REPLACEMENT_CHARACTER;
+        }
+        return codePoint;
+    }
+    consumeName() {
+        let result = '';
+        while (true) {
+            const codePoint = this.consumeCodePoint();
+            if (isNameCodePoint(codePoint)) {
+                result += fromCodePoint$1(codePoint);
+            }
+            else if (isValidEscape(codePoint, this.peekCodePoint(0))) {
+                result += fromCodePoint$1(this.consumeEscapedCodePoint());
+            }
+            else {
+                this.reconsumeCodePoint(codePoint);
+                return result;
+            }
+        }
+    }
+}
+
+class Parser {
+    constructor(tokens) {
+        this._tokens = tokens;
+    }
+    static create(value) {
+        const tokenizer = new Tokenizer();
+        tokenizer.write(value);
+        return new Parser(tokenizer.read());
+    }
+    static parseValue(value) {
+        return Parser.create(value).parseComponentValue();
+    }
+    static parseValues(value) {
+        return Parser.create(value).parseComponentValues();
+    }
+    parseComponentValue() {
+        let token = this.consumeToken();
+        while (token.type === 31 /* TokenType.WHITESPACE_TOKEN */) {
+            token = this.consumeToken();
+        }
+        if (token.type === 32 /* TokenType.EOF_TOKEN */) {
+            throw new SyntaxError(`Error parsing CSS component value, unexpected EOF`);
+        }
+        this.reconsumeToken(token);
+        const value = this.consumeComponentValue();
+        do {
+            token = this.consumeToken();
+        } while (token.type === 31 /* TokenType.WHITESPACE_TOKEN */);
+        if (token.type === 32 /* TokenType.EOF_TOKEN */) {
+            return value;
+        }
+        throw new SyntaxError(`Error parsing CSS component value, multiple values found when expecting only one`);
+    }
+    parseComponentValues() {
+        const values = [];
+        while (true) {
+            const value = this.consumeComponentValue();
+            if (value.type === 32 /* TokenType.EOF_TOKEN */) {
+                return values;
+            }
+            values.push(value);
+            values.push();
+        }
+    }
+    consumeComponentValue() {
+        const token = this.consumeToken();
+        switch (token.type) {
+            case 11 /* TokenType.LEFT_CURLY_BRACKET_TOKEN */:
+            case 28 /* TokenType.LEFT_SQUARE_BRACKET_TOKEN */:
+            case 2 /* TokenType.LEFT_PARENTHESIS_TOKEN */:
+                return this.consumeSimpleBlock(token.type);
+            case 19 /* TokenType.FUNCTION_TOKEN */:
+                return this.consumeFunction(token);
+        }
+        return token;
+    }
+    consumeSimpleBlock(type) {
+        const block = { type, values: [] };
+        let token = this.consumeToken();
+        while (true) {
+            if (token.type === 32 /* TokenType.EOF_TOKEN */ || isEndingTokenFor(token, type)) {
+                return block;
+            }
+            this.reconsumeToken(token);
+            block.values.push(this.consumeComponentValue());
+            token = this.consumeToken();
+        }
+    }
+    consumeFunction(functionToken) {
+        const cssFunction = {
+            name: functionToken.value,
+            values: [],
+            type: 18 /* TokenType.FUNCTION */
+        };
+        while (true) {
+            const token = this.consumeToken();
+            if (token.type === 32 /* TokenType.EOF_TOKEN */ || token.type === 3 /* TokenType.RIGHT_PARENTHESIS_TOKEN */) {
+                return cssFunction;
+            }
+            this.reconsumeToken(token);
+            cssFunction.values.push(this.consumeComponentValue());
+        }
+    }
+    consumeToken() {
+        const token = this._tokens.shift();
+        return typeof token === 'undefined' ? EOF_TOKEN : token;
+    }
+    reconsumeToken(token) {
+        this._tokens.unshift(token);
+    }
+}
+const isDimensionToken = (token) => token.type === 15 /* TokenType.DIMENSION_TOKEN */;
+const isNumberToken = (token) => token.type === 17 /* TokenType.NUMBER_TOKEN */;
+const isIdentToken = (token) => token.type === 20 /* TokenType.IDENT_TOKEN */;
+const isStringToken = (token) => token.type === 0 /* TokenType.STRING_TOKEN */;
+const isIdentWithValue = (token, value) => isIdentToken(token) && token.value === value;
+const nonWhiteSpace = (token) => token.type !== 31 /* TokenType.WHITESPACE_TOKEN */;
+const nonFunctionArgSeparator = (token) => token.type !== 31 /* TokenType.WHITESPACE_TOKEN */ && token.type !== 4 /* TokenType.COMMA_TOKEN */;
+const parseFunctionArgs = (tokens) => {
+    const args = [];
+    let arg = [];
+    tokens.forEach((token) => {
+        if (token.type === 4 /* TokenType.COMMA_TOKEN */) {
+            if (arg.length === 0) {
+                throw new Error(`Error parsing function args, zero tokens for arg`);
+            }
+            args.push(arg);
+            arg = [];
+            return;
+        }
+        if (token.type !== 31 /* TokenType.WHITESPACE_TOKEN */) {
+            arg.push(token);
+        }
+    });
+    if (arg.length) {
+        args.push(arg);
+    }
+    return args;
+};
+const isEndingTokenFor = (token, type) => {
+    if (type === 11 /* TokenType.LEFT_CURLY_BRACKET_TOKEN */ && token.type === 12 /* TokenType.RIGHT_CURLY_BRACKET_TOKEN */) {
+        return true;
+    }
+    if (type === 28 /* TokenType.LEFT_SQUARE_BRACKET_TOKEN */ && token.type === 29 /* TokenType.RIGHT_SQUARE_BRACKET_TOKEN */) {
+        return true;
+    }
+    return type === 2 /* TokenType.LEFT_PARENTHESIS_TOKEN */ && token.type === 3 /* TokenType.RIGHT_PARENTHESIS_TOKEN */;
+};
+
+const isLength = (token) => token.type === 17 /* TokenType.NUMBER_TOKEN */ || token.type === 15 /* TokenType.DIMENSION_TOKEN */;
+
+const isLengthPercentage = (token) => token.type === 16 /* TokenType.PERCENTAGE_TOKEN */ || isLength(token);
+/**
+ * Check if a token is a calc() function
+ */
+const isCalcFunction = (token) => token.type === 18 /* TokenType.FUNCTION */ && token.name === 'calc';
+/**
+ * Evaluate a calc() expression and convert to LengthPercentage token
+ * Supports basic arithmetic: +, -, *, /
+ * Note: Percentages in calc() are converted based on a context value
+ */
+const evaluateCalcToLengthPercentage = (calcToken, contextValue = 0) => {
+    // Build expression string from tokens
+    const buildExpression = (values) => {
+        let expression = '';
+        for (const value of values) {
+            if (value.type === 31 /* TokenType.WHITESPACE_TOKEN */) {
+                continue;
+            }
+            if (value.type === 18 /* TokenType.FUNCTION */) {
+                if (value.name === 'calc') {
+                    const nested = buildExpression(value.values);
+                    if (nested === null)
+                        return null;
+                    expression += `(${nested})`;
+                }
+                else {
+                    return null;
+                }
+            }
+            else if (value.type === 17 /* TokenType.NUMBER_TOKEN */) {
+                expression += value.number.toString();
+            }
+            else if (value.type === 15 /* TokenType.DIMENSION_TOKEN */) {
+                // Convert units to px
+                if (value.unit === 'px') {
+                    expression += value.number.toString();
+                }
+                else if (value.unit === 'rem' || value.unit === 'em') {
+                    expression += (value.number * 16).toString();
+                }
+                else {
+                    expression += value.number.toString();
+                }
+            }
+            else if (value.type === 16 /* TokenType.PERCENTAGE_TOKEN */) {
+                // Convert percentage to absolute value based on context
+                expression += ((value.number / 100) * contextValue).toString();
+            }
+            else if (value.type === 6 /* TokenType.DELIM_TOKEN */) {
+                const op = value.value;
+                if (op === '+' || op === '-' || op === '*' || op === '/') {
+                    expression += ` ${op} `;
+                }
+                else if (op === '(') {
+                    expression += '(';
+                }
+                else if (op === ')') {
+                    expression += ')';
+                }
+            }
+        }
+        return expression;
+    };
+    try {
+        const expression = buildExpression(calcToken.values);
+        if (expression === null || expression.trim() === '') {
+            return null;
+        }
+        // Evaluate the expression
+        // Note: Using Function constructor (similar to color.ts line 185)
+        const result = new Function('return ' + expression)();
+        if (typeof result === 'number' && !isNaN(result)) {
+            // Return as a number token in px
+            return {
+                type: 17 /* TokenType.NUMBER_TOKEN */,
+                number: result,
+                flags: FLAG_INTEGER
+            };
+        }
+    }
+    catch (e) {
+        return null;
+    }
+    return null;
+};
+const parseLengthPercentageTuple = (tokens) => tokens.length > 1 ? [tokens[0], tokens[1]] : [tokens[0]];
+const ZERO_LENGTH = {
+    type: 17 /* TokenType.NUMBER_TOKEN */,
+    number: 0,
+    flags: FLAG_INTEGER
+};
+const FIFTY_PERCENT = {
+    type: 16 /* TokenType.PERCENTAGE_TOKEN */,
+    number: 50,
+    flags: FLAG_INTEGER
+};
+const HUNDRED_PERCENT = {
+    type: 16 /* TokenType.PERCENTAGE_TOKEN */,
+    number: 100,
+    flags: FLAG_INTEGER
+};
+const getAbsoluteValueForTuple = (tuple, width, height) => {
+    const [x, y] = tuple;
+    return [getAbsoluteValue(x, width), getAbsoluteValue(typeof y !== 'undefined' ? y : x, height)];
+};
+const getAbsoluteValue = (token, parent) => {
+    if (token.type === 16 /* TokenType.PERCENTAGE_TOKEN */) {
+        return (token.number / 100) * parent;
+    }
+    if (isDimensionToken(token)) {
+        switch (token.unit) {
+            case 'rem':
+            case 'em':
+                return 16 * token.number; // TODO use correct font-size
+            case 'px':
+            default:
+                return token.number;
+        }
+    }
+    return token.number;
+};
+
+const DEG = 'deg';
+const GRAD = 'grad';
+const RAD = 'rad';
+const TURN = 'turn';
+const angle = {
+    name: 'angle',
+    parse: (_context, value) => {
+        if (value.type === 15 /* TokenType.DIMENSION_TOKEN */) {
+            switch (value.unit) {
+                case DEG:
+                    return (Math.PI * value.number) / 180;
+                case GRAD:
+                    return (Math.PI / 200) * value.number;
+                case RAD:
+                    return value.number;
+                case TURN:
+                    return Math.PI * 2 * value.number;
+            }
+        }
+        throw new Error(`Unsupported angle type`);
+    }
+};
+const isAngle = (value) => {
+    if (value.type === 15 /* TokenType.DIMENSION_TOKEN */) {
+        if (value.unit === DEG || value.unit === GRAD || value.unit === RAD || value.unit === TURN) {
+            return true;
+        }
+    }
+    return false;
+};
+const parseNamedSide = (tokens) => {
+    const sideOrCorner = tokens
+        .filter(isIdentToken)
+        .map((ident) => ident.value)
+        .join(' ');
+    switch (sideOrCorner) {
+        case 'to bottom right':
+        case 'to right bottom':
+        case 'left top':
+        case 'top left':
+            return [ZERO_LENGTH, ZERO_LENGTH];
+        case 'to top':
+        case 'bottom':
+            return deg(0);
+        case 'to bottom left':
+        case 'to left bottom':
+        case 'right top':
+        case 'top right':
+            return [ZERO_LENGTH, HUNDRED_PERCENT];
+        case 'to right':
+        case 'left':
+            return deg(90);
+        case 'to top left':
+        case 'to left top':
+        case 'right bottom':
+        case 'bottom right':
+            return [HUNDRED_PERCENT, HUNDRED_PERCENT];
+        case 'to bottom':
+        case 'top':
+            return deg(180);
+        case 'to top right':
+        case 'to right top':
+        case 'left bottom':
+        case 'bottom left':
+            return [HUNDRED_PERCENT, ZERO_LENGTH];
+        case 'to left':
+        case 'right':
+            return deg(270);
+    }
+    return 0;
+};
+const deg = (deg) => (Math.PI * deg) / 180;
+
+const isTransparent = (color) => (0xff & color) === 0;
+const asString = (color) => {
+    const alpha = 0xff & color;
+    const blue = 0xff & (color >> 8);
+    const green = 0xff & (color >> 16);
+    const red = 0xff & (color >> 24);
+    return alpha < 255 ? `rgba(${red},${green},${blue},${alpha / 255})` : `rgb(${red},${green},${blue})`;
+};
+const pack = (r, g, b, a) => ((r << 24) | (g << 16) | (b << 8) | (Math.round(a * 255) << 0)) >>> 0;
+const getTokenColorValue = (token, i) => {
+    if (token.type === 17 /* TokenType.NUMBER_TOKEN */) {
+        return token.number;
+    }
+    if (token.type === 16 /* TokenType.PERCENTAGE_TOKEN */) {
+        const max = i === 3 ? 1 : 255;
+        return i === 3 ? (token.number / 100) * max : Math.round((token.number / 100) * max);
+    }
+    return 0;
+};
+const isRelativeTransform = (tokens) => (tokens[0].type === 20 /* TokenType.IDENT_TOKEN */ ? tokens[0].value : 'unknown') === 'from';
+const clamp = (value, min, max) => {
+    return Math.min(Math.max(value, min), max);
+};
+const multiplyMatrices = (A, B) => {
+    return [
+        A[0] * B[0] + A[1] * B[1] + A[2] * B[2],
+        A[3] * B[0] + A[4] * B[1] + A[5] * B[2],
+        A[6] * B[0] + A[7] * B[1] + A[8] * B[2]
+    ];
+};
+const packSrgb = (args) => {
+    return pack(clamp(Math.round(args[0] * 255), 0, 255), clamp(Math.round(args[1] * 255), 0, 255), clamp(Math.round(args[2] * 255), 0, 255), clamp(args[3], 0, 1));
+};
+const packSrgbLinear = ([r, g, b, a]) => {
+    const rgb = srgbLinear2rgb([r, g, b]);
+    return pack(clamp(Math.round(rgb[0] * 255), 0, 255), clamp(Math.round(rgb[1] * 255), 0, 255), clamp(Math.round(rgb[2] * 255), 0, 255), a);
+};
+const packXYZ = (args) => {
+    const srgb_linear = xyz2rgbLinear([args[0], args[1], args[2]]);
+    return packSrgbLinear([srgb_linear[0], srgb_linear[1], srgb_linear[2], args[3]]);
+};
+const packLab = (_context, args) => {
+    if (isRelativeTransform(args.filter(nonFunctionArgSeparator))) {
+        throw new Error('Relative color not supported for lab()');
+    }
+    const [l, a, b, alpha] = extractLabComponents(args), rgb = srgbLinear2rgb(xyz2rgbLinear(lab2xyz([l, a, b])));
+    return pack(clamp(Math.round(rgb[0] * 255), 0, 255), clamp(Math.round(rgb[1] * 255), 0, 255), clamp(Math.round(rgb[2] * 255), 0, 255), alpha);
+};
+const packOkLab = (_context, args) => {
+    if (isRelativeTransform(args.filter(nonFunctionArgSeparator))) {
+        throw new Error('Relative color not supported for oklab()');
+    }
+    const [l, a, b, alpha] = extractLabComponents(args), rgb = srgbLinear2rgb(xyz2rgbLinear(oklab2xyz([l, a, b])));
+    return pack(clamp(Math.round(rgb[0] * 255), 0, 255), clamp(Math.round(rgb[1] * 255), 0, 255), clamp(Math.round(rgb[2] * 255), 0, 255), alpha);
+};
+const packOkLch = (_context, args) => {
+    if (isRelativeTransform(args.filter(nonFunctionArgSeparator))) {
+        throw new Error('Relative color not supported for oklch()');
+    }
+    const [l, c, h, alpha] = extractOkLchComponents(args), rgb = srgbLinear2rgb(xyz2rgbLinear(oklab2xyz(lch2lab([l, c, h]))));
+    return pack(clamp(Math.round(rgb[0] * 255), 0, 255), clamp(Math.round(rgb[1] * 255), 0, 255), clamp(Math.round(rgb[2] * 255), 0, 255), alpha);
+};
+const packLch = (_context, args) => {
+    if (isRelativeTransform(args.filter(nonFunctionArgSeparator))) {
+        throw new Error('Relative color not supported for lch()');
+    }
+    const [l, c, h, a] = extractLchComponents(args), rgb = srgbLinear2rgb(xyz2rgbLinear(lab2xyz(lch2lab([l, c, h]))));
+    return pack(clamp(Math.round(rgb[0] * 255), 0, 255), clamp(Math.round(rgb[1] * 255), 0, 255), clamp(Math.round(rgb[2] * 255), 0, 255), a);
+};
+const extractHslComponents = (context, args) => {
+    const tokens = args.filter(nonFunctionArgSeparator), [hue, saturation, lightness, alpha] = tokens, h = (hue.type === 17 /* TokenType.NUMBER_TOKEN */ ? deg(hue.number) : angle.parse(context, hue)) / (Math.PI * 2), s = isLengthPercentage(saturation) ? saturation.number / 100 : 0, l = isLengthPercentage(lightness) ? lightness.number / 100 : 0, a = typeof alpha !== 'undefined' && isLengthPercentage(alpha) ? getAbsoluteValue(alpha, 1) : 1;
+    return [h, s, l, a];
+};
+const packHSL = (context, args) => {
+    if (isRelativeTransform(args)) {
+        throw new Error('Relative color not supported for hsl()');
+    }
+    const [h, s, l, a] = extractHslComponents(context, args), rgb = hsl2rgb([h, s, l]);
+    return pack(rgb[0] * 255, rgb[1] * 255, rgb[2] * 255, s === 0 ? 1 : a);
+};
+const extractLchComponents = (args) => {
+    const tokens = args.filter(nonFunctionArgSeparator), l = isLengthPercentage(tokens[0]) ? tokens[0].number : 0, c = isLengthPercentage(tokens[1]) ? tokens[1].number : 0, h = isNumberToken(tokens[2]) || isDimensionToken(tokens[2]) ? tokens[2].number : 0, a = typeof tokens[4] !== 'undefined' && isLengthPercentage(tokens[4]) ? getAbsoluteValue(tokens[4], 1) : 1;
+    return [l, c, h, a];
+};
+const extractLabComponents = (args) => {
+    const tokens = args.filter(nonFunctionArgSeparator), l = tokens[0].type === 16 /* TokenType.PERCENTAGE_TOKEN */
+        ? tokens[0].number / 100
+        : isNumberToken(tokens[0])
+            ? tokens[0].number
+            : 0, a = tokens[1].type === 16 /* TokenType.PERCENTAGE_TOKEN */
+        ? tokens[1].number / 100
+        : isNumberToken(tokens[1])
+            ? tokens[1].number
+            : 0, b = isNumberToken(tokens[2]) || isDimensionToken(tokens[2]) ? tokens[2].number : 0, alpha = typeof tokens[4] !== 'undefined' && isLengthPercentage(tokens[4]) ? getAbsoluteValue(tokens[4], 1) : 1;
+    return [l, a, b, alpha];
+};
+const extractOkLchComponents = (args) => {
+    const tokens = args.filter(nonFunctionArgSeparator), l = tokens[0].type === 16 /* TokenType.PERCENTAGE_TOKEN */
+        ? tokens[0].number / 100
+        : isNumberToken(tokens[0])
+            ? tokens[0].number
+            : 0, c = tokens[1].type === 16 /* TokenType.PERCENTAGE_TOKEN */
+        ? tokens[1].number / 100
+        : isNumberToken(tokens[1])
+            ? tokens[1].number
+            : 0, h = isNumberToken(tokens[2]) || isDimensionToken(tokens[2]) ? tokens[2].number : 0, a = typeof tokens[4] !== 'undefined' && isLengthPercentage(tokens[4]) ? getAbsoluteValue(tokens[4], 1) : 1;
+    return [l, c, h, a];
+};
+/**
+ * Convert D65 to D50
+ *
+ * @param xyz
+ */
+const d65toD50 = (xyz) => {
+    return multiplyMatrices([
+        1.0479297925449969, 0.022946870601609652, -0.05019226628920524, 0.02962780877005599, 0.9904344267538799,
+        -0.017073799063418826, -0.009243040646204504, 0.015055191490298152, 0.7518742814281371
+    ], xyz);
+};
+/**
+ * Convert D50 to D65
+ *
+ * @param xyz
+ */
+const d50toD65 = (xyz) => {
+    return multiplyMatrices([
+        0.955473421488075, -0.02309845494876471, 0.06325924320057072, -0.0283697093338637, 1.0099953980813041,
+        0.021041441191917323, 0.012314014864481998, -0.020507649298898964, 1.330365926242124
+    ], xyz);
+};
+const hue2rgb = (t1, t2, hue) => {
+    if (hue < 0) {
+        hue += 1;
+    }
+    if (hue >= 1) {
+        hue -= 1;
+    }
+    if (hue < 1 / 6) {
+        return (t2 - t1) * hue * 6 + t1;
+    }
+    else if (hue < 1 / 2) {
+        return t2;
+    }
+    else if (hue < 2 / 3) {
+        return (t2 - t1) * 6 * (2 / 3 - hue) + t1;
+    }
+    else {
+        return t1;
+    }
+};
+const hsl2rgb = ([h, s, l]) => {
+    if (s === 0) {
+        return [l * 255, l * 255, l * 255];
+    }
+    const t2 = l <= 0.5 ? l * (s + 1) : l + s - l * s, t1 = l * 2 - t2, r = hue2rgb(t1, t2, h + 1 / 3), g = hue2rgb(t1, t2, h), b = hue2rgb(t1, t2, h - 1 / 3);
+    return [r, g, b];
+};
+/**
+ * Convert lch to OKLab
+ *
+ * @param l
+ * @param c
+ * @param h
+ */
+const lch2lab = ([l, c, h]) => {
+    if (c < 0) {
+        c = 0;
+    }
+    if (isNaN(h)) {
+        h = 0;
+    }
+    return [l, c * Math.cos((h * Math.PI) / 180), c * Math.sin((h * Math.PI) / 180)];
+};
+/**
+ * Convert OKLab to XYZ relative to D65
+ *
+ * @param lab
+ */
+const oklab2xyz = (lab) => {
+    const LMSg = multiplyMatrices([
+        1, 0.3963377773761749, 0.2158037573099136, 1, -0.1055613458156586, -0.0638541728258133, 1,
+        -0.0894841775298119, -1.2914855480194092
+    ], lab), LMS = LMSg.map((val) => val ** 3);
+    return multiplyMatrices([
+        1.2268798758459243, -0.5578149944602171, 0.2813910456659647, -0.0405757452148008, 1.112286803280317,
+        -0.0717110580655164, -0.0763729366746601, -0.4214933324022432, 1.5869240198367816
+    ], LMS);
+};
+/**
+ * Convert Lab to D50-adapted XYZ
+ *
+ * @param lab
+ */
+const lab2xyz = (lab) => {
+    const fy = (lab[0] + 16) / 116, fx = lab[1] / 500 + fy, fz = fy - lab[2] / 200, k = 24389 / 27, e = 24 / 116, xyz = [
+        ((fx > e ? fx ** 3 : (116 * fx - 16) / k) * 0.3457) / 0.3585,
+        lab[0] > 8 ? fy ** 3 : lab[0] / k,
+        ((fz > e ? fz ** 3 : (116 * fz - 16) / k) * (1.0 - 0.3457 - 0.3585)) / 0.3585
+    ];
+    return d50toD65([xyz[0], xyz[1], xyz[2]]);
+};
+/**
+ * Convert RGB to XYZ
+ *
+ * @param _context
+ * @param args
+ */
+const rgbToXyz = (_context, args) => {
+    const tokens = args.filter(nonFunctionArgSeparator);
+    if (tokens.length === 3) {
+        const [r, g, b] = tokens.map(getTokenColorValue), rgb_linear = rgb2rgbLinear([r / 255, g / 255, b / 255]), [x, y, z] = rgbLinear2xyz([rgb_linear[0], rgb_linear[1], rgb_linear[2]]);
+        return [x, y, z, 1];
+    }
+    if (tokens.length === 4) {
+        const [r, g, b, a] = tokens.map(getTokenColorValue), rgb_linear = rgb2rgbLinear([r / 255, g / 255, b / 255]), [x, y, z] = rgbLinear2xyz([rgb_linear[0], rgb_linear[1], rgb_linear[2]]);
+        return [x, y, z, a];
+    }
+    return [0, 0, 0, 1];
+};
+/**
+ * HSL to XYZ
+ *
+ * @param context
+ * @param args
+ */
+const hslToXyz = (context, args) => {
+    const [h, s, l, a] = extractHslComponents(context, args), rgb_linear = rgb2rgbLinear(hsl2rgb([h, s, l])), [x, y, z] = rgbLinear2xyz([rgb_linear[0], rgb_linear[1], rgb_linear[2]]);
+    return [x, y, z, a];
+};
+/**
+ * LAB to XYZ
+ *
+ * @param _context
+ * @param args
+ */
+const labToXyz = (_context, args) => {
+    const [l, a, b, alpha] = extractLabComponents(args), [x, y, z] = lab2xyz([l, a, b]);
+    return [x, y, z, alpha];
+};
+/**
+ * LCH to XYZ
+ *
+ * @param _context
+ * @param args
+ */
+const lchToXyz = (_context, args) => {
+    const [l, c, h, alpha] = extractLchComponents(args), [x, y, z] = lab2xyz(lch2lab([l, c, h]));
+    return [x, y, z, alpha];
+};
+/**
+ * OKLch to XYZ
+ *
+ * @param _context
+ * @param args
+ */
+const oklchToXyz = (_context, args) => {
+    const [l, c, h, alpha] = extractOkLchComponents(args), [x, y, z] = oklab2xyz(lch2lab([l, c, h]));
+    return [x, y, z, alpha];
+};
+/**
+ * OKLab to XYZ
+ *
+ * @param _context
+ * @param args
+ */
+const oklabToXyz = (_context, args) => {
+    const [l, c, h, alpha] = extractLabComponents(args), [x, y, z] = oklab2xyz([l, c, h]);
+    return [x, y, z, alpha];
+};
+/**
+ * XYZ-50 to XYZ
+ *
+ * @param args
+ */
+const xyz50ToXYZ = (args) => {
+    return d50toD65([args[0], args[1], args[2]]);
+};
+/**
+ * Does nothing, required for SUPPORTED_COLOR_SPACES_FROM_XYZ in the _color() function
+ *
+ * @param args
+ */
+const xyzFromXYZ = (args) => {
+    return args;
+};
+/**
+ * XYZ-65 to XYZ-50
+ *
+ * @param args
+ */
+const xyz50FromXYZ = (args) => {
+    const [x, y, z] = d65toD50([args[0], args[2], args[3]]);
+    return [x, y, z, args[3]];
+};
+/**
+ * Convert XYZ to SRGB and Pack
+ *
+ * @param args
+ */
+const convertXyz = (args) => {
+    return packXYZ([args[0], args[1], args[2], args[3]]);
+};
+/**
+ * Convert XYZ-50 to SRGB and Pack
+ *
+ * @param args
+ */
+const convertXyz50 = (args) => {
+    const xyz = xyz50ToXYZ([args[0], args[1], args[2]]);
+    return packXYZ([xyz[0], xyz[1], xyz[2], args[3]]);
+};
+
+/**
+ * SRGB related functions
+ */
+/**
+ * Convert XYZ to linear-light sRGB
+ *
+ * @param xyz
+ */
+const xyz2rgbLinear = (xyz) => {
+    return multiplyMatrices([
+        3.2409699419045226, -1.537383177570094, -0.4986107602930034, -0.9692436362808796, 1.8759675015077202,
+        0.04155505740717559, 0.05563007969699366, -0.20397695888897652, 1.0569715142428786
+    ], xyz);
+};
+/**
+ * Convert XYZ to linear-light sRGB
+ *
+ * @param xyz
+ */
+const rgbLinear2xyz = (xyz) => {
+    return multiplyMatrices([
+        0.41239079926595934, 0.357584339383878, 0.1804807884018343, 0.21263900587151027, 0.715168678767756,
+        0.07219231536073371, 0.01933081871559182, 0.11919477979462598, 0.9505321522496607
+    ], xyz);
+};
+/**
+ * Convert sRGB to RGB
+ *
+ * @param rgb
+ */
+const srgbLinear2rgb = (rgb) => {
+    return rgb.map((c) => {
+        const sign = c < 0 ? -1 : 1, abs = Math.abs(c);
+        return abs > 0.0031308 ? sign * (1.055 * abs ** (1 / 2.4) - 0.055) : 12.92 * c;
+    });
+};
+/**
+ * Convert RGB to sRGB
+ *
+ * @param rgb
+ */
+const rgb2rgbLinear = (rgb) => {
+    return rgb.map((c) => {
+        const sign = c < 0 ? -1 : 1, abs = Math.abs(c);
+        return abs <= 0.04045 ? c / 12.92 : sign * ((abs + 0.055) / 1.055) ** 2.4;
+    });
+};
+/**
+ * XYZ to SRGB
+ *
+ * @param args
+ */
+const srgbFromXYZ = (args) => {
+    const [r, g, b] = srgbLinear2rgb(xyz2rgbLinear([args[0], args[1], args[2]]));
+    return [r, g, b, args[3]];
+};
+/**
+ * XYZ to SRGB-Linear
+ * @param args
+ */
+const srgbLinearFromXYZ = (args) => {
+    const [r, g, b] = xyz2rgbLinear([args[0], args[1], args[2]]);
+    return [
+        clamp(Math.round(r * 255), 0, 255),
+        clamp(Math.round(g * 255), 0, 255),
+        clamp(Math.round(b * 255), 0, 255),
+        args[3]
+    ];
+};
+
+/**
+ * Display-P3 related functions
+ */
+/**
+ * Convert P3 Linear to xyz
+ *
+ * @param p3l
+ */
+const p3LinearToXyz = (p3l) => {
+    return multiplyMatrices([
+        0.4865709486482162, 0.26566769316909306, 0.1982172852343625, 0.2289745640697488, 0.6917385218365064,
+        0.079286914093745, 0.0, 0.04511338185890264, 1.043944368900976
+    ], p3l);
+};
+/**
+ * Convert XYZ to P3 Linear
+ *
+ * @param xyz
+ */
+const xyzToP3Linear = (xyz) => {
+    return multiplyMatrices([
+        2.493496911941425, -0.9313836179191239, -0.40271078445071684, -0.8294889695615747, 1.7626640603183463,
+        0.023624685841943577, 0.03584583024378447, -0.07617238926804182, 0.9568845240076872
+    ], xyz);
+};
+/**
+ * Convert P3 to P3 linear
+ *
+ * @param p3
+ */
+const p32p3Linear = (p3) => {
+    return p3.map((c) => {
+        const sign = c < 0 ? -1 : 1, abs = c * sign;
+        if (abs <= 0.04045) {
+            return c / 12.92;
+        }
+        return sign * ((c + 0.055) / 1.055) ** 2.4 || 0;
+    });
+};
+/**
+ * Convert P3 Linear to P3
+ *
+ * @param p3l
+ */
+const p3Linear2p3 = (p3l) => {
+    return srgbLinear2rgb(p3l);
+};
+/**
+ * Convert P3 to XYZ
+ *
+ * @param args
+ */
+const p3ToXYZ = (args) => {
+    const p3_linear = p32p3Linear([args[0], args[1], args[2]]);
+    return p3LinearToXyz([p3_linear[0], p3_linear[1], p3_linear[2]]);
+};
+/**
+ * Convert XYZ to P3
+ *
+ * @param args
+ */
+const p3FromXYZ = (args) => {
+    const [r, g, b] = p3Linear2p3(xyzToP3Linear([args[0], args[1], args[2]]));
+    return [r, g, b, args[3]];
+};
+/**
+ * Convert P3 to SRGB and Pack
+ *
+ * @param args
+ */
+const convertP3 = (args) => {
+    const xyz = p3ToXYZ([args[0], args[1], args[2]]);
+    return packXYZ([xyz[0], xyz[1], xyz[2], args[3]]);
+};
+
+/**
+ * A98-RGB related functions
+ */
+/**
+ * Convert XYZ to a98 linear
+ *
+ * @param xyz
+ */
+const xyz2a98Linear = (xyz) => {
+    return multiplyMatrices([
+        2.0415879038107465, -0.5650069742788596, -0.34473135077832956, -0.9692436362808795, 1.8759675015077202,
+        0.04155505740717557, 0.013444280632031142, -0.11836239223101838, 1.0151749943912054
+    ], xyz);
+};
+/**
+ * Convert XYZ to a98 linear
+ *
+ * @param a98
+ */
+const a98Linear2xyz = (a98) => {
+    return multiplyMatrices([
+        0.5766690429101305, 0.1855582379065463, 0.1882286462349947, 0.29734497525053605, 0.6273635662554661,
+        0.0752914584939978, 0.02703136138641234, 0.07068885253582723, 0.9913375368376388
+    ], a98);
+};
+/**
+ * Convert A98 RGB to rgb linear
+ *
+ * @param rgb
+ */
+const a982a98Linear = (rgb) => {
+    const mapped = rgb.map((c) => {
+        const sign = c < 0 ? -1 : 1, abs = Math.abs(c);
+        return sign * abs ** (563 / 256);
+    });
+    return [mapped[0], mapped[1], mapped[2]];
+};
+/**
+ * Convert A98 RGB Linear to A98
+ *
+ * @param rgb
+ */
+const a98Linear2a98 = (rgb) => {
+    const mapped = rgb.map((c) => {
+        const sign = c < 0 ? -1 : 1, abs = Math.abs(c);
+        return sign * abs ** (256 / 563);
+    });
+    return [mapped[0], mapped[1], mapped[2]];
+};
+/**
+ * Convert XYZ to A98
+ *
+ * @param args
+ */
+const a98FromXYZ = (args) => {
+    const [r, g, b] = a98Linear2a98(xyz2a98Linear([args[0], args[1], args[2]]));
+    return [r, g, b, args[3]];
+};
+/**
+ * Convert A98 to XYZ and Pack
+ *
+ * @param args
+ */
+const convertA98rgb = (args) => {
+    const srgb_linear = xyz2rgbLinear(a98Linear2xyz(a982a98Linear([args[0], args[1], args[2]])));
+    return packSrgbLinear([srgb_linear[0], srgb_linear[1], srgb_linear[2], args[3]]);
+};
+
+/**
+ * Pro Photo related functions
+ */
+/**
+ * Convert linear-light display-p3 to XYZ D65
+ *
+ * @param p3
+ */
+const proPhotoLinearToXyz = (p3) => {
+    return multiplyMatrices([
+        0.7977666449006423, 0.13518129740053308, 0.0313477341283922, 0.2880748288194013, 0.711835234241873,
+        0.00008993693872564, 0.0, 0.0, 0.8251046025104602
+    ], p3);
+};
+/**
+ * Convert XYZ D65 to linear-light display-p3
+ *
+ * @param xyz
+ */
+const xyzToProPhotoLinear = (xyz) => {
+    return multiplyMatrices([
+        1.3457868816471583, -0.25557208737979464, -0.05110186497554526, -0.5446307051249019, 1.5082477428451468,
+        0.02052744743642139, 0.0, 0.0, 1.2119675456389452
+    ], xyz);
+};
+/**
+ * Convert Pro-Photo to Pro-Photo Linear
+ *
+ * @param p3
+ */
+const proPhotoToProPhotoLinear = (p3) => {
+    return p3.map((c) => {
+        return c < 16 / 512 ? c / 16 : c ** 1.8;
+    });
+};
+/**
+ * Convert Pro-Photo Linear to Pro-Photo
+ *
+ * @param p3
+ */
+const proPhotoLinearToProPhoto = (p3) => {
+    return p3.map((c) => {
+        return c > 1 / 512 ? c ** (1 / 1.8) : c * 16;
+    });
+};
+/**
+ * Convert Pro-Photo to XYZ
+ *
+ * @param args
+ */
+const proPhotoToXYZ = (args) => {
+    const prophoto_linear = proPhotoToProPhotoLinear([args[0], args[1], args[2]]);
+    return d50toD65(proPhotoLinearToXyz([prophoto_linear[0], prophoto_linear[1], prophoto_linear[2]]));
+};
+/**
+ * Convert XYZ to Pro-Photo
+ *
+ * @param args
+ */
+const proPhotoFromXYZ = (args) => {
+    const [r, g, b] = proPhotoLinearToProPhoto(xyzToProPhotoLinear(d65toD50([args[0], args[1], args[2]])));
+    return [r, g, b, args[3]];
+};
+/**
+ * Convert Pro-Photo to XYZ and Pack
+ *
+ * @param args
+ */
+const convertProPhoto = (args) => {
+    const xyz = proPhotoToXYZ([args[0], args[1], args[2]]);
+    return packXYZ([xyz[0], xyz[1], xyz[2], args[3]]);
+};
+
+/**
+ * REC2020 related functions
+ */
+const _a = 1.09929682680944;
+const _b = 0.018053968510807;
+/**
+ * Convert rec2020 to rec2020 linear
+ *
+ * @param rgb
+ */
+const rec20202rec2020Linear = (rgb) => {
+    return rgb.map(function (c) {
+        return c < _b * 4.5 ? c / 4.5 : Math.pow((c + _a - 1) / _a, 1 / 0.45);
+    });
+};
+/**
+ * Convert rec2020 linear to rec2020
+ *
+ * @param rgb
+ */
+const rec2020Linear2rec2020 = (rgb) => {
+    return rgb.map(function (c) {
+        return c >= _b ? _a * Math.pow(c, 0.45) - (_a - 1) : 4.5 * c;
+    });
+};
+/**
+ * Convert rec2020 linear to XYZ D65
+ *
+ * @param rec
+ */
+const rec2020LinearToXyz = (rec) => {
+    return multiplyMatrices([
+        0.6369580483012914, 0.14461690358620832, 0.1688809751641721, 0.2627002120112671, 0.6779980715188708,
+        0.05930171646986196, 0.0, 0.028072693049087428, 1.060985057710791
+    ], rec);
+};
+/**
+ * Convert XYZ D65 to rec2020 linear
+ *
+ * @param xyz
+ */
+const xyzToRec2020Linear = (xyz) => {
+    return multiplyMatrices([
+        1.716651187971268, -0.355670783776392, -0.25336628137366, -0.666684351832489, 1.616481236634939,
+        0.0157685458139111, 0.017639857445311, -0.042770613257809, 0.942103121235474
+    ], xyz);
+};
+/**
+ * Convert Rec2020 to XYZ
+ *
+ * @param args
+ */
+const rec2020ToXYZ = (args) => {
+    const rec2020_linear = rec20202rec2020Linear([args[0], args[1], args[2]]);
+    return rec2020LinearToXyz([rec2020_linear[0], rec2020_linear[1], rec2020_linear[2]]);
+};
+/**
+ * Convert XYZ to Rec2020
+ *
+ * @param args
+ */
+const rec2020FromXYZ = (args) => {
+    const [r, g, b] = rec2020Linear2rec2020(xyzToRec2020Linear([args[0], args[1], args[2]]));
+    return [r, g, b, args[3]];
+};
+/**
+ * Convert Rec2020 to SRGB and Pack
+ *
+ * @param args
+ */
+const convertRec2020 = (args) => {
+    const xyz = rec2020ToXYZ([args[0], args[1], args[2]]);
+    return packXYZ([xyz[0], xyz[1], xyz[2], args[3]]);
+};
+
+const color$1 = {
+    name: 'color',
+    parse: (context, value) => {
+        if (value.type === 18 /* TokenType.FUNCTION */) {
+            const colorFunction = SUPPORTED_COLOR_FUNCTIONS[value.name];
+            if (typeof colorFunction === 'undefined') {
+                throw new Error(`Attempting to parse an unsupported color function "${value.name}"`);
+            }
+            return colorFunction(context, value.values);
+        }
+        if (value.type === 5 /* TokenType.HASH_TOKEN */) {
+            const [r, g, b, a] = hash2rgb(value);
+            return pack(r, g, b, a);
+        }
+        if (value.type === 20 /* TokenType.IDENT_TOKEN */) {
+            const namedColor = COLORS[value.value.toUpperCase()];
+            if (typeof namedColor !== 'undefined') {
+                return namedColor;
+            }
+        }
+        return COLORS.TRANSPARENT;
+    }
+};
+const hash2rgb = (token) => {
+    if (token.value.length === 3) {
+        const r = token.value.substring(0, 1);
+        const g = token.value.substring(1, 2);
+        const b = token.value.substring(2, 3);
+        return [parseInt(r + r, 16), parseInt(g + g, 16), parseInt(b + b, 16), 1];
+    }
+    if (token.value.length === 4) {
+        const r = token.value.substring(0, 1);
+        const g = token.value.substring(1, 2);
+        const b = token.value.substring(2, 3);
+        const a = token.value.substring(3, 4);
+        return [parseInt(r + r, 16), parseInt(g + g, 16), parseInt(b + b, 16), parseInt(a + a, 16) / 255];
+    }
+    if (token.value.length === 6) {
+        const r = token.value.substring(0, 2);
+        const g = token.value.substring(2, 4);
+        const b = token.value.substring(4, 6);
+        return [parseInt(r, 16), parseInt(g, 16), parseInt(b, 16), 1];
+    }
+    if (token.value.length === 8) {
+        const r = token.value.substring(0, 2);
+        const g = token.value.substring(2, 4);
+        const b = token.value.substring(4, 6);
+        const a = token.value.substring(6, 8);
+        return [parseInt(r, 16), parseInt(g, 16), parseInt(b, 16), parseInt(a, 16) / 255];
+    }
+    return [0, 0, 0, 1];
+};
+const rgb = (_context, args) => {
+    const tokens = args.filter(nonFunctionArgSeparator);
+    if (isRelativeTransform(tokens)) {
+        throw new Error('Relative color not supported for rgb()');
+    }
+    if (tokens.length === 3) {
+        const [r, g, b] = tokens.map(getTokenColorValue);
+        return pack(r, g, b, 1);
+    }
+    if (tokens.length === 4) {
+        const [r, g, b, a] = tokens.map(getTokenColorValue);
+        return pack(r, g, b, a);
+    }
+    // Handle modern CSS syntax with / separator: rgb(r g b / alpha)
+    // tokens[0] = r, tokens[1] = g, tokens[2] = b, tokens[3] = '/', tokens[4] = alpha
+    if (tokens.length === 5 && tokens[3].type === 6 /* TokenType.DELIM_TOKEN */ && tokens[3].value === '/') {
+        const r = getTokenColorValue(tokens[0], 0);
+        const g = getTokenColorValue(tokens[1], 1);
+        const b = getTokenColorValue(tokens[2], 2);
+        const a = getTokenColorValue(tokens[4], 3);
+        return pack(r, g, b, a);
+    }
+    return 0;
+};
+/**
+ * Handle the CSS color() function
+ *
+ * @param context
+ * @param args
+ */
+const _color = (context, args) => {
+    const tokens = args.filter(nonFunctionArgSeparator), token_1_value = tokens[0].type === 20 /* TokenType.IDENT_TOKEN */ ? tokens[0].value : 'unknown', is_absolute = !isRelativeTransform(tokens);
+    if (is_absolute) {
+        const color_space = token_1_value, colorSpaceFunction = SUPPORTED_COLOR_SPACES_ABSOLUTE[color_space];
+        if (typeof colorSpaceFunction === 'undefined') {
+            throw new Error(`Attempting to parse an unsupported color space "${color_space}" for color() function`);
+        }
+        const c1 = isNumberToken(tokens[1]) ? tokens[1].number : 0, c2 = isNumberToken(tokens[2]) ? tokens[2].number : 0, c3 = isNumberToken(tokens[3]) ? tokens[3].number : 0, a = tokens.length > 4 &&
+            tokens[4].type === 6 /* TokenType.DELIM_TOKEN */ &&
+            tokens[4].value === '/' &&
+            isNumberToken(tokens[5])
+            ? tokens[5].number
+            : 1;
+        return colorSpaceFunction([c1, c2, c3, a]);
+    }
+    else {
+        const extractComponent = (color, token) => {
+            if (isNumberToken(token)) {
+                return token.number;
+            }
+            const posFromVal = (value) => {
+                return value === 'r' || value === 'x' ? 0 : value === 'g' || value === 'y' ? 1 : 2;
+            };
+            if (isIdentToken(token)) {
+                const position = posFromVal(token.value);
+                return color[position];
+            }
+            const parseCalc = (args) => {
+                const parts = args.filter(nonFunctionArgSeparator);
+                let expression = '(';
+                for (const part of parts) {
+                    expression +=
+                        part.type === 18 /* TokenType.FUNCTION */ && part.name === 'calc'
+                            ? parseCalc(part.values)
+                            : isNumberToken(part)
+                                ? part.number
+                                : part.type === 6 /* TokenType.DELIM_TOKEN */ || isIdentToken(part)
+                                    ? part.value
+                                    : '';
+                }
+                expression += ')';
+                return expression;
+            };
+            if (token.type === 18 /* TokenType.FUNCTION */) {
+                const args = token.values.filter(nonFunctionArgSeparator);
+                if (token.name === 'calc') {
+                    const expression = parseCalc(args)
+                        .replace(/r|x/, color[0].toString())
+                        .replace(/g|y/, color[1].toString())
+                        .replace(/b|z/, color[2].toString());
+                    return new Function('return ' + expression)();
+                }
+            }
+            return null;
+        };
+        const from_colorspace = tokens[1].type === 18 /* TokenType.FUNCTION */
+            ? tokens[1].name
+            : isIdentToken(tokens[1]) || tokens[1].type === 5 /* TokenType.HASH_TOKEN */
+                ? 'rgb'
+                : 'unknown', to_colorspace = isIdentToken(tokens[2]) ? tokens[2].value : 'unknown';
+        let from = tokens[1].type === 18 /* TokenType.FUNCTION */ ? tokens[1].values : isIdentToken(tokens[1]) ? [tokens[1]] : [];
+        if (isIdentToken(tokens[1])) {
+            const named_color = COLORS[tokens[1].value.toUpperCase()];
+            if (typeof named_color === 'undefined') {
+                throw new Error(`Attempting to use unknown color in relative color 'from'`);
+            }
+            else {
+                const _c = parseColor(context, tokens[1].value), alpha = 0xff & _c, blue = 0xff & (_c >> 8), green = 0xff & (_c >> 16), red = 0xff & (_c >> 24);
+                from = [
+                    { type: 17 /* TokenType.NUMBER_TOKEN */, number: red, flags: 1 },
+                    { type: 17 /* TokenType.NUMBER_TOKEN */, number: green, flags: 1 },
+                    { type: 17 /* TokenType.NUMBER_TOKEN */, number: blue, flags: 1 },
+                    { type: 17 /* TokenType.NUMBER_TOKEN */, number: alpha > 1 ? alpha / 255 : alpha, flags: 1 }
+                ];
+            }
+        }
+        else if (tokens[1].type === 5 /* TokenType.HASH_TOKEN */) {
+            const [red, green, blue, alpha] = hash2rgb(tokens[1]);
+            from = [
+                { type: 17 /* TokenType.NUMBER_TOKEN */, number: red, flags: 1 },
+                { type: 17 /* TokenType.NUMBER_TOKEN */, number: green, flags: 1 },
+                { type: 17 /* TokenType.NUMBER_TOKEN */, number: blue, flags: 1 },
+                { type: 17 /* TokenType.NUMBER_TOKEN */, number: alpha > 1 ? alpha / 255 : alpha, flags: 1 }
+            ];
+        }
+        if (from.length === 0) {
+            throw new Error(`Attempting to use unknown color in relative color 'from'`);
+        }
+        if (to_colorspace === 'unknown') {
+            throw new Error(`Attempting to use unknown colorspace in relative color 'to'`);
+        }
+        const fromColorToXyz = SUPPORTED_COLOR_SPACES_TO_XYZ[from_colorspace], toColorFromXyz = SUPPORTED_COLOR_SPACES_FROM_XYZ[to_colorspace], toColorPack = SUPPORTED_COLOR_SPACES_ABSOLUTE[to_colorspace];
+        if (typeof fromColorToXyz === 'undefined') {
+            throw new Error(`Attempting to parse an unsupported color space "${from_colorspace}" for color() function`);
+        }
+        if (typeof toColorFromXyz === 'undefined') {
+            throw new Error(`Attempting to parse an unsupported color space "${to_colorspace}" for color() function`);
+        }
+        const from_color = fromColorToXyz(context, from), from_final_colorspace = toColorFromXyz(from_color), c1 = extractComponent(from_final_colorspace, tokens[3]), c2 = extractComponent(from_final_colorspace, tokens[4]), c3 = extractComponent(from_final_colorspace, tokens[5]), a = tokens.length > 6 &&
+            tokens[6].type === 6 /* TokenType.DELIM_TOKEN */ &&
+            tokens[6].value === '/' &&
+            isNumberToken(tokens[7])
+            ? tokens[7].number
+            : 1;
+        if (c1 === null || c2 === null || c3 === null) {
+            throw new Error(`Invalid relative color in color() function`);
+        }
+        return toColorPack([c1, c2, c3, a]);
+    }
+};
+const SUPPORTED_COLOR_SPACES_ABSOLUTE = {
+    srgb: packSrgb,
+    'srgb-linear': packSrgbLinear,
+    'display-p3': convertP3,
+    'a98-rgb': convertA98rgb,
+    'prophoto-rgb': convertProPhoto,
+    xyz: convertXyz,
+    'xyz-d50': convertXyz50,
+    'xyz-d65': convertXyz,
+    rec2020: convertRec2020
+};
+const SUPPORTED_COLOR_SPACES_TO_XYZ = {
+    rgb: rgbToXyz,
+    hsl: hslToXyz,
+    lab: labToXyz,
+    lch: lchToXyz,
+    oklab: oklabToXyz,
+    oklch: oklchToXyz
+};
+const SUPPORTED_COLOR_SPACES_FROM_XYZ = {
+    srgb: srgbFromXYZ,
+    'srgb-linear': srgbLinearFromXYZ,
+    'display-p3': p3FromXYZ,
+    'a98-rgb': a98FromXYZ,
+    'prophoto-rgb': proPhotoFromXYZ,
+    xyz: xyzFromXYZ,
+    'xyz-d50': xyz50FromXYZ,
+    'xyz-d65': xyzFromXYZ,
+    rec2020: rec2020FromXYZ
+};
+const SUPPORTED_COLOR_FUNCTIONS = {
+    hsl: packHSL,
+    hsla: packHSL,
+    rgb: rgb,
+    rgba: rgb,
+    lch: packLch,
+    oklch: packOkLch,
+    oklab: packOkLab,
+    lab: packLab,
+    color: _color
+};
+const parseColor = (context, value) => color$1.parse(context, Parser.create(value).parseComponentValue());
+const COLORS = {
+    ALICEBLUE: 0xf0f8ffff,
+    ANTIQUEWHITE: 0xfaebd7ff,
+    AQUA: 0x00ffffff,
+    AQUAMARINE: 0x7fffd4ff,
+    AZURE: 0xf0ffffff,
+    BEIGE: 0xf5f5dcff,
+    BISQUE: 0xffe4c4ff,
+    BLACK: 0x000000ff,
+    BLANCHEDALMOND: 0xffebcdff,
+    BLUE: 0x0000ffff,
+    BLUEVIOLET: 0x8a2be2ff,
+    BROWN: 0xa52a2aff,
+    BURLYWOOD: 0xdeb887ff,
+    CADETBLUE: 0x5f9ea0ff,
+    CHARTREUSE: 0x7fff00ff,
+    CHOCOLATE: 0xd2691eff,
+    CORAL: 0xff7f50ff,
+    CORNFLOWERBLUE: 0x6495edff,
+    CORNSILK: 0xfff8dcff,
+    CRIMSON: 0xdc143cff,
+    CYAN: 0x00ffffff,
+    DARKBLUE: 0x00008bff,
+    DARKCYAN: 0x008b8bff,
+    DARKGOLDENROD: 0xb886bbff,
+    DARKGRAY: 0xa9a9a9ff,
+    DARKGREEN: 0x006400ff,
+    DARKGREY: 0xa9a9a9ff,
+    DARKKHAKI: 0xbdb76bff,
+    DARKMAGENTA: 0x8b008bff,
+    DARKOLIVEGREEN: 0x556b2fff,
+    DARKORANGE: 0xff8c00ff,
+    DARKORCHID: 0x9932ccff,
+    DARKRED: 0x8b0000ff,
+    DARKSALMON: 0xe9967aff,
+    DARKSEAGREEN: 0x8fbc8fff,
+    DARKSLATEBLUE: 0x483d8bff,
+    DARKSLATEGRAY: 0x2f4f4fff,
+    DARKSLATEGREY: 0x2f4f4fff,
+    DARKTURQUOISE: 0x00ced1ff,
+    DARKVIOLET: 0x9400d3ff,
+    DEEPPINK: 0xff1493ff,
+    DEEPSKYBLUE: 0x00bfffff,
+    DIMGRAY: 0x696969ff,
+    DIMGREY: 0x696969ff,
+    DODGERBLUE: 0x1e90ffff,
+    FIREBRICK: 0xb22222ff,
+    FLORALWHITE: 0xfffaf0ff,
+    FORESTGREEN: 0x228b22ff,
+    FUCHSIA: 0xff00ffff,
+    GAINSBORO: 0xdcdcdcff,
+    GHOSTWHITE: 0xf8f8ffff,
+    GOLD: 0xffd700ff,
+    GOLDENROD: 0xdaa520ff,
+    GRAY: 0x808080ff,
+    GREEN: 0x008000ff,
+    GREENYELLOW: 0xadff2fff,
+    GREY: 0x808080ff,
+    HONEYDEW: 0xf0fff0ff,
+    HOTPINK: 0xff69b4ff,
+    INDIANRED: 0xcd5c5cff,
+    INDIGO: 0x4b0082ff,
+    IVORY: 0xfffff0ff,
+    KHAKI: 0xf0e68cff,
+    LAVENDER: 0xe6e6faff,
+    LAVENDERBLUSH: 0xfff0f5ff,
+    LAWNGREEN: 0x7cfc00ff,
+    LEMONCHIFFON: 0xfffacdff,
+    LIGHTBLUE: 0xadd8e6ff,
+    LIGHTCORAL: 0xf08080ff,
+    LIGHTCYAN: 0xe0ffffff,
+    LIGHTGOLDENRODYELLOW: 0xfafad2ff,
+    LIGHTGRAY: 0xd3d3d3ff,
+    LIGHTGREEN: 0x90ee90ff,
+    LIGHTGREY: 0xd3d3d3ff,
+    LIGHTPINK: 0xffb6c1ff,
+    LIGHTSALMON: 0xffa07aff,
+    LIGHTSEAGREEN: 0x20b2aaff,
+    LIGHTSKYBLUE: 0x87cefaff,
+    LIGHTSLATEGRAY: 0x778899ff,
+    LIGHTSLATEGREY: 0x778899ff,
+    LIGHTSTEELBLUE: 0xb0c4deff,
+    LIGHTYELLOW: 0xffffe0ff,
+    LIME: 0x00ff00ff,
+    LIMEGREEN: 0x32cd32ff,
+    LINEN: 0xfaf0e6ff,
+    MAGENTA: 0xff00ffff,
+    MAROON: 0x800000ff,
+    MEDIUMAQUAMARINE: 0x66cdaaff,
+    MEDIUMBLUE: 0x0000cdff,
+    MEDIUMORCHID: 0xba55d3ff,
+    MEDIUMPURPLE: 0x9370dbff,
+    MEDIUMSEAGREEN: 0x3cb371ff,
+    MEDIUMSLATEBLUE: 0x7b68eeff,
+    MEDIUMSPRINGGREEN: 0x00fa9aff,
+    MEDIUMTURQUOISE: 0x48d1ccff,
+    MEDIUMVIOLETRED: 0xc71585ff,
+    MIDNIGHTBLUE: 0x191970ff,
+    MINTCREAM: 0xf5fffaff,
+    MISTYROSE: 0xffe4e1ff,
+    MOCCASIN: 0xffe4b5ff,
+    NAVAJOWHITE: 0xffdeadff,
+    NAVY: 0x000080ff,
+    OLDLACE: 0xfdf5e6ff,
+    OLIVE: 0x808000ff,
+    OLIVEDRAB: 0x6b8e23ff,
+    ORANGE: 0xffa500ff,
+    ORANGERED: 0xff4500ff,
+    ORCHID: 0xda70d6ff,
+    PALEGOLDENROD: 0xeee8aaff,
+    PALEGREEN: 0x98fb98ff,
+    PALETURQUOISE: 0xafeeeeff,
+    PALEVIOLETRED: 0xdb7093ff,
+    PAPAYAWHIP: 0xffefd5ff,
+    PEACHPUFF: 0xffdab9ff,
+    PERU: 0xcd853fff,
+    PINK: 0xffc0cbff,
+    PLUM: 0xdda0ddff,
+    POWDERBLUE: 0xb0e0e6ff,
+    PURPLE: 0x800080ff,
+    REBECCAPURPLE: 0x663399ff,
+    RED: 0xff0000ff,
+    ROSYBROWN: 0xbc8f8fff,
+    ROYALBLUE: 0x4169e1ff,
+    SADDLEBROWN: 0x8b4513ff,
+    SALMON: 0xfa8072ff,
+    SANDYBROWN: 0xf4a460ff,
+    SEAGREEN: 0x2e8b57ff,
+    SEASHELL: 0xfff5eeff,
+    SIENNA: 0xa0522dff,
+    SILVER: 0xc0c0c0ff,
+    SKYBLUE: 0x87ceebff,
+    SLATEBLUE: 0x6a5acdff,
+    SLATEGRAY: 0x708090ff,
+    SLATEGREY: 0x708090ff,
+    SNOW: 0xfffafaff,
+    SPRINGGREEN: 0x00ff7fff,
+    STEELBLUE: 0x4682b4ff,
+    TAN: 0xd2b48cff,
+    TEAL: 0x008080ff,
+    THISTLE: 0xd8bfd8ff,
+    TOMATO: 0xff6347ff,
+    TRANSPARENT: 0x00000000,
+    TURQUOISE: 0x40e0d0ff,
+    VIOLET: 0xee82eeff,
+    WHEAT: 0xf5deb3ff,
+    WHITE: 0xffffffff,
+    WHITESMOKE: 0xf5f5f5ff,
+    YELLOW: 0xffff00ff,
+    YELLOWGREEN: 0x9acd32ff
+};
+
+const backgroundClip = {
+    name: 'background-clip',
+    initialValue: 'border-box',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: (_context, tokens) => {
+        return tokens.map((token) => {
+            if (isIdentToken(token)) {
+                switch (token.value) {
+                    case 'padding-box':
+                        return 1 /* BACKGROUND_CLIP.PADDING_BOX */;
+                    case 'content-box':
+                        return 2 /* BACKGROUND_CLIP.CONTENT_BOX */;
+                }
+            }
+            return 0 /* BACKGROUND_CLIP.BORDER_BOX */;
+        });
+    }
+};
+
+const backgroundColor = {
+    name: `background-color`,
+    initialValue: 'transparent',
+    prefix: false,
+    type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
+    format: 'color'
+};
+
+const parseColorStop = (context, args) => {
+    const color = color$1.parse(context, args[0]);
+    const stop = args[1];
+    return stop && isLengthPercentage(stop) ? { color, stop } : { color, stop: null };
+};
+const processColorStops = (stops, lineLength) => {
+    const first = stops[0];
+    const last = stops[stops.length - 1];
+    if (first.stop === null) {
+        first.stop = ZERO_LENGTH;
+    }
+    if (last.stop === null) {
+        last.stop = HUNDRED_PERCENT;
+    }
+    const processStops = [];
+    let previous = 0;
+    for (let i = 0; i < stops.length; i++) {
+        const stop = stops[i].stop;
+        if (stop !== null) {
+            const absoluteValue = getAbsoluteValue(stop, lineLength);
+            if (absoluteValue > previous) {
+                processStops.push(absoluteValue);
+            }
+            else {
+                processStops.push(previous);
+            }
+            previous = absoluteValue;
+        }
+        else {
+            processStops.push(null);
+        }
+    }
+    let gapBegin = null;
+    for (let i = 0; i < processStops.length; i++) {
+        const stop = processStops[i];
+        if (stop === null) {
+            if (gapBegin === null) {
+                gapBegin = i;
+            }
+        }
+        else if (gapBegin !== null) {
+            const gapLength = i - gapBegin;
+            const beforeGap = processStops[gapBegin - 1];
+            const gapValue = (stop - beforeGap) / (gapLength + 1);
+            for (let g = 1; g <= gapLength; g++) {
+                processStops[gapBegin + g - 1] = gapValue * g;
+            }
+            gapBegin = null;
+        }
+    }
+    return stops.map(({ color }, i) => {
+        return { color, stop: Math.max(Math.min(1, processStops[i] / lineLength), 0) };
+    });
+};
+const getAngleFromCorner = (corner, width, height) => {
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const x = getAbsoluteValue(corner[0], width) - centerX;
+    const y = centerY - getAbsoluteValue(corner[1], height);
+    return (Math.atan2(y, x) + Math.PI * 2) % (Math.PI * 2);
+};
+const calculateGradientDirection = (angle, width, height) => {
+    const radian = typeof angle === 'number' ? angle : getAngleFromCorner(angle, width, height);
+    const lineLength = Math.abs(width * Math.sin(radian)) + Math.abs(height * Math.cos(radian));
+    const halfWidth = width / 2;
+    const halfHeight = height / 2;
+    const halfLineLength = lineLength / 2;
+    const yDiff = Math.sin(radian - Math.PI / 2) * halfLineLength;
+    const xDiff = Math.cos(radian - Math.PI / 2) * halfLineLength;
+    return [lineLength, halfWidth - xDiff, halfWidth + xDiff, halfHeight - yDiff, halfHeight + yDiff];
+};
+const distance = (a, b) => Math.sqrt(a * a + b * b);
+const findCorner = (width, height, x, y, closest) => {
+    const corners = [
+        [0, 0],
+        [0, height],
+        [width, 0],
+        [width, height]
+    ];
+    return corners.reduce((stat, corner) => {
+        const [cx, cy] = corner;
+        const d = distance(x - cx, y - cy);
+        if (closest ? d < stat.optimumDistance : d > stat.optimumDistance) {
+            return {
+                optimumCorner: corner,
+                optimumDistance: d
+            };
+        }
+        return stat;
+    }, {
+        optimumDistance: closest ? Infinity : -Infinity,
+        optimumCorner: null
+    }).optimumCorner;
+};
+const calculateRadius = (gradient, x, y, width, height) => {
+    let rx = 0;
+    let ry = 0;
+    switch (gradient.size) {
+        case 0 /* CSSRadialExtent.CLOSEST_SIDE */:
+            // The ending shape is sized so that that it exactly meets the side of the gradient box closest to the gradient’s center.
+            // If the shape is an ellipse, it exactly meets the closest side in each dimension.
+            if (gradient.shape === 0 /* CSSRadialShape.CIRCLE */) {
+                rx = ry = Math.min(Math.abs(x), Math.abs(x - width), Math.abs(y), Math.abs(y - height));
+            }
+            else if (gradient.shape === 1 /* CSSRadialShape.ELLIPSE */) {
+                rx = Math.min(Math.abs(x), Math.abs(x - width));
+                ry = Math.min(Math.abs(y), Math.abs(y - height));
+            }
+            break;
+        case 2 /* CSSRadialExtent.CLOSEST_CORNER */:
+            // The ending shape is sized so that that it passes through the corner of the gradient box closest to the gradient’s center.
+            // If the shape is an ellipse, the ending shape is given the same aspect-ratio it would have if closest-side were specified.
+            if (gradient.shape === 0 /* CSSRadialShape.CIRCLE */) {
+                rx = ry = Math.min(distance(x, y), distance(x, y - height), distance(x - width, y), distance(x - width, y - height));
+            }
+            else if (gradient.shape === 1 /* CSSRadialShape.ELLIPSE */) {
+                // Compute the ratio ry/rx (which is to be the same as for "closest-side")
+                const c = Math.min(Math.abs(y), Math.abs(y - height)) / Math.min(Math.abs(x), Math.abs(x - width));
+                const [cx, cy] = findCorner(width, height, x, y, true);
+                rx = distance(cx - x, (cy - y) / c);
+                ry = c * rx;
+            }
+            break;
+        case 1 /* CSSRadialExtent.FARTHEST_SIDE */:
+            // Same as closest-side, except the ending shape is sized based on the farthest side(s)
+            if (gradient.shape === 0 /* CSSRadialShape.CIRCLE */) {
+                rx = ry = Math.max(Math.abs(x), Math.abs(x - width), Math.abs(y), Math.abs(y - height));
+            }
+            else if (gradient.shape === 1 /* CSSRadialShape.ELLIPSE */) {
+                rx = Math.max(Math.abs(x), Math.abs(x - width));
+                ry = Math.max(Math.abs(y), Math.abs(y - height));
+            }
+            break;
+        case 3 /* CSSRadialExtent.FARTHEST_CORNER */:
+            // Same as closest-corner, except the ending shape is sized based on the farthest corner.
+            // If the shape is an ellipse, the ending shape is given the same aspect ratio it would have if farthest-side were specified.
+            if (gradient.shape === 0 /* CSSRadialShape.CIRCLE */) {
+                rx = ry = Math.max(distance(x, y), distance(x, y - height), distance(x - width, y), distance(x - width, y - height));
+            }
+            else if (gradient.shape === 1 /* CSSRadialShape.ELLIPSE */) {
+                // Compute the ratio ry/rx (which is to be the same as for "farthest-side")
+                const c = Math.max(Math.abs(y), Math.abs(y - height)) / Math.max(Math.abs(x), Math.abs(x - width));
+                const [cx, cy] = findCorner(width, height, x, y, false);
+                rx = distance(cx - x, (cy - y) / c);
+                ry = c * rx;
+            }
+            break;
+    }
+    if (Array.isArray(gradient.size)) {
+        rx = getAbsoluteValue(gradient.size[0], width);
+        ry = gradient.size.length === 2 ? getAbsoluteValue(gradient.size[1], height) : rx;
+    }
+    return [rx, ry];
+};
+
+const linearGradient = (context, tokens) => {
+    let angle$1 = deg(180);
+    const stops = [];
+    parseFunctionArgs(tokens).forEach((arg, i) => {
+        if (i === 0) {
+            const firstToken = arg[0];
+            if (firstToken.type === 20 /* TokenType.IDENT_TOKEN */ && firstToken.value === 'to') {
+                angle$1 = parseNamedSide(arg);
+                return;
+            }
+            else if (isAngle(firstToken)) {
+                angle$1 = angle.parse(context, firstToken);
+                return;
+            }
+        }
+        const colorStop = parseColorStop(context, arg);
+        stops.push(colorStop);
+    });
+    return { angle: angle$1, stops, type: 1 /* CSSImageType.LINEAR_GRADIENT */ };
+};
+
+const prefixLinearGradient = (context, tokens) => {
+    let angle$1 = deg(180);
+    const stops = [];
+    parseFunctionArgs(tokens).forEach((arg, i) => {
+        if (i === 0) {
+            const firstToken = arg[0];
+            if (firstToken.type === 20 /* TokenType.IDENT_TOKEN */ &&
+                ['top', 'left', 'right', 'bottom'].indexOf(firstToken.value) !== -1) {
+                angle$1 = parseNamedSide(arg);
+                return;
+            }
+            else if (isAngle(firstToken)) {
+                angle$1 = (angle.parse(context, firstToken) + deg(270)) % deg(360);
+                return;
+            }
+        }
+        const colorStop = parseColorStop(context, arg);
+        stops.push(colorStop);
+    });
+    return {
+        angle: angle$1,
+        stops,
+        type: 1 /* CSSImageType.LINEAR_GRADIENT */
+    };
+};
+
+const webkitGradient = (context, tokens) => {
+    const angle = deg(180);
+    const stops = [];
+    let type = 1 /* CSSImageType.LINEAR_GRADIENT */;
+    const shape = 0 /* CSSRadialShape.CIRCLE */;
+    const size = 3 /* CSSRadialExtent.FARTHEST_CORNER */;
+    const position = [];
+    parseFunctionArgs(tokens).forEach((arg, i) => {
+        const firstToken = arg[0];
+        if (i === 0) {
+            if (isIdentToken(firstToken) && firstToken.value === 'linear') {
+                type = 1 /* CSSImageType.LINEAR_GRADIENT */;
+                return;
+            }
+            else if (isIdentToken(firstToken) && firstToken.value === 'radial') {
+                type = 2 /* CSSImageType.RADIAL_GRADIENT */;
+                return;
+            }
+        }
+        if (firstToken.type === 18 /* TokenType.FUNCTION */) {
+            if (firstToken.name === 'from') {
+                const color = color$1.parse(context, firstToken.values[0]);
+                stops.push({ stop: ZERO_LENGTH, color });
+            }
+            else if (firstToken.name === 'to') {
+                const color = color$1.parse(context, firstToken.values[0]);
+                stops.push({ stop: HUNDRED_PERCENT, color });
+            }
+            else if (firstToken.name === 'color-stop') {
+                const values = firstToken.values.filter(nonFunctionArgSeparator);
+                if (values.length === 2) {
+                    const color = color$1.parse(context, values[1]);
+                    const stop = values[0];
+                    if (isNumberToken(stop)) {
+                        stops.push({
+                            stop: { type: 16 /* TokenType.PERCENTAGE_TOKEN */, number: stop.number * 100, flags: stop.flags },
+                            color
+                        });
+                    }
+                }
+            }
+        }
+    });
+    return type === 1 /* CSSImageType.LINEAR_GRADIENT */
+        ? {
+            angle: (angle + deg(180)) % deg(360),
+            stops,
+            type
+        }
+        : { size, shape, stops, position, type };
+};
+
+const CLOSEST_SIDE = 'closest-side';
+const FARTHEST_SIDE = 'farthest-side';
+const CLOSEST_CORNER = 'closest-corner';
+const FARTHEST_CORNER = 'farthest-corner';
+const CIRCLE = 'circle';
+const ELLIPSE = 'ellipse';
+const COVER = 'cover';
+const CONTAIN = 'contain';
+const radialGradient = (context, tokens) => {
+    let shape = 0 /* CSSRadialShape.CIRCLE */;
+    let size = 3 /* CSSRadialExtent.FARTHEST_CORNER */;
+    const stops = [];
+    const position = [];
+    parseFunctionArgs(tokens).forEach((arg, i) => {
+        let isColorStop = true;
+        if (i === 0) {
+            let isAtPosition = false;
+            isColorStop = arg.reduce((acc, token) => {
+                if (isAtPosition) {
+                    if (isIdentToken(token)) {
+                        switch (token.value) {
+                            case 'center':
+                                position.push(FIFTY_PERCENT);
+                                return acc;
+                            case 'top':
+                            case 'left':
+                                position.push(ZERO_LENGTH);
+                                return acc;
+                            case 'right':
+                            case 'bottom':
+                                position.push(HUNDRED_PERCENT);
+                                return acc;
+                        }
+                    }
+                    else if (isLengthPercentage(token) || isLength(token)) {
+                        position.push(token);
+                    }
+                }
+                else if (isIdentToken(token)) {
+                    switch (token.value) {
+                        case CIRCLE:
+                            shape = 0 /* CSSRadialShape.CIRCLE */;
+                            return false;
+                        case ELLIPSE:
+                            shape = 1 /* CSSRadialShape.ELLIPSE */;
+                            return false;
+                        case 'at':
+                            isAtPosition = true;
+                            return false;
+                        case CLOSEST_SIDE:
+                            size = 0 /* CSSRadialExtent.CLOSEST_SIDE */;
+                            return false;
+                        case COVER:
+                        case FARTHEST_SIDE:
+                            size = 1 /* CSSRadialExtent.FARTHEST_SIDE */;
+                            return false;
+                        case CONTAIN:
+                        case CLOSEST_CORNER:
+                            size = 2 /* CSSRadialExtent.CLOSEST_CORNER */;
+                            return false;
+                        case FARTHEST_CORNER:
+                            size = 3 /* CSSRadialExtent.FARTHEST_CORNER */;
+                            return false;
+                    }
+                }
+                else if (isLength(token) || isLengthPercentage(token)) {
+                    if (!Array.isArray(size)) {
+                        size = [];
+                    }
+                    size.push(token);
+                    return false;
+                }
+                return acc;
+            }, isColorStop);
+        }
+        if (isColorStop) {
+            const colorStop = parseColorStop(context, arg);
+            stops.push(colorStop);
+        }
+    });
+    return { size, shape, stops, position, type: 2 /* CSSImageType.RADIAL_GRADIENT */ };
+};
+
+const prefixRadialGradient = (context, tokens) => {
+    let shape = 0 /* CSSRadialShape.CIRCLE */;
+    let size = 3 /* CSSRadialExtent.FARTHEST_CORNER */;
+    const stops = [];
+    const position = [];
+    parseFunctionArgs(tokens).forEach((arg, i) => {
+        let isColorStop = true;
+        if (i === 0) {
+            isColorStop = arg.reduce((acc, token) => {
+                if (isIdentToken(token)) {
+                    switch (token.value) {
+                        case 'center':
+                            position.push(FIFTY_PERCENT);
+                            return false;
+                        case 'top':
+                        case 'left':
+                            position.push(ZERO_LENGTH);
+                            return false;
+                        case 'right':
+                        case 'bottom':
+                            position.push(HUNDRED_PERCENT);
+                            return false;
+                    }
+                }
+                else if (isLengthPercentage(token) || isLength(token)) {
+                    position.push(token);
+                    return false;
+                }
+                return acc;
+            }, isColorStop);
+        }
+        else if (i === 1) {
+            isColorStop = arg.reduce((acc, token) => {
+                if (isIdentToken(token)) {
+                    switch (token.value) {
+                        case CIRCLE:
+                            shape = 0 /* CSSRadialShape.CIRCLE */;
+                            return false;
+                        case ELLIPSE:
+                            shape = 1 /* CSSRadialShape.ELLIPSE */;
+                            return false;
+                        case CONTAIN:
+                        case CLOSEST_SIDE:
+                            size = 0 /* CSSRadialExtent.CLOSEST_SIDE */;
+                            return false;
+                        case FARTHEST_SIDE:
+                            size = 1 /* CSSRadialExtent.FARTHEST_SIDE */;
+                            return false;
+                        case CLOSEST_CORNER:
+                            size = 2 /* CSSRadialExtent.CLOSEST_CORNER */;
+                            return false;
+                        case COVER:
+                        case FARTHEST_CORNER:
+                            size = 3 /* CSSRadialExtent.FARTHEST_CORNER */;
+                            return false;
+                    }
+                }
+                else if (isLength(token) || isLengthPercentage(token)) {
+                    if (!Array.isArray(size)) {
+                        size = [];
+                    }
+                    size.push(token);
+                    return false;
+                }
+                return acc;
+            }, isColorStop);
+        }
+        if (isColorStop) {
+            const colorStop = parseColorStop(context, arg);
+            stops.push(colorStop);
+        }
+    });
+    return { size, shape, stops, position, type: 2 /* CSSImageType.RADIAL_GRADIENT */ };
+};
+
+const isLinearGradient = (background) => {
+    return background.type === 1 /* CSSImageType.LINEAR_GRADIENT */;
+};
+const isRadialGradient = (background) => {
+    return background.type === 2 /* CSSImageType.RADIAL_GRADIENT */;
+};
+const image = {
+    name: 'image',
+    parse: (context, value) => {
+        if (value.type === 22 /* TokenType.URL_TOKEN */) {
+            const image = { url: value.value, type: 0 /* CSSImageType.URL */ };
+            context.cache.addImage(value.value);
+            return image;
+        }
+        if (value.type === 18 /* TokenType.FUNCTION */) {
+            const imageFunction = SUPPORTED_IMAGE_FUNCTIONS[value.name];
+            if (typeof imageFunction === 'undefined') {
+                throw new Error(`Attempting to parse an unsupported image function "${value.name}"`);
+            }
+            return imageFunction(context, value.values);
+        }
+        throw new Error(`Unsupported image type ${value.type}`);
+    }
+};
+function isSupportedImage(value) {
+    return (!(value.type === 20 /* TokenType.IDENT_TOKEN */ && value.value === 'none') &&
+        (value.type !== 18 /* TokenType.FUNCTION */ || !!SUPPORTED_IMAGE_FUNCTIONS[value.name]));
+}
+const SUPPORTED_IMAGE_FUNCTIONS = {
+    'linear-gradient': linearGradient,
+    '-moz-linear-gradient': prefixLinearGradient,
+    '-ms-linear-gradient': prefixLinearGradient,
+    '-o-linear-gradient': prefixLinearGradient,
+    '-webkit-linear-gradient': prefixLinearGradient,
+    'radial-gradient': radialGradient,
+    '-moz-radial-gradient': prefixRadialGradient,
+    '-ms-radial-gradient': prefixRadialGradient,
+    '-o-radial-gradient': prefixRadialGradient,
+    '-webkit-radial-gradient': prefixRadialGradient,
+    '-webkit-gradient': webkitGradient
+};
+
+const backgroundImage = {
+    name: 'background-image',
+    initialValue: 'none',
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    prefix: false,
+    parse: (context, tokens) => {
+        if (tokens.length === 0) {
+            return [];
+        }
+        const first = tokens[0];
+        if (first.type === 20 /* TokenType.IDENT_TOKEN */ && first.value === 'none') {
+            return [];
+        }
+        return tokens
+            .filter((value) => nonFunctionArgSeparator(value) && isSupportedImage(value))
+            .map((value) => image.parse(context, value));
+    }
+};
+
+const backgroundOrigin = {
+    name: 'background-origin',
+    initialValue: 'border-box',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: (_context, tokens) => {
+        return tokens.map((token) => {
+            if (isIdentToken(token)) {
+                switch (token.value) {
+                    case 'padding-box':
+                        return 1 /* BACKGROUND_ORIGIN.PADDING_BOX */;
+                    case 'content-box':
+                        return 2 /* BACKGROUND_ORIGIN.CONTENT_BOX */;
+                }
+            }
+            return 0 /* BACKGROUND_ORIGIN.BORDER_BOX */;
+        });
+    }
+};
+
+const backgroundPosition = {
+    name: 'background-position',
+    initialValue: '0% 0%',
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    prefix: false,
+    parse: (_context, tokens) => {
+        return parseFunctionArgs(tokens)
+            .map((values) => {
+            // Convert calc() to length-percentage tokens, keep other length-percentage as is
+            return values
+                .map((value) => {
+                if (isCalcFunction(value)) {
+                    // For calc() at parse time, we can't know the container size
+                    // So we evaluate with 0 context which will work for px-only calc()
+                    // Percentage-based calc() will need special handling
+                    return evaluateCalcToLengthPercentage(value, 0);
+                }
+                return isLengthPercentage(value) ? value : null;
+            })
+                .filter((v) => v !== null);
+        })
+            .map(parseLengthPercentageTuple);
+    }
+};
+
+const backgroundRepeat = {
+    name: 'background-repeat',
+    initialValue: 'repeat',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: (_context, tokens) => {
+        return parseFunctionArgs(tokens)
+            .map((values) => values
+            .filter(isIdentToken)
+            .map((token) => token.value)
+            .join(' '))
+            .map(parseBackgroundRepeat);
+    }
+};
+const parseBackgroundRepeat = (value) => {
+    switch (value) {
+        case 'no-repeat':
+            return 1 /* BACKGROUND_REPEAT.NO_REPEAT */;
+        case 'repeat-x':
+        case 'repeat no-repeat':
+            return 2 /* BACKGROUND_REPEAT.REPEAT_X */;
+        case 'repeat-y':
+        case 'no-repeat repeat':
+            return 3 /* BACKGROUND_REPEAT.REPEAT_Y */;
+        case 'repeat':
+        default:
+            return 0 /* BACKGROUND_REPEAT.REPEAT */;
+    }
+};
+
+var BACKGROUND_SIZE;
+(function (BACKGROUND_SIZE) {
+    BACKGROUND_SIZE["AUTO"] = "auto";
+    BACKGROUND_SIZE["CONTAIN"] = "contain";
+    BACKGROUND_SIZE["COVER"] = "cover";
+})(BACKGROUND_SIZE || (BACKGROUND_SIZE = {}));
+const backgroundSize = {
+    name: 'background-size',
+    initialValue: '0',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: (_context, tokens) => {
+        return parseFunctionArgs(tokens).map((values) => values.filter(isBackgroundSizeInfoToken));
+    }
+};
+const isBackgroundSizeInfoToken = (value) => isIdentToken(value) || isLengthPercentage(value);
+
+const borderColorForSide = (side) => ({
+    name: `border-${side}-color`,
+    initialValue: 'transparent',
+    prefix: false,
+    type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
+    format: 'color'
+});
+const borderTopColor = borderColorForSide('top');
+const borderRightColor = borderColorForSide('right');
+const borderBottomColor = borderColorForSide('bottom');
+const borderLeftColor = borderColorForSide('left');
+
+const borderRadiusForSide = (side) => ({
+    name: `border-radius-${side}`,
+    initialValue: '0 0',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: (_context, tokens) => parseLengthPercentageTuple(tokens.filter(isLengthPercentage))
+});
+const borderTopLeftRadius = borderRadiusForSide('top-left');
+const borderTopRightRadius = borderRadiusForSide('top-right');
+const borderBottomRightRadius = borderRadiusForSide('bottom-right');
+const borderBottomLeftRadius = borderRadiusForSide('bottom-left');
+
+const borderStyleForSide = (side) => ({
+    name: `border-${side}-style`,
+    initialValue: 'solid',
+    prefix: false,
+    type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+    parse: (_context, style) => {
+        switch (style) {
+            case 'none':
+                return 0 /* BORDER_STYLE.NONE */;
+            case 'dashed':
+                return 2 /* BORDER_STYLE.DASHED */;
+            case 'dotted':
+                return 3 /* BORDER_STYLE.DOTTED */;
+            case 'double':
+                return 4 /* BORDER_STYLE.DOUBLE */;
+        }
+        return 1 /* BORDER_STYLE.SOLID */;
+    }
+});
+const borderTopStyle = borderStyleForSide('top');
+const borderRightStyle = borderStyleForSide('right');
+const borderBottomStyle = borderStyleForSide('bottom');
+const borderLeftStyle = borderStyleForSide('left');
+
+const borderWidthForSide = (side) => ({
+    name: `border-${side}-width`,
+    initialValue: '0',
+    type: 0 /* PropertyDescriptorParsingType.VALUE */,
+    prefix: false,
+    parse: (_context, token) => {
+        if (isDimensionToken(token)) {
+            return token.number;
+        }
+        return 0;
+    }
+});
+const borderTopWidth = borderWidthForSide('top');
+const borderRightWidth = borderWidthForSide('right');
+const borderBottomWidth = borderWidthForSide('bottom');
+const borderLeftWidth = borderWidthForSide('left');
+
+const color = {
+    name: `color`,
+    initialValue: 'transparent',
+    prefix: false,
+    type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
+    format: 'color'
+};
+
+const direction = {
+    name: 'direction',
+    initialValue: 'ltr',
+    prefix: false,
+    type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+    parse: (_context, direction) => {
+        switch (direction) {
+            case 'rtl':
+                return 1 /* DIRECTION.RTL */;
+            case 'ltr':
+            default:
+                return 0 /* DIRECTION.LTR */;
+        }
+    }
+};
+
+const display = {
+    name: 'display',
+    initialValue: 'inline-block',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: (_context, tokens) => {
+        return tokens.filter(isIdentToken).reduce((bit, token) => {
+            return bit | parseDisplayValue$1(token.value);
+        }, 0 /* DISPLAY.NONE */);
+    }
+};
+const parseDisplayValue$1 = (display) => {
+    switch (display) {
+        case 'block':
+        case '-webkit-box':
+            return 2 /* DISPLAY.BLOCK */;
+        case 'inline':
+            return 4 /* DISPLAY.INLINE */;
+        case 'run-in':
+            return 8 /* DISPLAY.RUN_IN */;
+        case 'flow':
+            return 16 /* DISPLAY.FLOW */;
+        case 'flow-root':
+            return 32 /* DISPLAY.FLOW_ROOT */;
+        case 'table':
+            return 64 /* DISPLAY.TABLE */;
+        case 'flex':
+        case '-webkit-flex':
+            return 128 /* DISPLAY.FLEX */;
+        case 'grid':
+        case '-ms-grid':
+            return 256 /* DISPLAY.GRID */;
+        case 'ruby':
+            return 512 /* DISPLAY.RUBY */;
+        case 'subgrid':
+            return 1024 /* DISPLAY.SUBGRID */;
+        case 'list-item':
+            return 2048 /* DISPLAY.LIST_ITEM */;
+        case 'table-row-group':
+            return 4096 /* DISPLAY.TABLE_ROW_GROUP */;
+        case 'table-header-group':
+            return 8192 /* DISPLAY.TABLE_HEADER_GROUP */;
+        case 'table-footer-group':
+            return 16384 /* DISPLAY.TABLE_FOOTER_GROUP */;
+        case 'table-row':
+            return 32768 /* DISPLAY.TABLE_ROW */;
+        case 'table-cell':
+            return 65536 /* DISPLAY.TABLE_CELL */;
+        case 'table-column-group':
+            return 131072 /* DISPLAY.TABLE_COLUMN_GROUP */;
+        case 'table-column':
+            return 262144 /* DISPLAY.TABLE_COLUMN */;
+        case 'table-caption':
+            return 524288 /* DISPLAY.TABLE_CAPTION */;
+        case 'ruby-base':
+            return 1048576 /* DISPLAY.RUBY_BASE */;
+        case 'ruby-text':
+            return 2097152 /* DISPLAY.RUBY_TEXT */;
+        case 'ruby-base-container':
+            return 4194304 /* DISPLAY.RUBY_BASE_CONTAINER */;
+        case 'ruby-text-container':
+            return 8388608 /* DISPLAY.RUBY_TEXT_CONTAINER */;
+        case 'contents':
+            return 16777216 /* DISPLAY.CONTENTS */;
+        case 'inline-block':
+            return 33554432 /* DISPLAY.INLINE_BLOCK */;
+        case 'inline-list-item':
+            return 67108864 /* DISPLAY.INLINE_LIST_ITEM */;
+        case 'inline-table':
+            return 134217728 /* DISPLAY.INLINE_TABLE */;
+        case 'inline-flex':
+            return 268435456 /* DISPLAY.INLINE_FLEX */;
+        case 'inline-grid':
+            return 536870912 /* DISPLAY.INLINE_GRID */;
+    }
+    return 0 /* DISPLAY.NONE */;
+};
+
+const float = {
+    name: 'float',
+    initialValue: 'none',
+    prefix: false,
+    type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+    parse: (_context, float) => {
+        switch (float) {
+            case 'left':
+                return 1 /* FLOAT.LEFT */;
+            case 'right':
+                return 2 /* FLOAT.RIGHT */;
+            case 'inline-start':
+                return 3 /* FLOAT.INLINE_START */;
+            case 'inline-end':
+                return 4 /* FLOAT.INLINE_END */;
+        }
+        return 0 /* FLOAT.NONE */;
+    }
+};
+
+const letterSpacing = {
+    name: 'letter-spacing',
+    initialValue: '0',
+    prefix: false,
+    type: 0 /* PropertyDescriptorParsingType.VALUE */,
+    parse: (_context, token) => {
+        if (token.type === 20 /* TokenType.IDENT_TOKEN */ && token.value === 'normal') {
+            return 0;
+        }
+        if (token.type === 17 /* TokenType.NUMBER_TOKEN */) {
+            return token.number;
+        }
+        if (token.type === 15 /* TokenType.DIMENSION_TOKEN */) {
+            return token.number;
+        }
+        return 0;
+    }
+};
+
+var LINE_BREAK;
+(function (LINE_BREAK) {
+    LINE_BREAK["NORMAL"] = "normal";
+    LINE_BREAK["STRICT"] = "strict";
+})(LINE_BREAK || (LINE_BREAK = {}));
+const lineBreak = {
+    name: 'line-break',
+    initialValue: 'normal',
+    prefix: false,
+    type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+    parse: (_context, lineBreak) => {
+        switch (lineBreak) {
+            case 'strict':
+                return LINE_BREAK.STRICT;
+            case 'normal':
+            default:
+                return LINE_BREAK.NORMAL;
+        }
+    }
+};
+
+const lineHeight = {
+    name: 'line-height',
+    initialValue: 'normal',
+    prefix: false,
+    type: 4 /* PropertyDescriptorParsingType.TOKEN_VALUE */
+};
+const computeLineHeight = (token, fontSize) => {
+    if (isIdentToken(token) && token.value === 'normal') {
+        return 1.2 * fontSize;
+    }
+    else if (token.type === 17 /* TokenType.NUMBER_TOKEN */) {
+        return fontSize * token.number;
+    }
+    else if (isLengthPercentage(token)) {
+        return getAbsoluteValue(token, fontSize);
+    }
+    return fontSize;
+};
+
+const listStyleImage = {
+    name: 'list-style-image',
+    initialValue: 'none',
+    type: 0 /* PropertyDescriptorParsingType.VALUE */,
+    prefix: false,
+    parse: (context, token) => {
+        if (token.type === 20 /* TokenType.IDENT_TOKEN */ && token.value === 'none') {
+            return null;
+        }
+        return image.parse(context, token);
+    }
+};
+
+const listStylePosition = {
+    name: 'list-style-position',
+    initialValue: 'outside',
+    prefix: false,
+    type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+    parse: (_context, position) => {
+        switch (position) {
+            case 'inside':
+                return 0 /* LIST_STYLE_POSITION.INSIDE */;
+            case 'outside':
+            default:
+                return 1 /* LIST_STYLE_POSITION.OUTSIDE */;
+        }
+    }
+};
+
+const listStyleType = {
+    name: 'list-style-type',
+    initialValue: 'none',
+    prefix: false,
+    type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+    parse: (_context, type) => {
+        switch (type) {
+            case 'disc':
+                return 0 /* LIST_STYLE_TYPE.DISC */;
+            case 'circle':
+                return 1 /* LIST_STYLE_TYPE.CIRCLE */;
+            case 'square':
+                return 2 /* LIST_STYLE_TYPE.SQUARE */;
+            case 'decimal':
+                return 3 /* LIST_STYLE_TYPE.DECIMAL */;
+            case 'cjk-decimal':
+                return 4 /* LIST_STYLE_TYPE.CJK_DECIMAL */;
+            case 'decimal-leading-zero':
+                return 5 /* LIST_STYLE_TYPE.DECIMAL_LEADING_ZERO */;
+            case 'lower-roman':
+                return 6 /* LIST_STYLE_TYPE.LOWER_ROMAN */;
+            case 'upper-roman':
+                return 7 /* LIST_STYLE_TYPE.UPPER_ROMAN */;
+            case 'lower-greek':
+                return 8 /* LIST_STYLE_TYPE.LOWER_GREEK */;
+            case 'lower-alpha':
+                return 9 /* LIST_STYLE_TYPE.LOWER_ALPHA */;
+            case 'upper-alpha':
+                return 10 /* LIST_STYLE_TYPE.UPPER_ALPHA */;
+            case 'arabic-indic':
+                return 11 /* LIST_STYLE_TYPE.ARABIC_INDIC */;
+            case 'armenian':
+                return 12 /* LIST_STYLE_TYPE.ARMENIAN */;
+            case 'bengali':
+                return 13 /* LIST_STYLE_TYPE.BENGALI */;
+            case 'cambodian':
+                return 14 /* LIST_STYLE_TYPE.CAMBODIAN */;
+            case 'cjk-earthly-branch':
+                return 15 /* LIST_STYLE_TYPE.CJK_EARTHLY_BRANCH */;
+            case 'cjk-heavenly-stem':
+                return 16 /* LIST_STYLE_TYPE.CJK_HEAVENLY_STEM */;
+            case 'cjk-ideographic':
+                return 17 /* LIST_STYLE_TYPE.CJK_IDEOGRAPHIC */;
+            case 'devanagari':
+                return 18 /* LIST_STYLE_TYPE.DEVANAGARI */;
+            case 'ethiopic-numeric':
+                return 19 /* LIST_STYLE_TYPE.ETHIOPIC_NUMERIC */;
+            case 'georgian':
+                return 20 /* LIST_STYLE_TYPE.GEORGIAN */;
+            case 'gujarati':
+                return 21 /* LIST_STYLE_TYPE.GUJARATI */;
+            case 'gurmukhi':
+                return 22 /* LIST_STYLE_TYPE.GURMUKHI */;
+            case 'hebrew':
+                return 52 /* LIST_STYLE_TYPE.HEBREW */;
+            case 'hiragana':
+                return 23 /* LIST_STYLE_TYPE.HIRAGANA */;
+            case 'hiragana-iroha':
+                return 24 /* LIST_STYLE_TYPE.HIRAGANA_IROHA */;
+            case 'japanese-formal':
+                return 25 /* LIST_STYLE_TYPE.JAPANESE_FORMAL */;
+            case 'japanese-informal':
+                return 26 /* LIST_STYLE_TYPE.JAPANESE_INFORMAL */;
+            case 'kannada':
+                return 27 /* LIST_STYLE_TYPE.KANNADA */;
+            case 'katakana':
+                return 28 /* LIST_STYLE_TYPE.KATAKANA */;
+            case 'katakana-iroha':
+                return 29 /* LIST_STYLE_TYPE.KATAKANA_IROHA */;
+            case 'khmer':
+                return 30 /* LIST_STYLE_TYPE.KHMER */;
+            case 'korean-hangul-formal':
+                return 31 /* LIST_STYLE_TYPE.KOREAN_HANGUL_FORMAL */;
+            case 'korean-hanja-formal':
+                return 32 /* LIST_STYLE_TYPE.KOREAN_HANJA_FORMAL */;
+            case 'korean-hanja-informal':
+                return 33 /* LIST_STYLE_TYPE.KOREAN_HANJA_INFORMAL */;
+            case 'lao':
+                return 34 /* LIST_STYLE_TYPE.LAO */;
+            case 'lower-armenian':
+                return 35 /* LIST_STYLE_TYPE.LOWER_ARMENIAN */;
+            case 'malayalam':
+                return 36 /* LIST_STYLE_TYPE.MALAYALAM */;
+            case 'mongolian':
+                return 37 /* LIST_STYLE_TYPE.MONGOLIAN */;
+            case 'myanmar':
+                return 38 /* LIST_STYLE_TYPE.MYANMAR */;
+            case 'oriya':
+                return 39 /* LIST_STYLE_TYPE.ORIYA */;
+            case 'persian':
+                return 40 /* LIST_STYLE_TYPE.PERSIAN */;
+            case 'simp-chinese-formal':
+                return 41 /* LIST_STYLE_TYPE.SIMP_CHINESE_FORMAL */;
+            case 'simp-chinese-informal':
+                return 42 /* LIST_STYLE_TYPE.SIMP_CHINESE_INFORMAL */;
+            case 'tamil':
+                return 43 /* LIST_STYLE_TYPE.TAMIL */;
+            case 'telugu':
+                return 44 /* LIST_STYLE_TYPE.TELUGU */;
+            case 'thai':
+                return 45 /* LIST_STYLE_TYPE.THAI */;
+            case 'tibetan':
+                return 46 /* LIST_STYLE_TYPE.TIBETAN */;
+            case 'trad-chinese-formal':
+                return 47 /* LIST_STYLE_TYPE.TRAD_CHINESE_FORMAL */;
+            case 'trad-chinese-informal':
+                return 48 /* LIST_STYLE_TYPE.TRAD_CHINESE_INFORMAL */;
+            case 'upper-armenian':
+                return 49 /* LIST_STYLE_TYPE.UPPER_ARMENIAN */;
+            case 'disclosure-open':
+                return 50 /* LIST_STYLE_TYPE.DISCLOSURE_OPEN */;
+            case 'disclosure-closed':
+                return 51 /* LIST_STYLE_TYPE.DISCLOSURE_CLOSED */;
+            case 'none':
+            default:
+                return -1 /* LIST_STYLE_TYPE.NONE */;
+        }
+    }
+};
+
+const marginForSide = (side) => ({
+    name: `margin-${side}`,
+    initialValue: '0',
+    prefix: false,
+    type: 4 /* PropertyDescriptorParsingType.TOKEN_VALUE */
+});
+const marginTop = marginForSide('top');
+const marginRight = marginForSide('right');
+const marginBottom = marginForSide('bottom');
+const marginLeft = marginForSide('left');
+
+const overflow = {
+    name: 'overflow',
+    initialValue: 'visible',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: (_context, tokens) => {
+        return tokens.filter(isIdentToken).map((overflow) => {
+            switch (overflow.value) {
+                case 'hidden':
+                    return 1 /* OVERFLOW.HIDDEN */;
+                case 'scroll':
+                    return 2 /* OVERFLOW.SCROLL */;
+                case 'clip':
+                    return 3 /* OVERFLOW.CLIP */;
+                case 'auto':
+                    return 4 /* OVERFLOW.AUTO */;
+                case 'visible':
+                default:
+                    return 0 /* OVERFLOW.VISIBLE */;
+            }
+        });
+    }
+};
+
+const overflowWrap = {
+    name: 'overflow-wrap',
+    initialValue: 'normal',
+    prefix: false,
+    type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+    parse: (_context, overflow) => {
+        switch (overflow) {
+            case 'break-word':
+                return "break-word" /* OVERFLOW_WRAP.BREAK_WORD */;
+            case 'normal':
+            default:
+                return "normal" /* OVERFLOW_WRAP.NORMAL */;
+        }
+    }
+};
+
+const paddingForSide = (side) => ({
+    name: `padding-${side}`,
+    initialValue: '0',
+    prefix: false,
+    type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
+    format: 'length-percentage'
+});
+const paddingTop = paddingForSide('top');
+const paddingRight = paddingForSide('right');
+const paddingBottom = paddingForSide('bottom');
+const paddingLeft = paddingForSide('left');
+
+const textAlign = {
+    name: 'text-align',
+    initialValue: 'left',
+    prefix: false,
+    type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+    parse: (_context, textAlign) => {
+        switch (textAlign) {
+            case 'right':
+                return 2 /* TEXT_ALIGN.RIGHT */;
+            case 'center':
+            case 'justify':
+                return 1 /* TEXT_ALIGN.CENTER */;
+            case 'left':
+            default:
+                return 0 /* TEXT_ALIGN.LEFT */;
+        }
+    }
+};
+
+const position = {
+    name: 'position',
+    initialValue: 'static',
+    prefix: false,
+    type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+    parse: (_context, position) => {
+        switch (position) {
+            case 'relative':
+                return 1 /* POSITION.RELATIVE */;
+            case 'absolute':
+                return 2 /* POSITION.ABSOLUTE */;
+            case 'fixed':
+                return 3 /* POSITION.FIXED */;
+            case 'sticky':
+                return 4 /* POSITION.STICKY */;
+        }
+        return 0 /* POSITION.STATIC */;
+    }
+};
+
+const textShadow = {
+    name: 'text-shadow',
+    initialValue: 'none',
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    prefix: false,
+    parse: (context, tokens) => {
+        if (tokens.length === 1 && isIdentWithValue(tokens[0], 'none')) {
+            return [];
+        }
+        return parseFunctionArgs(tokens).map((values) => {
+            const shadow = {
+                color: COLORS.TRANSPARENT,
+                offsetX: ZERO_LENGTH,
+                offsetY: ZERO_LENGTH,
+                blur: ZERO_LENGTH
+            };
+            let c = 0;
+            for (let i = 0; i < values.length; i++) {
+                const token = values[i];
+                if (isLength(token)) {
+                    if (c === 0) {
+                        shadow.offsetX = token;
+                    }
+                    else if (c === 1) {
+                        shadow.offsetY = token;
+                    }
+                    else {
+                        shadow.blur = token;
+                    }
+                    c++;
+                }
+                else {
+                    shadow.color = color$1.parse(context, token);
+                }
+            }
+            return shadow;
+        });
+    }
+};
+
+const textTransform = {
+    name: 'text-transform',
+    initialValue: 'none',
+    prefix: false,
+    type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+    parse: (_context, textTransform) => {
+        switch (textTransform) {
+            case 'uppercase':
+                return 2 /* TEXT_TRANSFORM.UPPERCASE */;
+            case 'lowercase':
+                return 1 /* TEXT_TRANSFORM.LOWERCASE */;
+            case 'capitalize':
+                return 3 /* TEXT_TRANSFORM.CAPITALIZE */;
+        }
+        return 0 /* TEXT_TRANSFORM.NONE */;
+    }
+};
+
+const transform$1 = {
+    name: 'transform',
+    initialValue: 'none',
+    prefix: true,
+    type: 0 /* PropertyDescriptorParsingType.VALUE */,
+    parse: (_context, token) => {
+        if (token.type === 20 /* TokenType.IDENT_TOKEN */ && token.value === 'none') {
+            return null;
+        }
+        if (token.type === 18 /* TokenType.FUNCTION */) {
+            const transformFunction = SUPPORTED_TRANSFORM_FUNCTIONS[token.name];
+            if (typeof transformFunction === 'undefined') {
+                throw new Error(`Attempting to parse an unsupported transform function "${token.name}"`);
+            }
+            return transformFunction(_context, token.values);
+        }
+        return null;
+    }
+};
+const matrix = (_context, args) => {
+    const values = args.filter((arg) => arg.type === 17 /* TokenType.NUMBER_TOKEN */).map((arg) => arg.number);
+    return values.length === 6 ? values : null;
+};
+// doesn't support 3D transforms at the moment
+const matrix3d = (_context, args) => {
+    const values = args.filter((arg) => arg.type === 17 /* TokenType.NUMBER_TOKEN */).map((arg) => arg.number);
+    const [a1, b1, {}, {}, a2, b2, {}, {}, {}, {}, {}, {}, a4, b4] = values;
+    return values.length === 16 ? [a1, b1, a2, b2, a4, b4] : null;
+};
+const rotate$1 = (context, args) => {
+    if (args.length !== 1) {
+        return null;
+    }
+    const arg = args[0];
+    let radians = 0;
+    if (arg.type === 17 /* TokenType.NUMBER_TOKEN */ && arg.number === 0) {
+        radians = 0;
+    }
+    else if (arg.type === 15 /* TokenType.DIMENSION_TOKEN */) {
+        radians = angle.parse(context, arg);
+    }
+    else {
+        return null;
+    }
+    const cos = Math.cos(radians);
+    const sin = Math.sin(radians);
+    return [cos, sin, -sin, cos, 0, 0];
+};
+const SUPPORTED_TRANSFORM_FUNCTIONS = {
+    matrix: matrix,
+    matrix3d: matrix3d,
+    rotate: rotate$1
+};
+
+const DEFAULT_VALUE = {
+    type: 16 /* TokenType.PERCENTAGE_TOKEN */,
+    number: 50,
+    flags: FLAG_INTEGER
+};
+const DEFAULT = [DEFAULT_VALUE, DEFAULT_VALUE];
+const transformOrigin = {
+    name: 'transform-origin',
+    initialValue: '50% 50%',
+    prefix: true,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: (_context, tokens) => {
+        const origins = tokens.filter(isLengthPercentage);
+        if (origins.length !== 2) {
+            return DEFAULT;
+        }
+        return [origins[0], origins[1]];
+    }
+};
+
+const rotate = {
+    name: 'rotate',
+    initialValue: 'none',
+    prefix: false,
+    type: 0 /* PropertyDescriptorParsingType.VALUE */,
+    parse: (_context, token) => {
+        if (token.type === 20 /* TokenType.IDENT_TOKEN */ && token.value === 'none') {
+            return null;
+        }
+        if (token.type === 17 /* TokenType.NUMBER_TOKEN */) {
+            if (token.number === 0) {
+                return 0;
+            }
+        }
+        if (token.type === 15 /* TokenType.DIMENSION_TOKEN */) {
+            // Parse angle and convert to degrees for storage
+            const radians = angle.parse(_context, token);
+            // Store as degrees for consistency
+            return (radians * 180) / Math.PI;
+        }
+        return null;
+    }
+};
+
+const visibility = {
+    name: 'visible',
+    initialValue: 'none',
+    prefix: false,
+    type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+    parse: (_context, visibility) => {
+        switch (visibility) {
+            case 'hidden':
+                return 1 /* VISIBILITY.HIDDEN */;
+            case 'collapse':
+                return 2 /* VISIBILITY.COLLAPSE */;
+            case 'visible':
+            default:
+                return 0 /* VISIBILITY.VISIBLE */;
+        }
+    }
+};
+
+var WORD_BREAK;
+(function (WORD_BREAK) {
+    WORD_BREAK["NORMAL"] = "normal";
+    WORD_BREAK["BREAK_ALL"] = "break-all";
+    WORD_BREAK["KEEP_ALL"] = "keep-all";
+})(WORD_BREAK || (WORD_BREAK = {}));
+const wordBreak = {
+    name: 'word-break',
+    initialValue: 'normal',
+    prefix: false,
+    type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+    parse: (_context, wordBreak) => {
+        switch (wordBreak) {
+            case 'break-all':
+                return WORD_BREAK.BREAK_ALL;
+            case 'keep-all':
+                return WORD_BREAK.KEEP_ALL;
+            case 'normal':
+            default:
+                return WORD_BREAK.NORMAL;
+        }
+    }
+};
+
+const zIndex = {
+    name: 'z-index',
+    initialValue: 'auto',
+    prefix: false,
+    type: 0 /* PropertyDescriptorParsingType.VALUE */,
+    parse: (_context, token) => {
+        if (token.type === 20 /* TokenType.IDENT_TOKEN */) {
+            return { auto: true, order: 0 };
+        }
+        if (isNumberToken(token)) {
+            return { auto: false, order: token.number };
+        }
+        throw new Error(`Invalid z-index number parsed`);
+    }
+};
+
+const time = {
+    name: 'time',
+    parse: (_context, value) => {
+        if (value.type === 15 /* TokenType.DIMENSION_TOKEN */) {
+            switch (value.unit.toLowerCase()) {
+                case 's':
+                    return 1000 * value.number;
+                case 'ms':
+                    return value.number;
+            }
+        }
+        throw new Error(`Unsupported time type`);
+    }
+};
+
+const opacity = {
+    name: 'opacity',
+    initialValue: '1',
+    type: 0 /* PropertyDescriptorParsingType.VALUE */,
+    prefix: false,
+    parse: (_context, token) => {
+        if (isNumberToken(token)) {
+            return token.number;
+        }
+        return 1;
+    }
+};
+
+const textDecorationColor = {
+    name: `text-decoration-color`,
+    initialValue: 'transparent',
+    prefix: false,
+    type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
+    format: 'color'
+};
+
+const textDecorationLine = {
+    name: 'text-decoration-line',
+    initialValue: 'none',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: (_context, tokens) => {
+        return tokens
+            .filter(isIdentToken)
+            .map((token) => {
+            switch (token.value) {
+                case 'underline':
+                    return 1 /* TEXT_DECORATION_LINE.UNDERLINE */;
+                case 'overline':
+                    return 2 /* TEXT_DECORATION_LINE.OVERLINE */;
+                case 'line-through':
+                    return 3 /* TEXT_DECORATION_LINE.LINE_THROUGH */;
+                case 'none':
+                    return 4 /* TEXT_DECORATION_LINE.BLINK */;
+            }
+            return 0 /* TEXT_DECORATION_LINE.NONE */;
+        })
+            .filter((line) => line !== 0 /* TEXT_DECORATION_LINE.NONE */);
+    }
+};
+
+const fontFamily = {
+    name: `font-family`,
+    initialValue: '',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: (_context, tokens) => {
+        const accumulator = [];
+        const results = [];
+        tokens.forEach((token) => {
+            switch (token.type) {
+                case 20 /* TokenType.IDENT_TOKEN */:
+                case 0 /* TokenType.STRING_TOKEN */:
+                    accumulator.push(token.value);
+                    break;
+                case 17 /* TokenType.NUMBER_TOKEN */:
+                    accumulator.push(token.number.toString());
+                    break;
+                case 4 /* TokenType.COMMA_TOKEN */:
+                    results.push(accumulator.join(' '));
+                    accumulator.length = 0;
+                    break;
+            }
+        });
+        if (accumulator.length) {
+            results.push(accumulator.join(' '));
+        }
+        return results.map((result) => (result.indexOf(' ') === -1 ? result : `'${result}'`));
+    }
+};
+
+const fontSize = {
+    name: `font-size`,
+    initialValue: '0',
+    prefix: false,
+    type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
+    format: 'length'
+};
+
+const fontWeight = {
+    name: 'font-weight',
+    initialValue: 'normal',
+    type: 0 /* PropertyDescriptorParsingType.VALUE */,
+    prefix: false,
+    parse: (_context, token) => {
+        if (isNumberToken(token)) {
+            return token.number;
+        }
+        if (isIdentToken(token)) {
+            switch (token.value) {
+                case 'bold':
+                    return 700;
+                case 'normal':
+                default:
+                    return 400;
+            }
+        }
+        return 400;
+    }
+};
+
+const fontVariant = {
+    name: 'font-variant',
+    initialValue: 'none',
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    prefix: false,
+    parse: (_context, tokens) => {
+        return tokens.filter(isIdentToken).map((token) => token.value);
+    }
+};
+
+const fontStyle = {
+    name: 'font-style',
+    initialValue: 'normal',
+    prefix: false,
+    type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+    parse: (_context, overflow) => {
+        switch (overflow) {
+            case 'oblique':
+                return "oblique" /* FONT_STYLE.OBLIQUE */;
+            case 'italic':
+                return "italic" /* FONT_STYLE.ITALIC */;
+            case 'normal':
+            default:
+                return "normal" /* FONT_STYLE.NORMAL */;
+        }
+    }
+};
+
+const contains = (bit, value) => (bit & value) !== 0;
+
+const content = {
+    name: 'content',
+    initialValue: 'none',
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    prefix: false,
+    parse: (_context, tokens) => {
+        if (tokens.length === 0) {
+            return [];
+        }
+        const first = tokens[0];
+        if (first.type === 20 /* TokenType.IDENT_TOKEN */ && first.value === 'none') {
+            return [];
+        }
+        return tokens;
+    }
+};
+
+const counterIncrement = {
+    name: 'counter-increment',
+    initialValue: 'none',
+    prefix: true,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: (_context, tokens) => {
+        if (tokens.length === 0) {
+            return null;
+        }
+        const first = tokens[0];
+        if (first.type === 20 /* TokenType.IDENT_TOKEN */ && first.value === 'none') {
+            return null;
+        }
+        const increments = [];
+        const filtered = tokens.filter(nonWhiteSpace);
+        for (let i = 0; i < filtered.length; i++) {
+            const counter = filtered[i];
+            const next = filtered[i + 1];
+            if (counter.type === 20 /* TokenType.IDENT_TOKEN */) {
+                const increment = next && isNumberToken(next) ? next.number : 1;
+                increments.push({ counter: counter.value, increment });
+            }
+        }
+        return increments;
+    }
+};
+
+const counterReset = {
+    name: 'counter-reset',
+    initialValue: 'none',
+    prefix: true,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: (_context, tokens) => {
+        if (tokens.length === 0) {
+            return [];
+        }
+        const resets = [];
+        const filtered = tokens.filter(nonWhiteSpace);
+        for (let i = 0; i < filtered.length; i++) {
+            const counter = filtered[i];
+            const next = filtered[i + 1];
+            if (isIdentToken(counter) && counter.value !== 'none') {
+                const reset = next && isNumberToken(next) ? next.number : 0;
+                resets.push({ counter: counter.value, reset });
+            }
+        }
+        return resets;
+    }
+};
+
+const duration = {
+    name: 'duration',
+    initialValue: '0s',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: (context, tokens) => {
+        return tokens.filter(isDimensionToken).map((token) => time.parse(context, token));
+    }
+};
+
+const quotes = {
+    name: 'quotes',
+    initialValue: 'none',
+    prefix: true,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: (_context, tokens) => {
+        if (tokens.length === 0) {
+            return null;
+        }
+        const first = tokens[0];
+        if (first.type === 20 /* TokenType.IDENT_TOKEN */ && first.value === 'none') {
+            return null;
+        }
+        const quotes = [];
+        const filtered = tokens.filter(isStringToken);
+        if (filtered.length % 2 !== 0) {
+            return null;
+        }
+        for (let i = 0; i < filtered.length; i += 2) {
+            const open = filtered[i].value;
+            const close = filtered[i + 1].value;
+            quotes.push({ open, close });
+        }
+        return quotes;
+    }
+};
+const getQuote = (quotes, depth, open) => {
+    if (!quotes) {
+        return '';
+    }
+    const quote = quotes[Math.min(depth, quotes.length - 1)];
+    if (!quote) {
+        return '';
+    }
+    return open ? quote.open : quote.close;
+};
+
+const boxShadow = {
+    name: 'box-shadow',
+    initialValue: 'none',
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    prefix: false,
+    parse: (context, tokens) => {
+        if (tokens.length === 1 && isIdentWithValue(tokens[0], 'none')) {
+            return [];
+        }
+        return parseFunctionArgs(tokens).map((values) => {
+            const shadow = {
+                color: 0x000000ff,
+                offsetX: ZERO_LENGTH,
+                offsetY: ZERO_LENGTH,
+                blur: ZERO_LENGTH,
+                spread: ZERO_LENGTH,
+                inset: false
+            };
+            let c = 0;
+            for (let i = 0; i < values.length; i++) {
+                const token = values[i];
+                if (isIdentWithValue(token, 'inset')) {
+                    shadow.inset = true;
+                }
+                else if (isLength(token)) {
+                    if (c === 0) {
+                        shadow.offsetX = token;
+                    }
+                    else if (c === 1) {
+                        shadow.offsetY = token;
+                    }
+                    else if (c === 2) {
+                        shadow.blur = token;
+                    }
+                    else {
+                        shadow.spread = token;
+                    }
+                    c++;
+                }
+                else {
+                    shadow.color = color$1.parse(context, token);
+                }
+            }
+            return shadow;
+        });
+    }
+};
+
+const paintOrder = {
+    name: 'paint-order',
+    initialValue: 'normal',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: (_context, tokens) => {
+        const DEFAULT_VALUE = [0 /* PAINT_ORDER_LAYER.FILL */, 1 /* PAINT_ORDER_LAYER.STROKE */, 2 /* PAINT_ORDER_LAYER.MARKERS */];
+        const layers = [];
+        tokens.filter(isIdentToken).forEach((token) => {
+            switch (token.value) {
+                case 'stroke':
+                    layers.push(1 /* PAINT_ORDER_LAYER.STROKE */);
+                    break;
+                case 'fill':
+                    layers.push(0 /* PAINT_ORDER_LAYER.FILL */);
+                    break;
+                case 'markers':
+                    layers.push(2 /* PAINT_ORDER_LAYER.MARKERS */);
+                    break;
+            }
+        });
+        DEFAULT_VALUE.forEach((value) => {
+            if (layers.indexOf(value) === -1) {
+                layers.push(value);
+            }
+        });
+        return layers;
+    }
+};
+
+const webkitTextStrokeColor = {
+    name: `-webkit-text-stroke-color`,
+    initialValue: 'currentcolor',
+    prefix: false,
+    type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
+    format: 'color'
+};
+
+const webkitTextStrokeWidth = {
+    name: `-webkit-text-stroke-width`,
+    initialValue: '0',
+    type: 0 /* PropertyDescriptorParsingType.VALUE */,
+    prefix: false,
+    parse: (_context, token) => {
+        if (isDimensionToken(token)) {
+            return token.number;
+        }
+        return 0;
+    }
+};
+
+const objectFit = {
+    name: 'objectFit',
+    initialValue: 'fill',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: (_context, tokens) => {
+        return tokens.filter(isIdentToken).reduce((bit, token) => {
+            return bit | parseDisplayValue(token.value);
+        }, 0 /* OBJECT_FIT.FILL */);
+    }
+};
+const parseDisplayValue = (display) => {
+    switch (display) {
+        case 'contain':
+            return 2 /* OBJECT_FIT.CONTAIN */;
+        case 'cover':
+            return 4 /* OBJECT_FIT.COVER */;
+        case 'none':
+            return 8 /* OBJECT_FIT.NONE */;
+        case 'scale-down':
+            return 16 /* OBJECT_FIT.SCALE_DOWN */;
+    }
+    return 0 /* OBJECT_FIT.FILL */;
+};
+
+class CSSParsedDeclaration {
+    constructor(context, declaration) {
+        this.animationDuration = parse(context, duration, declaration.animationDuration);
+        this.backgroundClip = parse(context, backgroundClip, declaration.backgroundClip);
+        this.backgroundColor = parse(context, backgroundColor, declaration.backgroundColor);
+        this.backgroundImage = parse(context, backgroundImage, declaration.backgroundImage);
+        this.backgroundOrigin = parse(context, backgroundOrigin, declaration.backgroundOrigin);
+        this.backgroundPosition = parse(context, backgroundPosition, declaration.backgroundPosition);
+        this.backgroundRepeat = parse(context, backgroundRepeat, declaration.backgroundRepeat);
+        this.backgroundSize = parse(context, backgroundSize, declaration.backgroundSize);
+        this.borderTopColor = parse(context, borderTopColor, declaration.borderTopColor);
+        this.borderRightColor = parse(context, borderRightColor, declaration.borderRightColor);
+        this.borderBottomColor = parse(context, borderBottomColor, declaration.borderBottomColor);
+        this.borderLeftColor = parse(context, borderLeftColor, declaration.borderLeftColor);
+        this.borderTopLeftRadius = parse(context, borderTopLeftRadius, declaration.borderTopLeftRadius);
+        this.borderTopRightRadius = parse(context, borderTopRightRadius, declaration.borderTopRightRadius);
+        this.borderBottomRightRadius = parse(context, borderBottomRightRadius, declaration.borderBottomRightRadius);
+        this.borderBottomLeftRadius = parse(context, borderBottomLeftRadius, declaration.borderBottomLeftRadius);
+        this.borderTopStyle = parse(context, borderTopStyle, declaration.borderTopStyle);
+        this.borderRightStyle = parse(context, borderRightStyle, declaration.borderRightStyle);
+        this.borderBottomStyle = parse(context, borderBottomStyle, declaration.borderBottomStyle);
+        this.borderLeftStyle = parse(context, borderLeftStyle, declaration.borderLeftStyle);
+        this.borderTopWidth = parse(context, borderTopWidth, declaration.borderTopWidth);
+        this.borderRightWidth = parse(context, borderRightWidth, declaration.borderRightWidth);
+        this.borderBottomWidth = parse(context, borderBottomWidth, declaration.borderBottomWidth);
+        this.borderLeftWidth = parse(context, borderLeftWidth, declaration.borderLeftWidth);
+        this.boxShadow = parse(context, boxShadow, declaration.boxShadow);
+        this.color = parse(context, color, declaration.color);
+        this.direction = parse(context, direction, declaration.direction);
+        this.display = parse(context, display, declaration.display);
+        this.float = parse(context, float, declaration.cssFloat);
+        this.fontFamily = parse(context, fontFamily, declaration.fontFamily);
+        this.fontSize = parse(context, fontSize, declaration.fontSize);
+        this.fontStyle = parse(context, fontStyle, declaration.fontStyle);
+        this.fontVariant = parse(context, fontVariant, declaration.fontVariant);
+        this.fontWeight = parse(context, fontWeight, declaration.fontWeight);
+        this.letterSpacing = parse(context, letterSpacing, declaration.letterSpacing);
+        this.lineBreak = parse(context, lineBreak, declaration.lineBreak);
+        this.lineHeight = parse(context, lineHeight, declaration.lineHeight);
+        this.listStyleImage = parse(context, listStyleImage, declaration.listStyleImage);
+        this.listStylePosition = parse(context, listStylePosition, declaration.listStylePosition);
+        this.listStyleType = parse(context, listStyleType, declaration.listStyleType);
+        this.marginTop = parse(context, marginTop, declaration.marginTop);
+        this.marginRight = parse(context, marginRight, declaration.marginRight);
+        this.marginBottom = parse(context, marginBottom, declaration.marginBottom);
+        this.marginLeft = parse(context, marginLeft, declaration.marginLeft);
+        this.opacity = parse(context, opacity, declaration.opacity);
+        const overflowTuple = parse(context, overflow, declaration.overflow);
+        this.overflowX = overflowTuple[0];
+        this.overflowY = overflowTuple[overflowTuple.length > 1 ? 1 : 0];
+        this.overflowWrap = parse(context, overflowWrap, declaration.overflowWrap);
+        this.paddingTop = parse(context, paddingTop, declaration.paddingTop);
+        this.paddingRight = parse(context, paddingRight, declaration.paddingRight);
+        this.paddingBottom = parse(context, paddingBottom, declaration.paddingBottom);
+        this.paddingLeft = parse(context, paddingLeft, declaration.paddingLeft);
+        this.paintOrder = parse(context, paintOrder, declaration.paintOrder);
+        this.position = parse(context, position, declaration.position);
+        this.textAlign = parse(context, textAlign, declaration.textAlign);
+        this.textDecorationColor = parse(context, textDecorationColor, declaration.textDecorationColor ?? declaration.color);
+        this.textDecorationLine = parse(context, textDecorationLine, declaration.textDecorationLine ?? declaration.textDecoration);
+        this.textShadow = parse(context, textShadow, declaration.textShadow);
+        this.textTransform = parse(context, textTransform, declaration.textTransform);
+        this.transform = parse(context, transform$1, declaration.transform);
+        this.transformOrigin = parse(context, transformOrigin, declaration.transformOrigin);
+        this.rotate = parse(context, rotate, declaration.rotate);
+        this.visibility = parse(context, visibility, declaration.visibility);
+        this.webkitTextStrokeColor = parse(context, webkitTextStrokeColor, declaration.webkitTextStrokeColor);
+        this.webkitTextStrokeWidth = parse(context, webkitTextStrokeWidth, declaration.webkitTextStrokeWidth);
+        this.wordBreak = parse(context, wordBreak, declaration.wordBreak);
+        this.zIndex = parse(context, zIndex, declaration.zIndex);
+        this.objectFit = parse(context, objectFit, declaration.objectFit);
+    }
+    isVisible() {
+        return this.display > 0 && this.opacity > 0 && this.visibility === 0 /* VISIBILITY.VISIBLE */;
+    }
+    isTransparent() {
+        return isTransparent(this.backgroundColor);
+    }
+    isTransformed() {
+        return this.transform !== null || this.rotate !== null;
+    }
+    isPositioned() {
+        return this.position !== 0 /* POSITION.STATIC */;
+    }
+    isPositionedWithZIndex() {
+        return this.isPositioned() && !this.zIndex.auto;
+    }
+    isFloating() {
+        return this.float !== 0 /* FLOAT.NONE */;
+    }
+    isInlineLevel() {
+        return (contains(this.display, 4 /* DISPLAY.INLINE */) ||
+            contains(this.display, 33554432 /* DISPLAY.INLINE_BLOCK */) ||
+            contains(this.display, 268435456 /* DISPLAY.INLINE_FLEX */) ||
+            contains(this.display, 536870912 /* DISPLAY.INLINE_GRID */) ||
+            contains(this.display, 67108864 /* DISPLAY.INLINE_LIST_ITEM */) ||
+            contains(this.display, 134217728 /* DISPLAY.INLINE_TABLE */));
+    }
+}
+class CSSParsedPseudoDeclaration {
+    constructor(context, declaration) {
+        this.content = parse(context, content, declaration.content);
+        this.quotes = parse(context, quotes, declaration.quotes);
+    }
+}
+class CSSParsedCounterDeclaration {
+    constructor(context, declaration) {
+        this.counterIncrement = parse(context, counterIncrement, declaration.counterIncrement);
+        this.counterReset = parse(context, counterReset, declaration.counterReset);
+    }
+}
+const parse = (context, descriptor, style) => {
+    const tokenizer = new Tokenizer();
+    const value = style !== null && typeof style !== 'undefined' ? style.toString() : descriptor.initialValue;
+    tokenizer.write(value);
+    const parser = new Parser(tokenizer.read());
+    switch (descriptor.type) {
+        case 2 /* PropertyDescriptorParsingType.IDENT_VALUE */:
+            const token = parser.parseComponentValue();
+            return descriptor.parse(context, isIdentToken(token) ? token.value : descriptor.initialValue);
+        case 0 /* PropertyDescriptorParsingType.VALUE */:
+            return descriptor.parse(context, parser.parseComponentValue());
+        case 1 /* PropertyDescriptorParsingType.LIST */:
+            return descriptor.parse(context, parser.parseComponentValues());
+        case 4 /* PropertyDescriptorParsingType.TOKEN_VALUE */:
+            return parser.parseComponentValue();
+        case 3 /* PropertyDescriptorParsingType.TYPE_VALUE */:
+            switch (descriptor.format) {
+                case 'angle':
+                    return angle.parse(context, parser.parseComponentValue());
+                case 'color':
+                    return color$1.parse(context, parser.parseComponentValue());
+                case 'image':
+                    return image.parse(context, parser.parseComponentValue());
+                case 'length':
+                    const length = parser.parseComponentValue();
+                    return isLength(length) ? length : ZERO_LENGTH;
+                case 'length-percentage':
+                    const value = parser.parseComponentValue();
+                    return isLengthPercentage(value) ? value : ZERO_LENGTH;
+                case 'time':
+                    return time.parse(context, parser.parseComponentValue());
+            }
+            break;
+    }
+};
+
+const elementDebuggerAttribute = 'data-html2canvas-debug';
+const getElementDebugType = (element) => {
+    const attribute = element.getAttribute(elementDebuggerAttribute);
+    switch (attribute) {
+        case 'all':
+            return 1 /* DebuggerType.ALL */;
+        case 'clone':
+            return 2 /* DebuggerType.CLONE */;
+        case 'parse':
+            return 3 /* DebuggerType.PARSE */;
+        case 'render':
+            return 4 /* DebuggerType.RENDER */;
+        default:
+            return 0 /* DebuggerType.NONE */;
+    }
+};
+const isDebugging = (element, type) => {
+    const elementType = getElementDebugType(element);
+    return elementType === 1 /* DebuggerType.ALL */ || type === elementType;
+};
+
+class ElementContainer {
+    constructor(context, element) {
+        this.context = context;
+        this.textNodes = [];
+        this.elements = [];
+        this.flags = 0;
+        if (isDebugging(element, 3 /* DebuggerType.PARSE */)) {
+            debugger;
+        }
+        this.styles = new CSSParsedDeclaration(context, window.getComputedStyle(element, null));
+        if (isHTMLElementNode(element)) {
+            if (this.styles.animationDuration.some((duration) => duration > 0)) {
+                element.style.animationDuration = '0s';
+            }
+            if (this.styles.transform !== null) {
+                // getBoundingClientRect takes transforms into account
+                element.style.transform = 'none';
+            }
+            if (this.styles.rotate !== null) {
+                // Handle rotate property similarly to transform
+                element.style.rotate = 'none';
+            }
+        }
+        this.bounds = parseBounds(this.context, element);
+        if (isDebugging(element, 4 /* DebuggerType.RENDER */)) {
+            this.flags |= 16 /* FLAGS.DEBUG_RENDER */;
+        }
+    }
+}
+
+/*
+ * text-segmentation 1.0.3 <https://github.com/niklasvh/text-segmentation>
+ * Copyright (c) 2022 Niklas von Hertzen <https://hertzen.com>
+ * Released under MIT License
+ */
+var base64 = 'AAAAAAAAAAAAEA4AGBkAAFAaAAACAAAAAAAIABAAGAAwADgACAAQAAgAEAAIABAACAAQAAgAEAAIABAACAAQAAgAEAAIABAAQABIAEQATAAIABAACAAQAAgAEAAIABAAVABcAAgAEAAIABAACAAQAGAAaABwAHgAgACIAI4AlgAIABAAmwCjAKgAsAC2AL4AvQDFAMoA0gBPAVYBWgEIAAgACACMANoAYgFkAWwBdAF8AX0BhQGNAZUBlgGeAaMBlQGWAasBswF8AbsBwwF0AcsBYwHTAQgA2wG/AOMBdAF8AekB8QF0AfkB+wHiAHQBfAEIAAMC5gQIAAsCEgIIAAgAFgIeAggAIgIpAggAMQI5AkACygEIAAgASAJQAlgCYAIIAAgACAAKBQoFCgUTBRMFGQUrBSsFCAAIAAgACAAIAAgACAAIAAgACABdAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACABoAmgCrwGvAQgAbgJ2AggAHgEIAAgACADnAXsCCAAIAAgAgwIIAAgACAAIAAgACACKAggAkQKZAggAPADJAAgAoQKkAqwCsgK6AsICCADJAggA0AIIAAgACAAIANYC3gIIAAgACAAIAAgACABAAOYCCAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAkASoB+QIEAAgACAA8AEMCCABCBQgACABJBVAFCAAIAAgACAAIAAgACAAIAAgACABTBVoFCAAIAFoFCABfBWUFCAAIAAgACAAIAAgAbQUIAAgACAAIAAgACABzBXsFfQWFBYoFigWKBZEFigWKBYoFmAWfBaYFrgWxBbkFCAAIAAgACAAIAAgACAAIAAgACAAIAMEFCAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAMgFCADQBQgACAAIAAgACAAIAAgACAAIAAgACAAIAO4CCAAIAAgAiQAIAAgACABAAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAD0AggACAD8AggACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIANYFCAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAMDvwAIAAgAJAIIAAgACAAIAAgACAAIAAgACwMTAwgACAB9BOsEGwMjAwgAKwMyAwsFYgE3A/MEPwMIAEUDTQNRAwgAWQOsAGEDCAAIAAgACAAIAAgACABpAzQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFIQUoBSwFCAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACABtAwgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACABMAEwACAAIAAgACAAIABgACAAIAAgACAC/AAgACAAyAQgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACACAAIAAwAAgACAAIAAgACAAIAAgACAAIAAAARABIAAgACAAIABQASAAIAAgAIABwAEAAjgCIABsAqAC2AL0AigDQAtwC+IJIQqVAZUBWQqVAZUBlQGVAZUBlQGrC5UBlQGVAZUBlQGVAZUBlQGVAXsKlQGVAbAK6wsrDGUMpQzlDJUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAfAKAAuZA64AtwCJALoC6ADwAAgAuACgA/oEpgO6AqsD+AAIAAgAswMIAAgACAAIAIkAuwP5AfsBwwPLAwgACAAIAAgACADRA9kDCAAIAOED6QMIAAgACAAIAAgACADuA/YDCAAIAP4DyQAIAAgABgQIAAgAXQAOBAgACAAIAAgACAAIABMECAAIAAgACAAIAAgACAD8AAQBCAAIAAgAGgQiBCoECAExBAgAEAEIAAgACAAIAAgACAAIAAgACAAIAAgACAA4BAgACABABEYECAAIAAgATAQYAQgAVAQIAAgACAAIAAgACAAIAAgACAAIAFoECAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgAOQEIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAB+BAcACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAEABhgSMBAgACAAIAAgAlAQIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAwAEAAQABAADAAMAAwADAAQABAAEAAQABAAEAAQABHATAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgAdQMIAAgACAAIAAgACAAIAMkACAAIAAgAfQMIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACACFA4kDCAAIAAgACAAIAOcBCAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAIcDCAAIAAgACAAIAAgACAAIAAgACAAIAJEDCAAIAAgACADFAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACABgBAgAZgQIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgAbAQCBXIECAAIAHkECAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACABAAJwEQACjBKoEsgQIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAC6BMIECAAIAAgACAAIAAgACABmBAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgAxwQIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAGYECAAIAAgAzgQIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgAigWKBYoFigWKBYoFigWKBd0FXwUIAOIF6gXxBYoF3gT5BQAGCAaKBYoFigWKBYoFigWKBYoFigWKBYoFigXWBIoFigWKBYoFigWKBYoFigWKBYsFEAaKBYoFigWKBYoFigWKBRQGCACKBYoFigWKBQgACAAIANEECAAIABgGigUgBggAJgYIAC4GMwaKBYoF0wQ3Bj4GigWKBYoFigWKBYoFigWKBYoFigWKBYoFigUIAAgACAAIAAgACAAIAAgAigWKBYoFigWKBYoFigWKBYoFigWKBYoFigWKBYoFigWKBYoFigWKBYoFigWKBYoFigWKBYoFigWKBYoFigWLBf///////wQABAAEAAQABAAEAAQABAAEAAQAAwAEAAQAAgAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAQADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAAAUAAAAFAAUAAAAFAAUAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAEAAQABAAEAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAFAAUABQAFAAUABQAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAFAAUAAQAAAAUABQAFAAUABQAFAAAAAAAFAAUAAAAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAFAAUABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAAAAFAAUAAQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABwAFAAUABQAFAAAABwAHAAcAAAAHAAcABwAFAAEAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAcABwAFAAUABQAFAAcABwAFAAUAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAAAAQABAAAAAAAAAAAAAAAFAAUABQAFAAAABwAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAHAAcABwAHAAcAAAAHAAcAAAAAAAUABQAHAAUAAQAHAAEABwAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUABwABAAUABQAFAAUAAAAAAAAAAAAAAAEAAQABAAEAAQABAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABwAFAAUAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUAAQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABQANAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAEAAQABAAEAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAEAAQABAAEAAQABAAEAAQABAAEAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAQABAAEAAQABAAEAAQABAAAAAAAAAAAAAAAAAAAAAAABQAHAAUABQAFAAAAAAAAAAcABQAFAAUABQAFAAQABAAEAAQABAAEAAQABAAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUAAAAFAAUABQAFAAUAAAAFAAUABQAAAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAAAAAAAAAAAAUABQAFAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAHAAUAAAAHAAcABwAFAAUABQAFAAUABQAFAAUABwAHAAcABwAFAAcABwAAAAUABQAFAAUABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABwAHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAUABwAHAAUABQAFAAUAAAAAAAcABwAAAAAABwAHAAUAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAABQAFAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAABwAHAAcABQAFAAAAAAAAAAAABQAFAAAAAAAFAAUABQAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAFAAUABQAFAAUAAAAFAAUABwAAAAcABwAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAFAAUABwAFAAUABQAFAAAAAAAHAAcAAAAAAAcABwAFAAAAAAAAAAAAAAAAAAAABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAcABwAAAAAAAAAHAAcABwAAAAcABwAHAAUAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAABQAHAAcABwAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABwAHAAcABwAAAAUABQAFAAAABQAFAAUABQAAAAAAAAAAAAAAAAAAAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAcABQAHAAcABQAHAAcAAAAFAAcABwAAAAcABwAFAAUAAAAAAAAAAAAAAAAAAAAFAAUAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAcABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAAAAUABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAFAAcABwAFAAUABQAAAAUAAAAHAAcABwAHAAcABwAHAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAHAAUABQAFAAUABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAABwAFAAUABQAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAUAAAAFAAAAAAAAAAAABwAHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABwAFAAUABQAFAAUAAAAFAAUAAAAAAAAAAAAAAAUABQAFAAUABQAFAAUABQAFAAUABQAAAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABwAFAAUABQAFAAUABQAAAAUABQAHAAcABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAcABQAFAAAAAAAAAAAABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAcABQAFAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAHAAUABQAFAAUABQAFAAUABwAHAAcABwAHAAcABwAHAAUABwAHAAUABQAFAAUABQAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABwAHAAcABwAFAAUABwAHAAcAAAAAAAAAAAAHAAcABQAHAAcABwAHAAcABwAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAcABwAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcABQAHAAUABQAFAAUABQAFAAUAAAAFAAAABQAAAAAABQAFAAUABQAFAAUABQAFAAcABwAHAAcABwAHAAUABQAFAAUABQAFAAUABQAFAAUAAAAAAAUABQAFAAUABQAHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAFAAUABwAFAAcABwAHAAcABwAFAAcABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAUABQAFAAUABwAHAAUABQAHAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAcABQAFAAcABwAHAAUABwAFAAUABQAHAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAHAAcABwAHAAcABwAHAAUABQAFAAUABQAFAAUABQAHAAcABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUAAAAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAcABQAFAAUABQAFAAUABQAAAAAAAAAAAAUAAAAAAAAAAAAAAAAABQAAAAAABwAFAAUAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAAABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUAAAAFAAUABQAFAAUABQAFAAUABQAFAAAAAAAAAAAABQAAAAAAAAAFAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAHAAUABQAHAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcABwAHAAcABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAFAAUABQAFAAUABQAHAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAcABwAFAAUABQAFAAcABwAFAAUABwAHAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAFAAcABwAFAAUABwAHAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAFAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAFAAUABQAAAAAABQAFAAAAAAAAAAAAAAAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcABQAFAAcABwAAAAAAAAAAAAAABwAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcABwAFAAcABwAFAAcABwAAAAcABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAAAAAAAAAAAAAAAAAFAAUABQAAAAUABQAAAAAAAAAAAAAABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcABQAHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABwAFAAUABQAFAAUABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAHAAcABQAFAAUABQAFAAUABQAFAAUABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAcABwAFAAUABQAHAAcABQAHAAUABQAAAAAAAAAAAAAAAAAFAAAABwAHAAcABQAFAAUABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABwAHAAcABwAAAAAABwAHAAAAAAAHAAcABwAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAHAAAAAAAFAAUABQAFAAUABQAFAAAAAAAAAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAcABwAFAAUABQAFAAUABQAFAAUABwAHAAUABQAFAAcABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAHAAcABQAFAAUABQAFAAUABwAFAAcABwAFAAcABQAFAAcABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAHAAcABQAFAAUABQAAAAAABwAHAAcABwAFAAUABwAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcABwAHAAUABQAFAAUABQAFAAUABQAHAAcABQAHAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABwAFAAcABwAFAAUABQAFAAUABQAHAAUAAAAAAAAAAAAAAAAAAAAAAAcABwAFAAUABQAFAAcABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAcABwAFAAUABQAFAAUABQAFAAUABQAHAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAcABwAFAAUABQAFAAAAAAAFAAUABwAHAAcABwAFAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUABwAHAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcABQAFAAUABQAFAAUABQAAAAUABQAFAAUABQAFAAcABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAAAHAAUABQAFAAUABQAFAAUABwAFAAUABwAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUAAAAAAAAABQAAAAUABQAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAcABwAHAAcAAAAFAAUAAAAHAAcABQAHAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABwAHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAAAAAAAAAAAAAAAAAAABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAAAAUABQAFAAAAAAAFAAUABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAAAAAAAAAAABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAAAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUABQAAAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAAAAABQAFAAUABQAFAAUABQAAAAUABQAAAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAFAAUABQAFAAUADgAOAA4ADgAOAA4ADwAPAA8ADwAPAA8ADwAPAA8ADwAPAA8ADwAPAA8ADwAPAA8ADwAPAA8ADwAPAA8ADwAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAAAAAAAAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAMAAwADAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkAAAAAAAAAAAAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAAAAAAAAAAAAsADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwACwAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAA4ADgAOAA4ADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4ADgAAAAAAAAAAAAAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAOAA4ADgAOAA4ADgAOAA4ADgAOAAAAAAAAAAAADgAOAA4AAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAOAA4ADgAAAA4ADgAOAA4ADgAOAAAADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4AAAAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4AAAAAAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAAAA4AAAAOAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAA4ADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAAAAAADgAAAAAAAAAAAA4AAAAOAAAAAAAAAAAADgAOAA4AAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAA4ADgAOAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAA4ADgAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4ADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAAAAAAAAAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAA4ADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4ADgAOAA4ADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4ADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAAAAAADgAOAA4ADgAOAA4ADgAOAA4ADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAAAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAA4ADgAOAA4ADgAOAA4ADgAOAAAADgAOAA4ADgAAAAAAAAAAAAAAAAAAAAAAAAAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4AAAAAAAAAAAAAAAAADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAA4ADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAOAA4ADgAOAA4ADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAOAA4ADgAOAA4AAAAAAAAAAAAAAAAAAAAAAA4ADgAOAA4ADgAOAA4ADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4AAAAOAA4ADgAOAA4ADgAAAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4AAAAAAAAAAAA=';
+
+/*
+ * utrie 1.0.2 <https://github.com/niklasvh/utrie>
+ * Copyright (c) 2022 Niklas von Hertzen <https://hertzen.com>
+ * Released under MIT License
+ */
+var chars$1 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+// Use a lookup table to find the index.
+var lookup$1 = typeof Uint8Array === 'undefined' ? [] : new Uint8Array(256);
+for (var i$1 = 0; i$1 < chars$1.length; i$1++) {
+    lookup$1[chars$1.charCodeAt(i$1)] = i$1;
+}
+var decode = function (base64) {
+    var bufferLength = base64.length * 0.75, len = base64.length, i, p = 0, encoded1, encoded2, encoded3, encoded4;
+    if (base64[base64.length - 1] === '=') {
+        bufferLength--;
+        if (base64[base64.length - 2] === '=') {
+            bufferLength--;
+        }
+    }
+    var buffer = typeof ArrayBuffer !== 'undefined' &&
+        typeof Uint8Array !== 'undefined' &&
+        typeof Uint8Array.prototype.slice !== 'undefined'
+        ? new ArrayBuffer(bufferLength)
+        : new Array(bufferLength);
+    var bytes = Array.isArray(buffer) ? buffer : new Uint8Array(buffer);
+    for (i = 0; i < len; i += 4) {
+        encoded1 = lookup$1[base64.charCodeAt(i)];
+        encoded2 = lookup$1[base64.charCodeAt(i + 1)];
+        encoded3 = lookup$1[base64.charCodeAt(i + 2)];
+        encoded4 = lookup$1[base64.charCodeAt(i + 3)];
+        bytes[p++] = (encoded1 << 2) | (encoded2 >> 4);
+        bytes[p++] = ((encoded2 & 15) << 4) | (encoded3 >> 2);
+        bytes[p++] = ((encoded3 & 3) << 6) | (encoded4 & 63);
+    }
+    return buffer;
+};
+var polyUint16Array = function (buffer) {
+    var length = buffer.length;
+    var bytes = [];
+    for (var i = 0; i < length; i += 2) {
+        bytes.push((buffer[i + 1] << 8) | buffer[i]);
+    }
+    return bytes;
+};
+var polyUint32Array = function (buffer) {
+    var length = buffer.length;
+    var bytes = [];
+    for (var i = 0; i < length; i += 4) {
+        bytes.push((buffer[i + 3] << 24) | (buffer[i + 2] << 16) | (buffer[i + 1] << 8) | buffer[i]);
+    }
+    return bytes;
+};
+
+/** Shift size for getting the index-2 table offset. */
+var UTRIE2_SHIFT_2 = 5;
+/** Shift size for getting the index-1 table offset. */
+var UTRIE2_SHIFT_1 = 6 + 5;
+/**
+ * Shift size for shifting left the index array values.
+ * Increases possible data size with 16-bit index values at the cost
+ * of compactability.
+ * This requires data blocks to be aligned by UTRIE2_DATA_GRANULARITY.
+ */
+var UTRIE2_INDEX_SHIFT = 2;
+/**
+ * Difference between the two shift sizes,
+ * for getting an index-1 offset from an index-2 offset. 6=11-5
+ */
+var UTRIE2_SHIFT_1_2 = UTRIE2_SHIFT_1 - UTRIE2_SHIFT_2;
+/**
+ * The part of the index-2 table for U+D800..U+DBFF stores values for
+ * lead surrogate code _units_ not code _points_.
+ * Values for lead surrogate code _points_ are indexed with this portion of the table.
+ * Length=32=0x20=0x400>>UTRIE2_SHIFT_2. (There are 1024=0x400 lead surrogates.)
+ */
+var UTRIE2_LSCP_INDEX_2_OFFSET = 0x10000 >> UTRIE2_SHIFT_2;
+/** Number of entries in a data block. 32=0x20 */
+var UTRIE2_DATA_BLOCK_LENGTH = 1 << UTRIE2_SHIFT_2;
+/** Mask for getting the lower bits for the in-data-block offset. */
+var UTRIE2_DATA_MASK = UTRIE2_DATA_BLOCK_LENGTH - 1;
+var UTRIE2_LSCP_INDEX_2_LENGTH = 0x400 >> UTRIE2_SHIFT_2;
+/** Count the lengths of both BMP pieces. 2080=0x820 */
+var UTRIE2_INDEX_2_BMP_LENGTH = UTRIE2_LSCP_INDEX_2_OFFSET + UTRIE2_LSCP_INDEX_2_LENGTH;
+/**
+ * The 2-byte UTF-8 version of the index-2 table follows at offset 2080=0x820.
+ * Length 32=0x20 for lead bytes C0..DF, regardless of UTRIE2_SHIFT_2.
+ */
+var UTRIE2_UTF8_2B_INDEX_2_OFFSET = UTRIE2_INDEX_2_BMP_LENGTH;
+var UTRIE2_UTF8_2B_INDEX_2_LENGTH = 0x800 >> 6; /* U+0800 is the first code point after 2-byte UTF-8 */
+/**
+ * The index-1 table, only used for supplementary code points, at offset 2112=0x840.
+ * Variable length, for code points up to highStart, where the last single-value range starts.
+ * Maximum length 512=0x200=0x100000>>UTRIE2_SHIFT_1.
+ * (For 0x100000 supplementary code points U+10000..U+10ffff.)
+ *
+ * The part of the index-2 table for supplementary code points starts
+ * after this index-1 table.
+ *
+ * Both the index-1 table and the following part of the index-2 table
+ * are omitted completely if there is only BMP data.
+ */
+var UTRIE2_INDEX_1_OFFSET = UTRIE2_UTF8_2B_INDEX_2_OFFSET + UTRIE2_UTF8_2B_INDEX_2_LENGTH;
+/**
+ * Number of index-1 entries for the BMP. 32=0x20
+ * This part of the index-1 table is omitted from the serialized form.
+ */
+var UTRIE2_OMITTED_BMP_INDEX_1_LENGTH = 0x10000 >> UTRIE2_SHIFT_1;
+/** Number of entries in an index-2 block. 64=0x40 */
+var UTRIE2_INDEX_2_BLOCK_LENGTH = 1 << UTRIE2_SHIFT_1_2;
+/** Mask for getting the lower bits for the in-index-2-block offset. */
+var UTRIE2_INDEX_2_MASK = UTRIE2_INDEX_2_BLOCK_LENGTH - 1;
+var slice16 = function (view, start, end) {
+    if (view.slice) {
+        return view.slice(start, end);
+    }
+    return new Uint16Array(Array.prototype.slice.call(view, start, end));
+};
+var slice32 = function (view, start, end) {
+    if (view.slice) {
+        return view.slice(start, end);
+    }
+    return new Uint32Array(Array.prototype.slice.call(view, start, end));
+};
+var createTrieFromBase64 = function (base64, _byteLength) {
+    var buffer = decode(base64);
+    var view32 = Array.isArray(buffer) ? polyUint32Array(buffer) : new Uint32Array(buffer);
+    var view16 = Array.isArray(buffer) ? polyUint16Array(buffer) : new Uint16Array(buffer);
+    var headerLength = 24;
+    var index = slice16(view16, headerLength / 2, view32[4] / 2);
+    var data = view32[5] === 2
+        ? slice16(view16, (headerLength + view32[4]) / 2)
+        : slice32(view32, Math.ceil((headerLength + view32[4]) / 4));
+    return new Trie(view32[0], view32[1], view32[2], view32[3], index, data);
+};
+var Trie = /** @class */ (function () {
+    function Trie(initialValue, errorValue, highStart, highValueIndex, index, data) {
+        this.initialValue = initialValue;
+        this.errorValue = errorValue;
+        this.highStart = highStart;
+        this.highValueIndex = highValueIndex;
+        this.index = index;
+        this.data = data;
+    }
+    /**
+     * Get the value for a code point as stored in the Trie.
+     *
+     * @param codePoint the code point
+     * @return the value
+     */
+    Trie.prototype.get = function (codePoint) {
+        var ix;
+        if (codePoint >= 0) {
+            if (codePoint < 0x0d800 || (codePoint > 0x0dbff && codePoint <= 0x0ffff)) {
+                // Ordinary BMP code point, excluding leading surrogates.
+                // BMP uses a single level lookup.  BMP index starts at offset 0 in the Trie2 index.
+                // 16 bit data is stored in the index array itself.
+                ix = this.index[codePoint >> UTRIE2_SHIFT_2];
+                ix = (ix << UTRIE2_INDEX_SHIFT) + (codePoint & UTRIE2_DATA_MASK);
+                return this.data[ix];
+            }
+            if (codePoint <= 0xffff) {
+                // Lead Surrogate Code Point.  A Separate index section is stored for
+                // lead surrogate code units and code points.
+                //   The main index has the code unit data.
+                //   For this function, we need the code point data.
+                // Note: this expression could be refactored for slightly improved efficiency, but
+                //       surrogate code points will be so rare in practice that it's not worth it.
+                ix = this.index[UTRIE2_LSCP_INDEX_2_OFFSET + ((codePoint - 0xd800) >> UTRIE2_SHIFT_2)];
+                ix = (ix << UTRIE2_INDEX_SHIFT) + (codePoint & UTRIE2_DATA_MASK);
+                return this.data[ix];
+            }
+            if (codePoint < this.highStart) {
+                // Supplemental code point, use two-level lookup.
+                ix = UTRIE2_INDEX_1_OFFSET - UTRIE2_OMITTED_BMP_INDEX_1_LENGTH + (codePoint >> UTRIE2_SHIFT_1);
+                ix = this.index[ix];
+                ix += (codePoint >> UTRIE2_SHIFT_2) & UTRIE2_INDEX_2_MASK;
+                ix = this.index[ix];
+                ix = (ix << UTRIE2_INDEX_SHIFT) + (codePoint & UTRIE2_DATA_MASK);
+                return this.data[ix];
+            }
+            if (codePoint <= 0x10ffff) {
+                return this.data[this.highValueIndex];
+            }
+        }
+        // Fall through.  The code point is outside of the legal range of 0..0x10ffff.
+        return this.errorValue;
+    };
+    return Trie;
+}());
+
+/*
+ * base64-arraybuffer 1.0.2 <https://github.com/niklasvh/base64-arraybuffer>
+ * Copyright (c) 2022 Niklas von Hertzen <https://hertzen.com>
+ * Released under MIT License
+ */
+var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+// Use a lookup table to find the index.
+var lookup = typeof Uint8Array === 'undefined' ? [] : new Uint8Array(256);
+for (var i = 0; i < chars.length; i++) {
+    lookup[chars.charCodeAt(i)] = i;
+}
+
+var Prepend = 1;
+var CR = 2;
+var LF = 3;
+var Control = 4;
+var Extend = 5;
+var SpacingMark = 7;
+var L = 8;
+var V = 9;
+var T = 10;
+var LV = 11;
+var LVT = 12;
+var ZWJ = 13;
+var Extended_Pictographic = 14;
+var RI = 15;
+var toCodePoints = function (str) {
+    var codePoints = [];
+    var i = 0;
+    var length = str.length;
+    while (i < length) {
+        var value = str.charCodeAt(i++);
+        if (value >= 0xd800 && value <= 0xdbff && i < length) {
+            var extra = str.charCodeAt(i++);
+            if ((extra & 0xfc00) === 0xdc00) {
+                codePoints.push(((value & 0x3ff) << 10) + (extra & 0x3ff) + 0x10000);
+            }
+            else {
+                codePoints.push(value);
+                i--;
+            }
+        }
+        else {
+            codePoints.push(value);
+        }
+    }
+    return codePoints;
+};
+var fromCodePoint = function () {
+    var codePoints = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        codePoints[_i] = arguments[_i];
+    }
+    if (String.fromCodePoint) {
+        return String.fromCodePoint.apply(String, codePoints);
+    }
+    var length = codePoints.length;
+    if (!length) {
+        return '';
+    }
+    var codeUnits = [];
+    var index = -1;
+    var result = '';
+    while (++index < length) {
+        var codePoint = codePoints[index];
+        if (codePoint <= 0xffff) {
+            codeUnits.push(codePoint);
+        }
+        else {
+            codePoint -= 0x10000;
+            codeUnits.push((codePoint >> 10) + 0xd800, (codePoint % 0x400) + 0xdc00);
+        }
+        if (index + 1 === length || codeUnits.length > 0x4000) {
+            result += String.fromCharCode.apply(String, codeUnits);
+            codeUnits.length = 0;
+        }
+    }
+    return result;
+};
+var UnicodeTrie = createTrieFromBase64(base64);
+var BREAK_NOT_ALLOWED = '×';
+var BREAK_ALLOWED = '÷';
+var codePointToClass = function (codePoint) { return UnicodeTrie.get(codePoint); };
+var _graphemeBreakAtIndex = function (_codePoints, classTypes, index) {
+    var prevIndex = index - 2;
+    var prev = classTypes[prevIndex];
+    var current = classTypes[index - 1];
+    var next = classTypes[index];
+    // GB3 Do not break between a CR and LF
+    if (current === CR && next === LF) {
+        return BREAK_NOT_ALLOWED;
+    }
+    // GB4 Otherwise, break before and after controls.
+    if (current === CR || current === LF || current === Control) {
+        return BREAK_ALLOWED;
+    }
+    // GB5
+    if (next === CR || next === LF || next === Control) {
+        return BREAK_ALLOWED;
+    }
+    // Do not break Hangul syllable sequences.
+    // GB6
+    if (current === L && [L, V, LV, LVT].indexOf(next) !== -1) {
+        return BREAK_NOT_ALLOWED;
+    }
+    // GB7
+    if ((current === LV || current === V) && (next === V || next === T)) {
+        return BREAK_NOT_ALLOWED;
+    }
+    // GB8
+    if ((current === LVT || current === T) && next === T) {
+        return BREAK_NOT_ALLOWED;
+    }
+    // GB9 Do not break before extending characters or ZWJ.
+    if (next === ZWJ || next === Extend) {
+        return BREAK_NOT_ALLOWED;
+    }
+    // Do not break before SpacingMarks, or after Prepend characters.
+    // GB9a
+    if (next === SpacingMark) {
+        return BREAK_NOT_ALLOWED;
+    }
+    // GB9a
+    if (current === Prepend) {
+        return BREAK_NOT_ALLOWED;
+    }
+    // GB11 Do not break within emoji modifier sequences or emoji zwj sequences.
+    if (current === ZWJ && next === Extended_Pictographic) {
+        while (prev === Extend) {
+            prev = classTypes[--prevIndex];
+        }
+        if (prev === Extended_Pictographic) {
+            return BREAK_NOT_ALLOWED;
+        }
+    }
+    // GB12 Do not break within emoji flag sequences.
+    // That is, do not break between regional indicator (RI) symbols
+    // if there is an odd number of RI characters before the break point.
+    if (current === RI && next === RI) {
+        var countRI = 0;
+        while (prev === RI) {
+            countRI++;
+            prev = classTypes[--prevIndex];
+        }
+        if (countRI % 2 === 0) {
+            return BREAK_NOT_ALLOWED;
+        }
+    }
+    return BREAK_ALLOWED;
+};
+var GraphemeBreaker = function (str) {
+    var codePoints = toCodePoints(str);
+    var length = codePoints.length;
+    var index = 0;
+    var lastEnd = 0;
+    var classTypes = codePoints.map(codePointToClass);
+    return {
+        next: function () {
+            if (index >= length) {
+                return { done: true, value: null };
+            }
+            var graphemeBreak = BREAK_NOT_ALLOWED;
+            while (index < length &&
+                (graphemeBreak = _graphemeBreakAtIndex(codePoints, classTypes, ++index)) === BREAK_NOT_ALLOWED) { }
+            if (graphemeBreak !== BREAK_NOT_ALLOWED || index === length) {
+                var value = fromCodePoint.apply(null, codePoints.slice(lastEnd, index));
+                lastEnd = index;
+                return { value: value, done: false };
+            }
+            return { done: true, value: null };
+        },
+    };
+};
+var splitGraphemes = function (str) {
+    var breaker = GraphemeBreaker(str);
+    var graphemes = [];
+    var bk;
+    while (!(bk = breaker.next()).done) {
+        if (bk.value) {
+            graphemes.push(bk.value.slice());
+        }
+    }
+    return graphemes;
+};
+
+const testRangeBounds = (document) => {
+    const TEST_HEIGHT = 123;
+    if (document.createRange) {
+        const range = document.createRange();
+        if (range.getBoundingClientRect) {
+            const testElement = document.createElement('boundtest');
+            testElement.style.height = `${TEST_HEIGHT}px`;
+            testElement.style.display = 'block';
+            document.body.appendChild(testElement);
+            range.selectNode(testElement);
+            const rangeBounds = range.getBoundingClientRect();
+            const rangeHeight = Math.round(rangeBounds.height);
+            document.body.removeChild(testElement);
+            if (rangeHeight === TEST_HEIGHT) {
+                return true;
+            }
+        }
+    }
+    return false;
+};
+const testIOSLineBreak = (document) => {
+    const testElement = document.createElement('boundtest');
+    testElement.style.width = '50px';
+    testElement.style.display = 'block';
+    testElement.style.fontSize = '12px';
+    testElement.style.letterSpacing = '0px';
+    testElement.style.wordSpacing = '0px';
+    document.body.appendChild(testElement);
+    const range = document.createRange();
+    testElement.innerHTML = typeof ''.repeat === 'function' ? '&#128104;'.repeat(10) : '';
+    const node = testElement.firstChild;
+    const textList = toCodePoints$1(node.data).map((i) => fromCodePoint$1(i));
+    let offset = 0;
+    let prev = {};
+    // ios 13 does not handle range getBoundingClientRect line changes correctly #2177
+    const supports = textList.every((text, i) => {
+        range.setStart(node, offset);
+        range.setEnd(node, offset + text.length);
+        const rect = range.getBoundingClientRect();
+        offset += text.length;
+        const boundAhead = rect.x > prev.x || rect.y > prev.y;
+        prev = rect;
+        if (i === 0) {
+            return true;
+        }
+        return boundAhead;
+    });
+    document.body.removeChild(testElement);
+    return supports;
+};
+const testCORS = () => typeof new Image().crossOrigin !== 'undefined';
+const testResponseType = () => typeof new XMLHttpRequest().responseType === 'string';
+const testSVG = (document) => {
+    const img = new Image();
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        return false;
+    }
+    img.src = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'></svg>`;
+    try {
+        ctx.drawImage(img, 0, 0);
+        canvas.toDataURL();
+    }
+    catch (e) {
+        return false;
+    }
+    return true;
+};
+const isGreenPixel = (data) => data[0] === 0 && data[1] === 255 && data[2] === 0 && data[3] === 255;
+const testForeignObject = (document) => {
+    const canvas = document.createElement('canvas');
+    const size = 100;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        return Promise.reject(false);
+    }
+    ctx.fillStyle = 'rgb(0, 255, 0)';
+    ctx.fillRect(0, 0, size, size);
+    const img = new Image();
+    const greenImageSrc = canvas.toDataURL();
+    img.src = greenImageSrc;
+    const svg = createForeignObjectSVG(size, size, 0, 0, img);
+    ctx.fillStyle = 'red';
+    ctx.fillRect(0, 0, size, size);
+    return loadSerializedSVG$1(svg)
+        .then((img) => {
+        ctx.drawImage(img, 0, 0);
+        const data = ctx.getImageData(0, 0, size, size).data;
+        ctx.fillStyle = 'red';
+        ctx.fillRect(0, 0, size, size);
+        const node = document.createElement('div');
+        node.style.backgroundImage = `url(${greenImageSrc})`;
+        node.style.height = `${size}px`;
+        // Firefox 55 does not render inline <img /> tags
+        return isGreenPixel(data)
+            ? loadSerializedSVG$1(createForeignObjectSVG(size, size, 0, 0, node))
+            : Promise.reject(false);
+    })
+        .then((img) => {
+        ctx.drawImage(img, 0, 0);
+        // Edge does not render background-images
+        return isGreenPixel(ctx.getImageData(0, 0, size, size).data);
+    })
+        .catch(() => false);
+};
+const createForeignObjectSVG = (width, height, x, y, node) => {
+    const xmlns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(xmlns, 'svg');
+    const foreignObject = document.createElementNS(xmlns, 'foreignObject');
+    svg.setAttributeNS(null, 'width', width.toString());
+    svg.setAttributeNS(null, 'height', height.toString());
+    foreignObject.setAttributeNS(null, 'width', '100%');
+    foreignObject.setAttributeNS(null, 'height', '100%');
+    foreignObject.setAttributeNS(null, 'x', x.toString());
+    foreignObject.setAttributeNS(null, 'y', y.toString());
+    foreignObject.setAttributeNS(null, 'externalResourcesRequired', 'true');
+    svg.appendChild(foreignObject);
+    foreignObject.appendChild(node);
+    return svg;
+};
+const loadSerializedSVG$1 = (svg) => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`;
+    });
+};
+const FEATURES = {
+    get SUPPORT_RANGE_BOUNDS() {
+        const value = testRangeBounds(document);
+        Object.defineProperty(FEATURES, 'SUPPORT_RANGE_BOUNDS', { value });
+        return value;
+    },
+    get SUPPORT_WORD_BREAKING() {
+        const value = FEATURES.SUPPORT_RANGE_BOUNDS && testIOSLineBreak(document);
+        Object.defineProperty(FEATURES, 'SUPPORT_WORD_BREAKING', { value });
+        return value;
+    },
+    get SUPPORT_SVG_DRAWING() {
+        const value = testSVG(document);
+        Object.defineProperty(FEATURES, 'SUPPORT_SVG_DRAWING', { value });
+        return value;
+    },
+    get SUPPORT_FOREIGNOBJECT_DRAWING() {
+        const value = typeof Array.from === 'function' && typeof window.fetch === 'function'
+            ? testForeignObject(document)
+            : Promise.resolve(false);
+        Object.defineProperty(FEATURES, 'SUPPORT_FOREIGNOBJECT_DRAWING', { value });
+        return value;
+    },
+    get SUPPORT_CORS_IMAGES() {
+        const value = testCORS();
+        Object.defineProperty(FEATURES, 'SUPPORT_CORS_IMAGES', { value });
+        return value;
+    },
+    get SUPPORT_RESPONSE_TYPE() {
+        const value = testResponseType();
+        Object.defineProperty(FEATURES, 'SUPPORT_RESPONSE_TYPE', { value });
+        return value;
+    },
+    get SUPPORT_CORS_XHR() {
+        const value = 'withCredentials' in new XMLHttpRequest();
+        Object.defineProperty(FEATURES, 'SUPPORT_CORS_XHR', { value });
+        return value;
+    },
+    get SUPPORT_NATIVE_TEXT_SEGMENTATION() {
+        const value = !!(typeof Intl !== 'undefined' && Intl.Segmenter);
+        Object.defineProperty(FEATURES, 'SUPPORT_NATIVE_TEXT_SEGMENTATION', { value });
+        return value;
+    }
+};
+
+class TextBounds {
+    constructor(text, bounds) {
+        this.text = text;
+        this.bounds = bounds;
+    }
+}
+const parseTextBounds = (context, value, styles, node) => {
+    const textList = breakText(value, styles);
+    const textBounds = [];
+    let offset = 0;
+    textList.forEach((text) => {
+        if (styles.textDecorationLine.length || text.trim().length > 0) {
+            if (FEATURES.SUPPORT_RANGE_BOUNDS) {
+                const clientRects = createRange(node, offset, text.length).getClientRects();
+                if (clientRects.length > 1) {
+                    const subSegments = segmentGraphemes(text);
+                    let subOffset = 0;
+                    subSegments.forEach((subSegment) => {
+                        textBounds.push(new TextBounds(subSegment, Bounds.fromDOMRectList(context, createRange(node, subOffset + offset, subSegment.length).getClientRects())));
+                        subOffset += subSegment.length;
+                    });
+                }
+                else {
+                    textBounds.push(new TextBounds(text, Bounds.fromDOMRectList(context, clientRects)));
+                }
+            }
+            else {
+                const replacementNode = node.splitText(text.length);
+                textBounds.push(new TextBounds(text, getWrapperBounds(context, node)));
+                node = replacementNode;
+            }
+        }
+        else if (!FEATURES.SUPPORT_RANGE_BOUNDS) {
+            node = node.splitText(text.length);
+        }
+        offset += text.length;
+    });
+    return textBounds;
+};
+const getWrapperBounds = (context, node) => {
+    const ownerDocument = node.ownerDocument;
+    if (ownerDocument) {
+        const wrapper = ownerDocument.createElement('html2canvaswrapper');
+        wrapper.appendChild(node.cloneNode(true));
+        const parentNode = node.parentNode;
+        if (parentNode) {
+            parentNode.replaceChild(wrapper, node);
+            const bounds = parseBounds(context, wrapper);
+            if (wrapper.firstChild) {
+                parentNode.replaceChild(wrapper.firstChild, wrapper);
+            }
+            return bounds;
+        }
+    }
+    return Bounds.EMPTY;
+};
+const createRange = (node, offset, length) => {
+    const ownerDocument = node.ownerDocument;
+    if (!ownerDocument) {
+        throw new Error('Node has no owner document');
+    }
+    const range = ownerDocument.createRange();
+    range.setStart(node, offset);
+    range.setEnd(node, offset + length);
+    return range;
+};
+const segmentGraphemes = (value) => {
+    if (FEATURES.SUPPORT_NATIVE_TEXT_SEGMENTATION) {
+        const segmenter = new Intl.Segmenter(void 0, { granularity: 'grapheme' });
+        return Array.from(segmenter.segment(value)).map((segment) => segment.segment);
+    }
+    return splitGraphemes(value);
+};
+const segmentWords = (value, styles) => {
+    if (FEATURES.SUPPORT_NATIVE_TEXT_SEGMENTATION) {
+        const segmenter = new Intl.Segmenter(void 0, {
+            granularity: 'word'
+        });
+        return Array.from(segmenter.segment(value)).map((segment) => segment.segment);
+    }
+    return breakWords(value, styles);
+};
+const breakText = (value, styles) => {
+    return styles.letterSpacing !== 0 ? segmentGraphemes(value) : segmentWords(value, styles);
+};
+// https://drafts.csswg.org/css-text/#word-separator
+const wordSeparators = [0x0020, 0x00a0, 0x1361, 0x10100, 0x10101, 0x1039, 0x1091];
+const breakWords = (str, styles) => {
+    const breaker = LineBreaker(str, {
+        lineBreak: styles.lineBreak,
+        wordBreak: styles.overflowWrap === "break-word" /* OVERFLOW_WRAP.BREAK_WORD */ ? 'break-word' : styles.wordBreak
+    });
+    const words = [];
+    let bk;
+    while (!(bk = breaker.next()).done) {
+        if (bk.value) {
+            const value = bk.value.slice();
+            const codePoints = toCodePoints$1(value);
+            let word = '';
+            codePoints.forEach((codePoint) => {
+                if (wordSeparators.indexOf(codePoint) === -1) {
+                    word += fromCodePoint$1(codePoint);
+                }
+                else {
+                    if (word.length) {
+                        words.push(word);
+                    }
+                    words.push(fromCodePoint$1(codePoint));
+                    word = '';
+                }
+            });
+            if (word.length) {
+                words.push(word);
+            }
+        }
+    }
+    return words;
+};
+
+class TextContainer {
+    constructor(context, node, styles) {
+        this.text = transform(node.data, styles.textTransform);
+        this.textBounds = parseTextBounds(context, this.text, styles, node);
+    }
+}
+const transform = (text, transform) => {
+    switch (transform) {
+        case 1 /* TEXT_TRANSFORM.LOWERCASE */:
+            return text.toLowerCase();
+        case 3 /* TEXT_TRANSFORM.CAPITALIZE */:
+            return text.replace(CAPITALIZE, capitalize);
+        case 2 /* TEXT_TRANSFORM.UPPERCASE */:
+            return text.toUpperCase();
+        default:
+            return text;
+    }
+};
+const CAPITALIZE = /(^|\s|:|-|\(|\))([a-z])/g;
+const capitalize = (m, p1, p2) => {
+    if (m.length > 0) {
+        return p1 + p2.toUpperCase();
+    }
+    return m;
+};
+
+class ImageElementContainer extends ElementContainer {
+    constructor(context, img) {
+        super(context, img);
+        this.src = img.currentSrc || img.src;
+        this.intrinsicWidth = img.naturalWidth;
+        this.intrinsicHeight = img.naturalHeight;
+        this.context.cache.addImage(this.src);
+    }
+}
+
+class CanvasElementContainer extends ElementContainer {
+    constructor(context, canvas) {
+        super(context, canvas);
+        this.canvas = canvas;
+        this.intrinsicWidth = canvas.width;
+        this.intrinsicHeight = canvas.height;
+    }
+}
+
+class SVGElementContainer extends ElementContainer {
+    constructor(context, img) {
+        super(context, img);
+        const s = new XMLSerializer();
+        const bounds = parseBounds(context, img);
+        img.setAttribute('width', `${bounds.width}px`);
+        img.setAttribute('height', `${bounds.height}px`);
+        this.svg = `data:image/svg+xml,${encodeURIComponent(s.serializeToString(img))}`;
+        this.intrinsicWidth = img.width.baseVal.value;
+        this.intrinsicHeight = img.height.baseVal.value;
+        this.context.cache.addImage(this.svg);
+    }
+}
+
+class LIElementContainer extends ElementContainer {
+    constructor(context, element) {
+        super(context, element);
+        this.value = element.value;
+    }
+}
+
+class OLElementContainer extends ElementContainer {
+    constructor(context, element) {
+        super(context, element);
+        this.start = element.start;
+        this.reversed = typeof element.reversed === 'boolean' && element.reversed === true;
+    }
+}
+
+const CHECKBOX_BORDER_RADIUS = [
+    {
+        type: 15 /* TokenType.DIMENSION_TOKEN */,
+        flags: 0,
+        unit: 'px',
+        number: 3
+    }
+];
+const RADIO_BORDER_RADIUS = [
+    {
+        type: 16 /* TokenType.PERCENTAGE_TOKEN */,
+        flags: 0,
+        number: 50
+    }
+];
+const reformatInputBounds = (bounds) => {
+    if (bounds.width > bounds.height) {
+        return new Bounds(bounds.left + (bounds.width - bounds.height) / 2, bounds.top, bounds.height, bounds.height);
+    }
+    else if (bounds.width < bounds.height) {
+        return new Bounds(bounds.left, bounds.top + (bounds.height - bounds.width) / 2, bounds.width, bounds.width);
+    }
+    return bounds;
+};
+const getInputValue = (node) => {
+    const value = node.type === PASSWORD ? new Array(node.value.length + 1).join('\u2022') : node.value;
+    return value.length === 0 ? node.placeholder || '' : value;
+};
+const isPlaceholder = (node) => {
+    return node.value.length === 0 && !!node.placeholder;
+};
+const CHECKBOX = 'checkbox';
+const RADIO = 'radio';
+const PASSWORD = 'password';
+const INPUT_COLOR = 0x2a2a2aff;
+// Default placeholder color (similar to browsers: rgba(117, 117, 117, 1) or #757575)
+const PLACEHOLDER_COLOR = 0x757575ff;
+class InputElementContainer extends ElementContainer {
+    constructor(context, input) {
+        super(context, input);
+        this.type = input.type.toLowerCase();
+        this.checked = input.checked;
+        this.value = getInputValue(input);
+        this.isPlaceholder = isPlaceholder(input);
+        if (this.type === CHECKBOX || this.type === RADIO) {
+            this.styles.backgroundColor = 0xdededeff;
+            this.styles.borderTopColor =
+                this.styles.borderRightColor =
+                    this.styles.borderBottomColor =
+                        this.styles.borderLeftColor =
+                            0xa5a5a5ff;
+            this.styles.borderTopWidth =
+                this.styles.borderRightWidth =
+                    this.styles.borderBottomWidth =
+                        this.styles.borderLeftWidth =
+                            1;
+            this.styles.borderTopStyle =
+                this.styles.borderRightStyle =
+                    this.styles.borderBottomStyle =
+                        this.styles.borderLeftStyle =
+                            1 /* BORDER_STYLE.SOLID */;
+            this.styles.backgroundClip = [0 /* BACKGROUND_CLIP.BORDER_BOX */];
+            this.styles.backgroundOrigin = [0 /* BACKGROUND_ORIGIN.BORDER_BOX */];
+            this.bounds = reformatInputBounds(this.bounds);
+        }
+        switch (this.type) {
+            case CHECKBOX:
+                this.styles.borderTopRightRadius =
+                    this.styles.borderTopLeftRadius =
+                        this.styles.borderBottomRightRadius =
+                            this.styles.borderBottomLeftRadius =
+                                CHECKBOX_BORDER_RADIUS;
+                break;
+            case RADIO:
+                this.styles.borderTopRightRadius =
+                    this.styles.borderTopLeftRadius =
+                        this.styles.borderBottomRightRadius =
+                            this.styles.borderBottomLeftRadius =
+                                RADIO_BORDER_RADIUS;
+                break;
+        }
+    }
+}
+
+class SelectElementContainer extends ElementContainer {
+    constructor(context, element) {
+        super(context, element);
+        const option = element.options[element.selectedIndex || 0];
+        this.value = option ? option.text || '' : '';
+    }
+}
+
+class TextareaElementContainer extends ElementContainer {
+    constructor(context, element) {
+        super(context, element);
+        this.value = element.value;
+    }
+}
+
+class IFrameElementContainer extends ElementContainer {
+    constructor(context, iframe) {
+        super(context, iframe);
+        this.src = iframe.src;
+        this.width = parseInt(iframe.width, 10) || 0;
+        this.height = parseInt(iframe.height, 10) || 0;
+        this.backgroundColor = this.styles.backgroundColor;
+        try {
+            if (iframe.contentWindow &&
+                iframe.contentWindow.document &&
+                iframe.contentWindow.document.documentElement) {
+                this.tree = parseTree(context, iframe.contentWindow.document.documentElement);
+                // http://www.w3.org/TR/css3-background/#special-backgrounds
+                const documentBackgroundColor = iframe.contentWindow.document.documentElement
+                    ? parseColor(context, getComputedStyle(iframe.contentWindow.document.documentElement).backgroundColor)
+                    : COLORS.TRANSPARENT;
+                const bodyBackgroundColor = iframe.contentWindow.document.body
+                    ? parseColor(context, getComputedStyle(iframe.contentWindow.document.body).backgroundColor)
+                    : COLORS.TRANSPARENT;
+                this.backgroundColor = isTransparent(documentBackgroundColor)
+                    ? isTransparent(bodyBackgroundColor)
+                        ? this.styles.backgroundColor
+                        : bodyBackgroundColor
+                    : documentBackgroundColor;
+            }
+        }
+        catch (e) { }
+    }
+}
+
+const LIST_OWNERS = ['OL', 'UL', 'MENU'];
+const parseNodeTree = (context, node, parent, root) => {
+    for (let childNode = node.firstChild, nextNode; childNode; childNode = nextNode) {
+        nextNode = childNode.nextSibling;
+        // Fixes #2238 #1624 - Fix the issue of TextNode content being overlooked in rendering due to being perceived as blank by trim().
+        if (isTextNode(childNode) && childNode.data.length > 0) {
+            parent.textNodes.push(new TextContainer(context, childNode, parent.styles));
+        }
+        else if (isElementNode(childNode)) {
+            if (isSlotElement(childNode) && childNode.assignedNodes) {
+                childNode.assignedNodes().forEach((childNode) => parseNodeTree(context, childNode, parent, root));
+            }
+            else {
+                const container = createContainer(context, childNode);
+                if (container.styles.isVisible()) {
+                    if (createsRealStackingContext(childNode, container, root)) {
+                        container.flags |= 4 /* FLAGS.CREATES_REAL_STACKING_CONTEXT */;
+                    }
+                    else if (createsStackingContext(container.styles)) {
+                        container.flags |= 2 /* FLAGS.CREATES_STACKING_CONTEXT */;
+                    }
+                    if (LIST_OWNERS.indexOf(childNode.tagName) !== -1) {
+                        container.flags |= 8 /* FLAGS.IS_LIST_OWNER */;
+                    }
+                    parent.elements.push(container);
+                    childNode.slot;
+                    if (childNode.shadowRoot) {
+                        parseNodeTree(context, childNode.shadowRoot, container, root);
+                    }
+                    else if (!isTextareaElement(childNode) &&
+                        !isSVGElement(childNode) &&
+                        !isSelectElement(childNode)) {
+                        parseNodeTree(context, childNode, container, root);
+                    }
+                }
+            }
+        }
+    }
+};
+const createContainer = (context, element) => {
+    if (isImageElement(element)) {
+        return new ImageElementContainer(context, element);
+    }
+    if (isCanvasElement(element)) {
+        return new CanvasElementContainer(context, element);
+    }
+    if (isSVGElement(element)) {
+        return new SVGElementContainer(context, element);
+    }
+    if (isLIElement(element)) {
+        return new LIElementContainer(context, element);
+    }
+    if (isOLElement(element)) {
+        return new OLElementContainer(context, element);
+    }
+    if (isInputElement(element)) {
+        return new InputElementContainer(context, element);
+    }
+    if (isSelectElement(element)) {
+        return new SelectElementContainer(context, element);
+    }
+    if (isTextareaElement(element)) {
+        return new TextareaElementContainer(context, element);
+    }
+    if (isIFrameElement(element)) {
+        return new IFrameElementContainer(context, element);
+    }
+    return new ElementContainer(context, element);
+};
+const parseTree = (context, element) => {
+    const container = createContainer(context, element);
+    container.flags |= 4 /* FLAGS.CREATES_REAL_STACKING_CONTEXT */;
+    parseNodeTree(context, element, container, container);
+    return container;
+};
+const createsRealStackingContext = (node, container, root) => {
+    return (container.styles.isPositionedWithZIndex() ||
+        container.styles.opacity < 1 ||
+        container.styles.isTransformed() ||
+        (isBodyElement(node) && root.styles.isTransparent()));
+};
+const createsStackingContext = (styles) => {
+    // Positioned and floating elements create stacking contexts
+    if (styles.isPositioned() || styles.isFloating()) {
+        return true;
+    }
+    // Fix for Issue #137: Inline-level containers (inline-flex, inline-block, etc.)
+    // should create stacking contexts to prevent their children from being added
+    // to the parent's stacking context, which causes rendering order issues
+    return (contains(styles.display, 268435456 /* DISPLAY.INLINE_FLEX */) ||
+        contains(styles.display, 33554432 /* DISPLAY.INLINE_BLOCK */) ||
+        contains(styles.display, 536870912 /* DISPLAY.INLINE_GRID */) ||
+        contains(styles.display, 134217728 /* DISPLAY.INLINE_TABLE */));
+};
+const isTextNode = (node) => node.nodeType === Node.TEXT_NODE;
+const isElementNode = (node) => node.nodeType === Node.ELEMENT_NODE;
+const isHTMLElementNode = (node) => isElementNode(node) && typeof node.style !== 'undefined' && !isSVGElementNode(node);
+const isSVGElementNode = (element) => typeof element.className === 'object';
+const isLIElement = (node) => node.tagName === 'LI';
+const isOLElement = (node) => node.tagName === 'OL';
+const isInputElement = (node) => node.tagName === 'INPUT';
+const isHTMLElement = (node) => node.tagName === 'HTML';
+const isSVGElement = (node) => node.tagName === 'svg';
+const isBodyElement = (node) => node.tagName === 'BODY';
+const isCanvasElement = (node) => node.tagName === 'CANVAS';
+const isVideoElement = (node) => node.tagName === 'VIDEO';
+const isImageElement = (node) => node.tagName === 'IMG';
+const isIFrameElement = (node) => node.tagName === 'IFRAME';
+const isStyleElement = (node) => node.tagName === 'STYLE';
+const isScriptElement = (node) => node.tagName === 'SCRIPT';
+const isTextareaElement = (node) => node.tagName === 'TEXTAREA';
+const isSelectElement = (node) => node.tagName === 'SELECT';
+const isSlotElement = (node) => node.tagName === 'SLOT';
+// https://html.spec.whatwg.org/multipage/custom-elements.html#valid-custom-element-name
+const isCustomElement = (node) => node.tagName.indexOf('-') > 0;
+
+class CounterState {
+    constructor() {
+        this.counters = {};
+    }
+    getCounterValue(name) {
+        const counter = this.counters[name];
+        if (counter && counter.length) {
+            return counter[counter.length - 1];
+        }
+        return 1;
+    }
+    getCounterValues(name) {
+        const counter = this.counters[name];
+        return counter ? counter : [];
+    }
+    pop(counters) {
+        counters.forEach((counter) => this.counters[counter].pop());
+    }
+    parse(style) {
+        const counterIncrement = style.counterIncrement;
+        const counterReset = style.counterReset;
+        let canReset = true;
+        if (counterIncrement !== null) {
+            counterIncrement.forEach((entry) => {
+                const counter = this.counters[entry.counter];
+                if (counter && entry.increment !== 0) {
+                    canReset = false;
+                    if (!counter.length) {
+                        counter.push(1);
+                    }
+                    counter[Math.max(0, counter.length - 1)] += entry.increment;
+                }
+            });
+        }
+        const counterNames = [];
+        if (canReset) {
+            counterReset.forEach((entry) => {
+                let counter = this.counters[entry.counter];
+                counterNames.push(entry.counter);
+                if (!counter) {
+                    counter = this.counters[entry.counter] = [];
+                }
+                counter.push(entry.reset);
+            });
+        }
+        return counterNames;
+    }
+}
+const ROMAN_UPPER = {
+    integers: [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1],
+    values: ['M', 'CM', 'D', 'CD', 'C', 'XC', 'L', 'XL', 'X', 'IX', 'V', 'IV', 'I']
+};
+const ARMENIAN = {
+    integers: [
+        9000, 8000, 7000, 6000, 5000, 4000, 3000, 2000, 1000, 900, 800, 700, 600, 500, 400, 300, 200, 100, 90, 80, 70,
+        60, 50, 40, 30, 20, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
+    ],
+    values: [
+        'Ք',
+        'Փ',
+        'Ւ',
+        'Ց',
+        'Ր',
+        'Տ',
+        'Վ',
+        'Ս',
+        'Ռ',
+        'Ջ',
+        'Պ',
+        'Չ',
+        'Ո',
+        'Շ',
+        'Ն',
+        'Յ',
+        'Մ',
+        'Ճ',
+        'Ղ',
+        'Ձ',
+        'Հ',
+        'Կ',
+        'Ծ',
+        'Խ',
+        'Լ',
+        'Ի',
+        'Ժ',
+        'Թ',
+        'Ը',
+        'Է',
+        'Զ',
+        'Ե',
+        'Դ',
+        'Գ',
+        'Բ',
+        'Ա'
+    ]
+};
+const HEBREW = {
+    integers: [
+        10000, 9000, 8000, 7000, 6000, 5000, 4000, 3000, 2000, 1000, 400, 300, 200, 100, 90, 80, 70, 60, 50, 40, 30, 20,
+        19, 18, 17, 16, 15, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
+    ],
+    values: [
+        'י׳',
+        'ט׳',
+        'ח׳',
+        'ז׳',
+        'ו׳',
+        'ה׳',
+        'ד׳',
+        'ג׳',
+        'ב׳',
+        'א׳',
+        'ת',
+        'ש',
+        'ר',
+        'ק',
+        'צ',
+        'פ',
+        'ע',
+        'ס',
+        'נ',
+        'מ',
+        'ל',
+        'כ',
+        'יט',
+        'יח',
+        'יז',
+        'טז',
+        'טו',
+        'י',
+        'ט',
+        'ח',
+        'ז',
+        'ו',
+        'ה',
+        'ד',
+        'ג',
+        'ב',
+        'א'
+    ]
+};
+const GEORGIAN = {
+    integers: [
+        10000, 9000, 8000, 7000, 6000, 5000, 4000, 3000, 2000, 1000, 900, 800, 700, 600, 500, 400, 300, 200, 100, 90,
+        80, 70, 60, 50, 40, 30, 20, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
+    ],
+    values: [
+        'ჵ',
+        'ჰ',
+        'ჯ',
+        'ჴ',
+        'ხ',
+        'ჭ',
+        'წ',
+        'ძ',
+        'ც',
+        'ჩ',
+        'შ',
+        'ყ',
+        'ღ',
+        'ქ',
+        'ფ',
+        'ჳ',
+        'ტ',
+        'ს',
+        'რ',
+        'ჟ',
+        'პ',
+        'ო',
+        'ჲ',
+        'ნ',
+        'მ',
+        'ლ',
+        'კ',
+        'ი',
+        'თ',
+        'ჱ',
+        'ზ',
+        'ვ',
+        'ე',
+        'დ',
+        'გ',
+        'ბ',
+        'ა'
+    ]
+};
+const createAdditiveCounter = (value, min, max, symbols, fallback, suffix) => {
+    if (value < min || value > max) {
+        return createCounterText(value, fallback, suffix.length > 0);
+    }
+    return (symbols.integers.reduce((string, integer, index) => {
+        while (value >= integer) {
+            value -= integer;
+            string += symbols.values[index];
+        }
+        return string;
+    }, '') + suffix);
+};
+const createCounterStyleWithSymbolResolver = (value, codePointRangeLength, isNumeric, resolver) => {
+    let string = '';
+    do {
+        if (!isNumeric) {
+            value--;
+        }
+        string = resolver(value) + string;
+        value /= codePointRangeLength;
+    } while (value * codePointRangeLength >= codePointRangeLength);
+    return string;
+};
+const createCounterStyleFromRange = (value, codePointRangeStart, codePointRangeEnd, isNumeric, suffix) => {
+    const codePointRangeLength = codePointRangeEnd - codePointRangeStart + 1;
+    return ((value < 0 ? '-' : '') +
+        (createCounterStyleWithSymbolResolver(Math.abs(value), codePointRangeLength, isNumeric, (codePoint) => fromCodePoint$1(Math.floor(codePoint % codePointRangeLength) + codePointRangeStart)) +
+            suffix));
+};
+const createCounterStyleFromSymbols = (value, symbols, suffix = '. ') => {
+    const codePointRangeLength = symbols.length;
+    return (createCounterStyleWithSymbolResolver(Math.abs(value), codePointRangeLength, false, (codePoint) => symbols[Math.floor(codePoint % codePointRangeLength)]) + suffix);
+};
+const CJK_ZEROS = 1 << 0;
+const CJK_TEN_COEFFICIENTS = 1 << 1;
+const CJK_TEN_HIGH_COEFFICIENTS = 1 << 2;
+const CJK_HUNDRED_COEFFICIENTS = 1 << 3;
+const createCJKCounter = (value, numbers, multipliers, negativeSign, suffix, flags) => {
+    if (value < -9999 || value > 9999) {
+        return createCounterText(value, 4 /* LIST_STYLE_TYPE.CJK_DECIMAL */, suffix.length > 0);
+    }
+    let tmp = Math.abs(value);
+    let string = suffix;
+    if (tmp === 0) {
+        return numbers[0] + string;
+    }
+    for (let digit = 0; tmp > 0 && digit <= 4; digit++) {
+        const coefficient = tmp % 10;
+        if (coefficient === 0 && contains(flags, CJK_ZEROS) && string !== '') {
+            string = numbers[coefficient] + string;
+        }
+        else if (coefficient > 1 ||
+            (coefficient === 1 && digit === 0) ||
+            (coefficient === 1 && digit === 1 && contains(flags, CJK_TEN_COEFFICIENTS)) ||
+            (coefficient === 1 && digit === 1 && contains(flags, CJK_TEN_HIGH_COEFFICIENTS) && value > 100) ||
+            (coefficient === 1 && digit > 1 && contains(flags, CJK_HUNDRED_COEFFICIENTS))) {
+            string = numbers[coefficient] + (digit > 0 ? multipliers[digit - 1] : '') + string;
+        }
+        else if (coefficient === 1 && digit > 0) {
+            string = multipliers[digit - 1] + string;
+        }
+        tmp = Math.floor(tmp / 10);
+    }
+    return (value < 0 ? negativeSign : '') + string;
+};
+const CHINESE_INFORMAL_MULTIPLIERS = '十百千萬';
+const CHINESE_FORMAL_MULTIPLIERS = '拾佰仟萬';
+const JAPANESE_NEGATIVE = 'マイナス';
+const KOREAN_NEGATIVE = '마이너스';
+const createCounterText = (value, type, appendSuffix) => {
+    const defaultSuffix = appendSuffix ? '. ' : '';
+    const cjkSuffix = appendSuffix ? '、' : '';
+    const koreanSuffix = appendSuffix ? ', ' : '';
+    const spaceSuffix = appendSuffix ? ' ' : '';
+    switch (type) {
+        case 0 /* LIST_STYLE_TYPE.DISC */:
+            return '•' + spaceSuffix;
+        case 1 /* LIST_STYLE_TYPE.CIRCLE */:
+            return '◦' + spaceSuffix;
+        case 2 /* LIST_STYLE_TYPE.SQUARE */:
+            return '◾' + spaceSuffix;
+        case 5 /* LIST_STYLE_TYPE.DECIMAL_LEADING_ZERO */:
+            const string = createCounterStyleFromRange(value, 48, 57, true, defaultSuffix);
+            return string.length < 4 ? `0${string}` : string;
+        case 4 /* LIST_STYLE_TYPE.CJK_DECIMAL */:
+            return createCounterStyleFromSymbols(value, '〇一二三四五六七八九', cjkSuffix);
+        case 6 /* LIST_STYLE_TYPE.LOWER_ROMAN */:
+            return createAdditiveCounter(value, 1, 3999, ROMAN_UPPER, 3 /* LIST_STYLE_TYPE.DECIMAL */, defaultSuffix).toLowerCase();
+        case 7 /* LIST_STYLE_TYPE.UPPER_ROMAN */:
+            return createAdditiveCounter(value, 1, 3999, ROMAN_UPPER, 3 /* LIST_STYLE_TYPE.DECIMAL */, defaultSuffix);
+        case 8 /* LIST_STYLE_TYPE.LOWER_GREEK */:
+            return createCounterStyleFromRange(value, 945, 969, false, defaultSuffix);
+        case 9 /* LIST_STYLE_TYPE.LOWER_ALPHA */:
+            return createCounterStyleFromRange(value, 97, 122, false, defaultSuffix);
+        case 10 /* LIST_STYLE_TYPE.UPPER_ALPHA */:
+            return createCounterStyleFromRange(value, 65, 90, false, defaultSuffix);
+        case 11 /* LIST_STYLE_TYPE.ARABIC_INDIC */:
+            return createCounterStyleFromRange(value, 1632, 1641, true, defaultSuffix);
+        case 12 /* LIST_STYLE_TYPE.ARMENIAN */:
+        case 49 /* LIST_STYLE_TYPE.UPPER_ARMENIAN */:
+            return createAdditiveCounter(value, 1, 9999, ARMENIAN, 3 /* LIST_STYLE_TYPE.DECIMAL */, defaultSuffix);
+        case 35 /* LIST_STYLE_TYPE.LOWER_ARMENIAN */:
+            return createAdditiveCounter(value, 1, 9999, ARMENIAN, 3 /* LIST_STYLE_TYPE.DECIMAL */, defaultSuffix).toLowerCase();
+        case 13 /* LIST_STYLE_TYPE.BENGALI */:
+            return createCounterStyleFromRange(value, 2534, 2543, true, defaultSuffix);
+        case 14 /* LIST_STYLE_TYPE.CAMBODIAN */:
+        case 30 /* LIST_STYLE_TYPE.KHMER */:
+            return createCounterStyleFromRange(value, 6112, 6121, true, defaultSuffix);
+        case 15 /* LIST_STYLE_TYPE.CJK_EARTHLY_BRANCH */:
+            return createCounterStyleFromSymbols(value, '子丑寅卯辰巳午未申酉戌亥', cjkSuffix);
+        case 16 /* LIST_STYLE_TYPE.CJK_HEAVENLY_STEM */:
+            return createCounterStyleFromSymbols(value, '甲乙丙丁戊己庚辛壬癸', cjkSuffix);
+        case 17 /* LIST_STYLE_TYPE.CJK_IDEOGRAPHIC */:
+        case 48 /* LIST_STYLE_TYPE.TRAD_CHINESE_INFORMAL */:
+            return createCJKCounter(value, '零一二三四五六七八九', CHINESE_INFORMAL_MULTIPLIERS, '負', cjkSuffix, CJK_TEN_COEFFICIENTS | CJK_TEN_HIGH_COEFFICIENTS | CJK_HUNDRED_COEFFICIENTS);
+        case 47 /* LIST_STYLE_TYPE.TRAD_CHINESE_FORMAL */:
+            return createCJKCounter(value, '零壹貳參肆伍陸柒捌玖', CHINESE_FORMAL_MULTIPLIERS, '負', cjkSuffix, CJK_ZEROS | CJK_TEN_COEFFICIENTS | CJK_TEN_HIGH_COEFFICIENTS | CJK_HUNDRED_COEFFICIENTS);
+        case 42 /* LIST_STYLE_TYPE.SIMP_CHINESE_INFORMAL */:
+            return createCJKCounter(value, '零一二三四五六七八九', CHINESE_INFORMAL_MULTIPLIERS, '负', cjkSuffix, CJK_TEN_COEFFICIENTS | CJK_TEN_HIGH_COEFFICIENTS | CJK_HUNDRED_COEFFICIENTS);
+        case 41 /* LIST_STYLE_TYPE.SIMP_CHINESE_FORMAL */:
+            return createCJKCounter(value, '零壹贰叁肆伍陆柒捌玖', CHINESE_FORMAL_MULTIPLIERS, '负', cjkSuffix, CJK_ZEROS | CJK_TEN_COEFFICIENTS | CJK_TEN_HIGH_COEFFICIENTS | CJK_HUNDRED_COEFFICIENTS);
+        case 26 /* LIST_STYLE_TYPE.JAPANESE_INFORMAL */:
+            return createCJKCounter(value, '〇一二三四五六七八九', '十百千万', JAPANESE_NEGATIVE, cjkSuffix, 0);
+        case 25 /* LIST_STYLE_TYPE.JAPANESE_FORMAL */:
+            return createCJKCounter(value, '零壱弐参四伍六七八九', '拾百千万', JAPANESE_NEGATIVE, cjkSuffix, CJK_ZEROS | CJK_TEN_COEFFICIENTS | CJK_TEN_HIGH_COEFFICIENTS);
+        case 31 /* LIST_STYLE_TYPE.KOREAN_HANGUL_FORMAL */:
+            return createCJKCounter(value, '영일이삼사오육칠팔구', '십백천만', KOREAN_NEGATIVE, koreanSuffix, CJK_ZEROS | CJK_TEN_COEFFICIENTS | CJK_TEN_HIGH_COEFFICIENTS);
+        case 33 /* LIST_STYLE_TYPE.KOREAN_HANJA_INFORMAL */:
+            return createCJKCounter(value, '零一二三四五六七八九', '十百千萬', KOREAN_NEGATIVE, koreanSuffix, 0);
+        case 32 /* LIST_STYLE_TYPE.KOREAN_HANJA_FORMAL */:
+            return createCJKCounter(value, '零壹貳參四五六七八九', '拾百千', KOREAN_NEGATIVE, koreanSuffix, CJK_ZEROS | CJK_TEN_COEFFICIENTS | CJK_TEN_HIGH_COEFFICIENTS);
+        case 18 /* LIST_STYLE_TYPE.DEVANAGARI */:
+            return createCounterStyleFromRange(value, 0x966, 0x96f, true, defaultSuffix);
+        case 20 /* LIST_STYLE_TYPE.GEORGIAN */:
+            return createAdditiveCounter(value, 1, 19999, GEORGIAN, 3 /* LIST_STYLE_TYPE.DECIMAL */, defaultSuffix);
+        case 21 /* LIST_STYLE_TYPE.GUJARATI */:
+            return createCounterStyleFromRange(value, 0xae6, 0xaef, true, defaultSuffix);
+        case 22 /* LIST_STYLE_TYPE.GURMUKHI */:
+            return createCounterStyleFromRange(value, 0xa66, 0xa6f, true, defaultSuffix);
+        case 52 /* LIST_STYLE_TYPE.HEBREW */:
+            return createAdditiveCounter(value, 1, 10999, HEBREW, 3 /* LIST_STYLE_TYPE.DECIMAL */, defaultSuffix);
+        case 23 /* LIST_STYLE_TYPE.HIRAGANA */:
+            return createCounterStyleFromSymbols(value, 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわゐゑをん');
+        case 24 /* LIST_STYLE_TYPE.HIRAGANA_IROHA */:
+            return createCounterStyleFromSymbols(value, 'いろはにほへとちりぬるをわかよたれそつねならむうゐのおくやまけふこえてあさきゆめみしゑひもせす');
+        case 27 /* LIST_STYLE_TYPE.KANNADA */:
+            return createCounterStyleFromRange(value, 0xce6, 0xcef, true, defaultSuffix);
+        case 28 /* LIST_STYLE_TYPE.KATAKANA */:
+            return createCounterStyleFromSymbols(value, 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヰヱヲン', cjkSuffix);
+        case 29 /* LIST_STYLE_TYPE.KATAKANA_IROHA */:
+            return createCounterStyleFromSymbols(value, 'イロハニホヘトチリヌルヲワカヨタレソツネナラムウヰノオクヤマケフコエテアサキユメミシヱヒモセス', cjkSuffix);
+        case 34 /* LIST_STYLE_TYPE.LAO */:
+            return createCounterStyleFromRange(value, 0xed0, 0xed9, true, defaultSuffix);
+        case 37 /* LIST_STYLE_TYPE.MONGOLIAN */:
+            return createCounterStyleFromRange(value, 0x1810, 0x1819, true, defaultSuffix);
+        case 38 /* LIST_STYLE_TYPE.MYANMAR */:
+            return createCounterStyleFromRange(value, 0x1040, 0x1049, true, defaultSuffix);
+        case 39 /* LIST_STYLE_TYPE.ORIYA */:
+            return createCounterStyleFromRange(value, 0xb66, 0xb6f, true, defaultSuffix);
+        case 40 /* LIST_STYLE_TYPE.PERSIAN */:
+            return createCounterStyleFromRange(value, 0x6f0, 0x6f9, true, defaultSuffix);
+        case 43 /* LIST_STYLE_TYPE.TAMIL */:
+            return createCounterStyleFromRange(value, 0xbe6, 0xbef, true, defaultSuffix);
+        case 44 /* LIST_STYLE_TYPE.TELUGU */:
+            return createCounterStyleFromRange(value, 0xc66, 0xc6f, true, defaultSuffix);
+        case 45 /* LIST_STYLE_TYPE.THAI */:
+            return createCounterStyleFromRange(value, 0xe50, 0xe59, true, defaultSuffix);
+        case 46 /* LIST_STYLE_TYPE.TIBETAN */:
+            return createCounterStyleFromRange(value, 0xf20, 0xf29, true, defaultSuffix);
+        case 3 /* LIST_STYLE_TYPE.DECIMAL */:
+        default:
+            return createCounterStyleFromRange(value, 48, 57, true, defaultSuffix);
+    }
+};
+
+const IGNORE_ATTRIBUTE = 'data-html2canvas-ignore';
+class DocumentCloner {
+    constructor(context, element, options) {
+        this.context = context;
+        this.options = options;
+        this.scrolledElements = [];
+        this.referenceElement = element;
+        this.counters = new CounterState();
+        this.quoteDepth = 0;
+        if (!element.ownerDocument) {
+            throw new Error('Cloned element does not have an owner document');
+        }
+        this.documentElement = this.cloneNode(element.ownerDocument.documentElement, false);
+    }
+    toIFrame(ownerDocument, windowSize) {
+        const iframe = createIFrameContainer(ownerDocument, windowSize);
+        if (!iframe.contentWindow) {
+            return Promise.reject(`Unable to find iframe window`);
+        }
+        const scrollX = ownerDocument.defaultView.pageXOffset;
+        const scrollY = ownerDocument.defaultView.pageYOffset;
+        const cloneWindow = iframe.contentWindow;
+        const documentClone = cloneWindow.document;
+        /* Chrome doesn't detect relative background-images assigned in inline <style> sheets when fetched through getComputedStyle
+         if window url is about:blank, we can assign the url to current by writing onto the document
+         */
+        const iframeLoad = iframeLoader(iframe).then(async () => {
+            this.scrolledElements.forEach(restoreNodeScroll);
+            if (cloneWindow) {
+                cloneWindow.scrollTo(windowSize.left, windowSize.top);
+                if (/(iPad|iPhone|iPod)/g.test(navigator.userAgent) &&
+                    (cloneWindow.scrollY !== windowSize.top || cloneWindow.scrollX !== windowSize.left)) {
+                    this.context.logger.warn('Unable to restore scroll position for cloned document');
+                    this.context.windowBounds = this.context.windowBounds.add(cloneWindow.scrollX - windowSize.left, cloneWindow.scrollY - windowSize.top, 0, 0);
+                }
+            }
+            const onclone = this.options.onclone;
+            const referenceElement = this.clonedReferenceElement;
+            if (typeof referenceElement === 'undefined') {
+                return Promise.reject(`Error finding the ${this.referenceElement.nodeName} in the cloned document`);
+            }
+            if (documentClone.fonts && documentClone.fonts.ready) {
+                await documentClone.fonts.ready;
+            }
+            if (/(AppleWebKit)/g.test(navigator.userAgent)) {
+                await imagesReady(documentClone);
+            }
+            if (typeof onclone === 'function') {
+                return Promise.resolve()
+                    .then(() => onclone(documentClone, referenceElement))
+                    .then(() => iframe);
+            }
+            return iframe;
+        });
+        /**
+         * The baseURI of the document will be lost after documentClone.open().
+         * We save it before open() to preserve the original base URI for resource resolution.
+         * */
+        const baseUri = documentClone.baseURI;
+        documentClone.open();
+        documentClone.write(`${serializeDoctype(document.doctype)}<html></html>`);
+        // Chrome scrolls the parent document for some reason after the write to the cloned window???
+        restoreOwnerScroll(this.referenceElement.ownerDocument, scrollX, scrollY);
+        /**
+         * Note: adoptNode() should be called AFTER documentClone.open() and close()
+         *
+         * In Chrome, calling adoptNode() before or during open/write may cause
+         * styles with uppercase characters in class names (e.g. ".MyClass") to not apply correctly.
+         *
+         * Fix:
+         *   - Make sure adoptNode() is called after documentClone.open() and close()
+         *   - This allows Chrome to properly match and apply all CSS rules including mixed-case class selectors.
+         * */
+        const adoptedNode = documentClone.adoptNode(this.documentElement);
+        addBase(adoptedNode, baseUri);
+        documentClone.replaceChild(adoptedNode, documentClone.documentElement);
+        documentClone.close();
+        return iframeLoad;
+    }
+    createElementClone(node) {
+        if (isDebugging(node, 2 /* DebuggerType.CLONE */)) {
+            debugger;
+        }
+        if (isCanvasElement(node)) {
+            return this.createCanvasClone(node);
+        }
+        if (isVideoElement(node)) {
+            return this.createVideoClone(node);
+        }
+        if (isStyleElement(node)) {
+            return this.createStyleClone(node);
+        }
+        const clone = node.cloneNode(false);
+        if (isImageElement(clone)) {
+            if (isImageElement(node) && node.currentSrc && node.currentSrc !== node.src) {
+                clone.src = node.currentSrc;
+                clone.srcset = '';
+            }
+            if (clone.loading === 'lazy') {
+                clone.loading = 'eager';
+            }
+        }
+        if (isCustomElement(clone)) {
+            return this.createCustomElementClone(clone);
+        }
+        return clone;
+    }
+    createCustomElementClone(node) {
+        // Ensure html2canvascustomelement is defined
+        if (typeof window !== 'undefined' && !customElements.get('html2canvascustomelement')) {
+            try {
+                customElements.define('html2canvascustomelement', class extends HTMLElement {
+                    constructor() {
+                        super();
+                    }
+                });
+            }
+            catch (e) {
+                // Already defined or cannot define
+            }
+        }
+        const clone = document.createElement('html2canvascustomelement');
+        copyCSSStyles(node.style, clone);
+        // Clone shadow DOM if it exists
+        // Fix for Issue #108: This is critical for Web Components with slots to work correctly
+        if (node.shadowRoot) {
+            try {
+                clone.attachShadow({ mode: 'open' });
+                // The actual shadow DOM content will be cloned in cloneChildNodes
+            }
+            catch (e) {
+                // Some elements cannot have shadow roots attached
+                // This can happen if the element doesn't support shadow DOM
+                this.context.logger.error('Failed to attach shadow root to custom element clone:', e);
+            }
+        }
+        return clone;
+    }
+    createStyleClone(node) {
+        try {
+            const sheet = node.sheet;
+            if (sheet && sheet.cssRules) {
+                const css = [].slice.call(sheet.cssRules, 0).reduce((css, rule) => {
+                    if (rule && typeof rule.cssText === 'string') {
+                        return css + rule.cssText;
+                    }
+                    return css;
+                }, '');
+                const style = node.cloneNode(false);
+                style.textContent = css;
+                return style;
+            }
+        }
+        catch (e) {
+            // accessing node.sheet.cssRules throws a DOMException
+            this.context.logger.error('Unable to access cssRules property', e);
+            if (e.name !== 'SecurityError') {
+                throw e;
+            }
+        }
+        return node.cloneNode(false);
+    }
+    createCanvasClone(canvas) {
+        if (this.options.inlineImages && canvas.ownerDocument) {
+            const img = canvas.ownerDocument.createElement('img');
+            try {
+                img.src = canvas.toDataURL();
+                return img;
+            }
+            catch (e) {
+                this.context.logger.info(`Unable to inline canvas contents, canvas is tainted`, canvas);
+            }
+        }
+        const clonedCanvas = canvas.cloneNode(false);
+        try {
+            clonedCanvas.width = canvas.width;
+            clonedCanvas.height = canvas.height;
+            const ctx = canvas.getContext('2d');
+            const clonedCtx = clonedCanvas.getContext('2d', { willReadFrequently: true });
+            if (clonedCtx) {
+                if (!this.options.allowTaint && ctx) {
+                    clonedCtx.putImageData(ctx.getImageData(0, 0, canvas.width, canvas.height), 0, 0);
+                }
+                else {
+                    const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl');
+                    if (gl) {
+                        const attribs = gl.getContextAttributes();
+                        if (attribs?.preserveDrawingBuffer === false) {
+                            this.context.logger.warn('Unable to clone WebGL context as it has preserveDrawingBuffer=false', canvas);
+                        }
+                    }
+                    clonedCtx.drawImage(canvas, 0, 0);
+                }
+            }
+            return clonedCanvas;
+        }
+        catch (e) {
+            this.context.logger.info(`Unable to clone canvas as it is tainted`, canvas);
+        }
+        return clonedCanvas;
+    }
+    createVideoClone(video) {
+        const canvas = video.ownerDocument.createElement('canvas');
+        canvas.width = video.offsetWidth;
+        canvas.height = video.offsetHeight;
+        const ctx = canvas.getContext('2d');
+        try {
+            if (ctx) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                if (!this.options.allowTaint) {
+                    ctx.getImageData(0, 0, canvas.width, canvas.height);
+                }
+            }
+            return canvas;
+        }
+        catch (e) {
+            this.context.logger.info(`Unable to clone video as it is tainted`, video);
+        }
+        const blankCanvas = video.ownerDocument.createElement('canvas');
+        blankCanvas.width = video.offsetWidth;
+        blankCanvas.height = video.offsetHeight;
+        return blankCanvas;
+    }
+    appendChildNode(clone, child, copyStyles) {
+        if (!isElementNode(child) ||
+            (!isScriptElement(child) &&
+                !child.hasAttribute(IGNORE_ATTRIBUTE) &&
+                (typeof this.options.ignoreElements !== 'function' || !this.options.ignoreElements(child)))) {
+            if (!this.options.copyStyles || !isElementNode(child) || !isStyleElement(child)) {
+                clone.appendChild(this.cloneNode(child, copyStyles));
+            }
+        }
+    }
+    cloneChildNodes(node, clone, copyStyles) {
+        // Clone shadow DOM content if it exists
+        if (node.shadowRoot && clone.shadowRoot) {
+            for (let child = node.shadowRoot.firstChild; child; child = child.nextSibling) {
+                // Clone all shadow DOM children including <slot> elements
+                // The browser will automatically handle slot assignment
+                clone.shadowRoot.appendChild(this.cloneNode(child, copyStyles));
+            }
+        }
+        // Clone light DOM content (always, even if shadow DOM exists)
+        for (let child = node.firstChild; child; child = child.nextSibling) {
+            this.appendChildNode(clone, child, copyStyles);
+        }
+    }
+    cloneNode(node, copyStyles) {
+        if (isTextNode(node)) {
+            return document.createTextNode(node.data);
+        }
+        if (!node.ownerDocument) {
+            return node.cloneNode(false);
+        }
+        const window = node.ownerDocument.defaultView;
+        if (window && isElementNode(node) && (isHTMLElementNode(node) || isSVGElementNode(node))) {
+            const clone = this.createElementClone(node);
+            clone.style.transitionProperty = 'none';
+            const style = window.getComputedStyle(node);
+            const styleBefore = window.getComputedStyle(node, ':before');
+            const styleAfter = window.getComputedStyle(node, ':after');
+            if (this.referenceElement === node && isHTMLElementNode(clone)) {
+                this.clonedReferenceElement = clone;
+            }
+            if (isBodyElement(clone)) {
+                createPseudoHideStyles(clone);
+            }
+            const counters = this.counters.parse(new CSSParsedCounterDeclaration(this.context, style));
+            const before = this.resolvePseudoContent(node, clone, styleBefore, PseudoElementType.BEFORE);
+            if (isCustomElement(node)) {
+                copyStyles = true;
+            }
+            if (!isVideoElement(node)) {
+                this.cloneChildNodes(node, clone, copyStyles);
+            }
+            if (before) {
+                clone.insertBefore(before, clone.firstChild);
+            }
+            const after = this.resolvePseudoContent(node, clone, styleAfter, PseudoElementType.AFTER);
+            if (after) {
+                clone.appendChild(after);
+            }
+            this.counters.pop(counters);
+            if ((style && (this.options.copyStyles || isSVGElementNode(node)) && !isIFrameElement(node)) ||
+                copyStyles) {
+                copyCSSStyles(style, clone);
+            }
+            if (node.scrollTop !== 0 || node.scrollLeft !== 0) {
+                this.scrolledElements.push([clone, node.scrollLeft, node.scrollTop]);
+            }
+            if ((isTextareaElement(node) || isSelectElement(node)) &&
+                (isTextareaElement(clone) || isSelectElement(clone))) {
+                clone.value = node.value;
+            }
+            return clone;
+        }
+        return node.cloneNode(false);
+    }
+    resolvePseudoContent(node, clone, style, pseudoElt) {
+        if (!style) {
+            return;
+        }
+        const value = style.content;
+        const document = clone.ownerDocument;
+        if (!document || !value || value === 'none' || value === '-moz-alt-content' || style.display === 'none') {
+            return;
+        }
+        this.counters.parse(new CSSParsedCounterDeclaration(this.context, style));
+        const declaration = new CSSParsedPseudoDeclaration(this.context, style);
+        const anonymousReplacedElement = document.createElement('html2canvaspseudoelement');
+        copyCSSStyles(style, anonymousReplacedElement);
+        declaration.content.forEach((token) => {
+            if (token.type === 0 /* TokenType.STRING_TOKEN */) {
+                anonymousReplacedElement.appendChild(document.createTextNode(token.value));
+            }
+            else if (token.type === 22 /* TokenType.URL_TOKEN */) {
+                const img = document.createElement('img');
+                img.src = token.value;
+                img.style.opacity = '1';
+                anonymousReplacedElement.appendChild(img);
+            }
+            else if (token.type === 18 /* TokenType.FUNCTION */) {
+                if (token.name === 'attr') {
+                    const attr = token.values.filter(isIdentToken);
+                    if (attr.length) {
+                        anonymousReplacedElement.appendChild(document.createTextNode(node.getAttribute(attr[0].value) || ''));
+                    }
+                }
+                else if (token.name === 'counter') {
+                    const [counter, counterStyle] = token.values.filter(nonFunctionArgSeparator);
+                    if (counter && isIdentToken(counter)) {
+                        const counterState = this.counters.getCounterValue(counter.value);
+                        const counterType = counterStyle && isIdentToken(counterStyle)
+                            ? listStyleType.parse(this.context, counterStyle.value)
+                            : 3 /* LIST_STYLE_TYPE.DECIMAL */;
+                        anonymousReplacedElement.appendChild(document.createTextNode(createCounterText(counterState, counterType, false)));
+                    }
+                }
+                else if (token.name === 'counters') {
+                    const [counter, delim, counterStyle] = token.values.filter(nonFunctionArgSeparator);
+                    if (counter && isIdentToken(counter)) {
+                        const counterStates = this.counters.getCounterValues(counter.value);
+                        const counterType = counterStyle && isIdentToken(counterStyle)
+                            ? listStyleType.parse(this.context, counterStyle.value)
+                            : 3 /* LIST_STYLE_TYPE.DECIMAL */;
+                        const separator = delim && delim.type === 0 /* TokenType.STRING_TOKEN */ ? delim.value : '';
+                        const text = counterStates
+                            .map((value) => createCounterText(value, counterType, false))
+                            .join(separator);
+                        anonymousReplacedElement.appendChild(document.createTextNode(text));
+                    }
+                }
+                else ;
+            }
+            else if (token.type === 20 /* TokenType.IDENT_TOKEN */) {
+                switch (token.value) {
+                    case 'open-quote':
+                        anonymousReplacedElement.appendChild(document.createTextNode(getQuote(declaration.quotes, this.quoteDepth++, true)));
+                        break;
+                    case 'close-quote':
+                        anonymousReplacedElement.appendChild(document.createTextNode(getQuote(declaration.quotes, --this.quoteDepth, false)));
+                        break;
+                    default:
+                        // safari doesn't parse string tokens correctly because of lack of quotes
+                        anonymousReplacedElement.appendChild(document.createTextNode(token.value));
+                }
+            }
+        });
+        anonymousReplacedElement.className = `${PSEUDO_HIDE_ELEMENT_CLASS_BEFORE} ${PSEUDO_HIDE_ELEMENT_CLASS_AFTER}`;
+        const newClassName = pseudoElt === PseudoElementType.BEFORE
+            ? ` ${PSEUDO_HIDE_ELEMENT_CLASS_BEFORE}`
+            : ` ${PSEUDO_HIDE_ELEMENT_CLASS_AFTER}`;
+        if (isSVGElementNode(clone)) {
+            clone.className.baseValue += newClassName;
+        }
+        else {
+            clone.className += newClassName;
+        }
+        return anonymousReplacedElement;
+    }
+    static destroy(container) {
+        if (container.parentNode) {
+            container.parentNode.removeChild(container);
+            return true;
+        }
+        return false;
+    }
+}
+var PseudoElementType;
+(function (PseudoElementType) {
+    PseudoElementType[PseudoElementType["BEFORE"] = 0] = "BEFORE";
+    PseudoElementType[PseudoElementType["AFTER"] = 1] = "AFTER";
+})(PseudoElementType || (PseudoElementType = {}));
+const createIFrameContainer = (ownerDocument, bounds) => {
+    const cloneIframeContainer = ownerDocument.createElement('iframe');
+    cloneIframeContainer.className = 'html2canvas-container';
+    cloneIframeContainer.style.visibility = 'hidden';
+    cloneIframeContainer.style.position = 'fixed';
+    cloneIframeContainer.style.left = '-10000px';
+    cloneIframeContainer.style.top = '0px';
+    cloneIframeContainer.style.border = '0';
+    cloneIframeContainer.width = bounds.width.toString();
+    cloneIframeContainer.height = bounds.height.toString();
+    cloneIframeContainer.scrolling = 'no'; // ios won't scroll without it
+    cloneIframeContainer.setAttribute(IGNORE_ATTRIBUTE, 'true');
+    ownerDocument.body.appendChild(cloneIframeContainer);
+    return cloneIframeContainer;
+};
+const imageReady = (img) => {
+    return new Promise((resolve) => {
+        if (img.complete) {
+            resolve();
+            return;
+        }
+        if (!img.src) {
+            resolve();
+            return;
+        }
+        img.onload = resolve;
+        img.onerror = resolve;
+    });
+};
+const imagesReady = (document) => {
+    return Promise.all([].slice.call(document.images, 0).map(imageReady));
+};
+const iframeLoader = (iframe) => {
+    return new Promise((resolve, reject) => {
+        const cloneWindow = iframe.contentWindow;
+        if (!cloneWindow) {
+            return reject(`No window assigned for iframe`);
+        }
+        const documentClone = cloneWindow.document;
+        cloneWindow.onload = iframe.onload = () => {
+            cloneWindow.onload = iframe.onload = null;
+            const interval = setInterval(() => {
+                if (documentClone.body.childNodes.length > 0 && documentClone.readyState === 'complete') {
+                    clearInterval(interval);
+                    resolve(iframe);
+                }
+            }, 50);
+        };
+    });
+};
+const ignoredStyleProperties = [
+    'all', // #2476
+    'd', // #2483
+    'content' // Safari shows pseudoelements if content is set
+];
+const copyCSSStyles = (style, target) => {
+    // Edge does not provide value for cssText
+    for (let i = style.length - 1; i >= 0; i--) {
+        const property = style.item(i);
+        // fix: Chrome_138 ignore custom properties
+        if (ignoredStyleProperties.indexOf(property) === -1 && !property.startsWith('--')) {
+            target.style.setProperty(property, style.getPropertyValue(property));
+        }
+    }
+    return target;
+};
+const serializeDoctype = (doctype) => {
+    let str = '';
+    if (doctype) {
+        str += '<!DOCTYPE ';
+        if (doctype.name) {
+            str += doctype.name;
+        }
+        if (doctype.internalSubset) {
+            str += doctype.internalSubset;
+        }
+        if (doctype.publicId) {
+            str += `"${doctype.publicId}"`;
+        }
+        if (doctype.systemId) {
+            str += `"${doctype.systemId}"`;
+        }
+        str += '>';
+    }
+    return str;
+};
+const restoreOwnerScroll = (ownerDocument, x, y) => {
+    if (ownerDocument &&
+        ownerDocument.defaultView &&
+        (x !== ownerDocument.defaultView.pageXOffset || y !== ownerDocument.defaultView.pageYOffset)) {
+        ownerDocument.defaultView.scrollTo(x, y);
+    }
+};
+const restoreNodeScroll = ([element, x, y]) => {
+    element.scrollLeft = x;
+    element.scrollTop = y;
+};
+const PSEUDO_BEFORE = ':before';
+const PSEUDO_AFTER = ':after';
+const PSEUDO_HIDE_ELEMENT_CLASS_BEFORE = '___html2canvas___pseudoelement_before';
+const PSEUDO_HIDE_ELEMENT_CLASS_AFTER = '___html2canvas___pseudoelement_after';
+const PSEUDO_HIDE_ELEMENT_STYLE = `{
+    content: "" !important;
+    display: none !important;
+}`;
+const createPseudoHideStyles = (body) => {
+    createStyles(body, `.${PSEUDO_HIDE_ELEMENT_CLASS_BEFORE}${PSEUDO_BEFORE}${PSEUDO_HIDE_ELEMENT_STYLE}
+         .${PSEUDO_HIDE_ELEMENT_CLASS_AFTER}${PSEUDO_AFTER}${PSEUDO_HIDE_ELEMENT_STYLE}`);
+};
+const createStyles = (body, styles) => {
+    const document = body.ownerDocument;
+    if (document) {
+        const style = document.createElement('style');
+        style.textContent = styles;
+        body.appendChild(style);
+    }
+};
+const addBase = (targetELement, baseUri) => {
+    const baseNode = targetELement.ownerDocument.createElement('base');
+    baseNode.href = baseUri;
+    const headEle = targetELement.getElementsByTagName('head').item(0);
+    headEle?.insertBefore(baseNode, headEle?.firstChild ?? null);
+};
+
+class CacheStorage {
+    static getOrigin(url) {
+        const link = CacheStorage._link;
+        if (!link) {
+            return 'about:blank';
+        }
+        link.href = url;
+        link.href = link.href; // IE9, LOL! - http://jsfiddle.net/niklasvh/2e48b/
+        return link.protocol + link.hostname + link.port;
+    }
+    static isSameOrigin(src) {
+        return CacheStorage.getOrigin(src) === CacheStorage._origin;
+    }
+    static setContext(window) {
+        CacheStorage._link = window.document.createElement('a');
+        CacheStorage._origin = CacheStorage.getOrigin(window.location.href);
+    }
+}
+CacheStorage._origin = 'about:blank';
+class Cache {
+    constructor(context, _options) {
+        this.context = context;
+        this._options = _options;
+        this._cache = {};
+    }
+    addImage(src) {
+        const result = Promise.resolve();
+        if (this.has(src)) {
+            return result;
+        }
+        if (isBlobImage(src) || isRenderable(src)) {
+            (this._cache[src] = this.loadImage(src)).catch(() => {
+                // prevent unhandled rejection
+            });
+            return result;
+        }
+        return result;
+    }
+    match(src) {
+        return this._cache[src];
+    }
+    async loadImage(key) {
+        const isSameOrigin = typeof this._options.customIsSameOrigin === 'function'
+            ? await this._options.customIsSameOrigin(key, CacheStorage.isSameOrigin)
+            : CacheStorage.isSameOrigin(key);
+        const useCORS = !isInlineImage(key) && this._options.useCORS === true && FEATURES.SUPPORT_CORS_IMAGES && !isSameOrigin;
+        const useProxy = !isInlineImage(key) &&
+            !isSameOrigin &&
+            !isBlobImage(key) &&
+            typeof this._options.proxy === 'string' &&
+            FEATURES.SUPPORT_CORS_XHR &&
+            !useCORS;
+        if (!isSameOrigin &&
+            this._options.allowTaint === false &&
+            !isInlineImage(key) &&
+            !isBlobImage(key) &&
+            !useProxy &&
+            !useCORS) {
+            return;
+        }
+        let src = key;
+        if (useProxy) {
+            src = await this.proxy(src);
+        }
+        this.context.logger.debug(`Added image ${key.substring(0, 256)}`);
+        return await new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            //ios safari 10.3 taints canvas with data urls unless crossOrigin is set to anonymous
+            if (isInlineBase64Image(src) || useCORS) {
+                img.crossOrigin = 'anonymous';
+            }
+            img.src = src;
+            if (img.complete === true) {
+                // Inline XML images may fail to parse, throwing an Error later on
+                setTimeout(() => resolve(img), 500);
+            }
+            if (this._options.imageTimeout > 0) {
+                setTimeout(() => reject(`Timed out (${this._options.imageTimeout}ms) loading image`), this._options.imageTimeout);
+            }
+        });
+    }
+    has(key) {
+        return typeof this._cache[key] !== 'undefined';
+    }
+    keys() {
+        return Promise.resolve(Object.keys(this._cache));
+    }
+    proxy(src) {
+        const proxy = this._options.proxy;
+        if (!proxy) {
+            throw new Error('No proxy defined');
+        }
+        const key = src.substring(0, 256);
+        return new Promise((resolve, reject) => {
+            const responseType = FEATURES.SUPPORT_RESPONSE_TYPE ? 'blob' : 'text';
+            const xhr = new XMLHttpRequest();
+            xhr.onload = () => {
+                if (xhr.status === 200) {
+                    if (responseType === 'text') {
+                        resolve(xhr.response);
+                    }
+                    else {
+                        const reader = new FileReader();
+                        reader.addEventListener('load', () => resolve(reader.result), false);
+                        reader.addEventListener('error', (e) => reject(e), false);
+                        reader.readAsDataURL(xhr.response);
+                    }
+                }
+                else {
+                    reject(`Failed to proxy resource ${key} with status code ${xhr.status}`);
+                }
+            };
+            xhr.onerror = reject;
+            const queryString = proxy.indexOf('?') > -1 ? '&' : '?';
+            xhr.open('GET', `${proxy}${queryString}url=${encodeURIComponent(src)}&responseType=${responseType}`);
+            if (responseType !== 'text' && xhr instanceof XMLHttpRequest) {
+                xhr.responseType = responseType;
+            }
+            if (this._options.imageTimeout) {
+                const timeout = this._options.imageTimeout;
+                xhr.timeout = timeout;
+                xhr.ontimeout = () => reject(`Timed out (${timeout}ms) proxying ${key}`);
+            }
+            xhr.send();
+        });
+    }
+}
+const INLINE_SVG = /^data:image\/svg\+xml/i;
+const INLINE_BASE64 = /^data:image\/.*;base64,/i;
+const INLINE_IMG = /^data:image\/.*/i;
+const isRenderable = (src) => FEATURES.SUPPORT_SVG_DRAWING || !isSVG(src);
+const isInlineImage = (src) => INLINE_IMG.test(src);
+const isInlineBase64Image = (src) => INLINE_BASE64.test(src);
+const isBlobImage = (src) => src.substr(0, 4) === 'blob';
+const isSVG = (src) => src.substr(-3).toLowerCase() === 'svg' || INLINE_SVG.test(src);
+
+class Vector {
+    constructor(x, y) {
+        this.type = 0 /* PathType.VECTOR */;
+        this.x = x;
+        this.y = y;
+    }
+    add(deltaX, deltaY) {
+        return new Vector(this.x + deltaX, this.y + deltaY);
+    }
+}
+
+const lerp = (a, b, t) => {
+    return new Vector(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t);
+};
+class BezierCurve {
+    constructor(start, startControl, endControl, end) {
+        this.type = 1 /* PathType.BEZIER_CURVE */;
+        this.start = start;
+        this.startControl = startControl;
+        this.endControl = endControl;
+        this.end = end;
+    }
+    subdivide(t, firstHalf) {
+        const ab = lerp(this.start, this.startControl, t);
+        const bc = lerp(this.startControl, this.endControl, t);
+        const cd = lerp(this.endControl, this.end, t);
+        const abbc = lerp(ab, bc, t);
+        const bccd = lerp(bc, cd, t);
+        const dest = lerp(abbc, bccd, t);
+        return firstHalf ? new BezierCurve(this.start, ab, abbc, dest) : new BezierCurve(dest, bccd, cd, this.end);
+    }
+    add(deltaX, deltaY) {
+        return new BezierCurve(this.start.add(deltaX, deltaY), this.startControl.add(deltaX, deltaY), this.endControl.add(deltaX, deltaY), this.end.add(deltaX, deltaY));
+    }
+    reverse() {
+        return new BezierCurve(this.end, this.endControl, this.startControl, this.start);
+    }
+}
+const isBezierCurve = (path) => path.type === 1 /* PathType.BEZIER_CURVE */;
+
+class BoundCurves {
+    constructor(element) {
+        const styles = element.styles;
+        const bounds = element.bounds;
+        let [tlh, tlv] = getAbsoluteValueForTuple(styles.borderTopLeftRadius, bounds.width, bounds.height);
+        let [trh, trv] = getAbsoluteValueForTuple(styles.borderTopRightRadius, bounds.width, bounds.height);
+        let [brh, brv] = getAbsoluteValueForTuple(styles.borderBottomRightRadius, bounds.width, bounds.height);
+        let [blh, blv] = getAbsoluteValueForTuple(styles.borderBottomLeftRadius, bounds.width, bounds.height);
+        const factors = [];
+        factors.push((tlh + trh) / bounds.width);
+        factors.push((blh + brh) / bounds.width);
+        factors.push((tlv + blv) / bounds.height);
+        factors.push((trv + brv) / bounds.height);
+        const maxFactor = Math.max(...factors);
+        if (maxFactor > 1) {
+            tlh /= maxFactor;
+            tlv /= maxFactor;
+            trh /= maxFactor;
+            trv /= maxFactor;
+            brh /= maxFactor;
+            brv /= maxFactor;
+            blh /= maxFactor;
+            blv /= maxFactor;
+        }
+        const topWidth = bounds.width - trh;
+        const rightHeight = bounds.height - brv;
+        const bottomWidth = bounds.width - brh;
+        const leftHeight = bounds.height - blv;
+        const borderTopWidth = styles.borderTopWidth;
+        const borderRightWidth = styles.borderRightWidth;
+        const borderBottomWidth = styles.borderBottomWidth;
+        const borderLeftWidth = styles.borderLeftWidth;
+        const paddingTop = getAbsoluteValue(styles.paddingTop, element.bounds.width);
+        const paddingRight = getAbsoluteValue(styles.paddingRight, element.bounds.width);
+        const paddingBottom = getAbsoluteValue(styles.paddingBottom, element.bounds.width);
+        const paddingLeft = getAbsoluteValue(styles.paddingLeft, element.bounds.width);
+        this.topLeftBorderDoubleOuterBox =
+            tlh > 0 || tlv > 0
+                ? getCurvePoints(bounds.left + borderLeftWidth / 3, bounds.top + borderTopWidth / 3, tlh - borderLeftWidth / 3, tlv - borderTopWidth / 3, CORNER.TOP_LEFT)
+                : new Vector(bounds.left + borderLeftWidth / 3, bounds.top + borderTopWidth / 3);
+        this.topRightBorderDoubleOuterBox =
+            tlh > 0 || tlv > 0
+                ? getCurvePoints(bounds.left + topWidth, bounds.top + borderTopWidth / 3, trh - borderRightWidth / 3, trv - borderTopWidth / 3, CORNER.TOP_RIGHT)
+                : new Vector(bounds.left + bounds.width - borderRightWidth / 3, bounds.top + borderTopWidth / 3);
+        this.bottomRightBorderDoubleOuterBox =
+            brh > 0 || brv > 0
+                ? getCurvePoints(bounds.left + bottomWidth, bounds.top + rightHeight, brh - borderRightWidth / 3, brv - borderBottomWidth / 3, CORNER.BOTTOM_RIGHT)
+                : new Vector(bounds.left + bounds.width - borderRightWidth / 3, bounds.top + bounds.height - borderBottomWidth / 3);
+        this.bottomLeftBorderDoubleOuterBox =
+            blh > 0 || blv > 0
+                ? getCurvePoints(bounds.left + borderLeftWidth / 3, bounds.top + leftHeight, blh - borderLeftWidth / 3, blv - borderBottomWidth / 3, CORNER.BOTTOM_LEFT)
+                : new Vector(bounds.left + borderLeftWidth / 3, bounds.top + bounds.height - borderBottomWidth / 3);
+        this.topLeftBorderDoubleInnerBox =
+            tlh > 0 || tlv > 0
+                ? getCurvePoints(bounds.left + (borderLeftWidth * 2) / 3, bounds.top + (borderTopWidth * 2) / 3, tlh - (borderLeftWidth * 2) / 3, tlv - (borderTopWidth * 2) / 3, CORNER.TOP_LEFT)
+                : new Vector(bounds.left + (borderLeftWidth * 2) / 3, bounds.top + (borderTopWidth * 2) / 3);
+        this.topRightBorderDoubleInnerBox =
+            tlh > 0 || tlv > 0
+                ? getCurvePoints(bounds.left + topWidth, bounds.top + (borderTopWidth * 2) / 3, trh - (borderRightWidth * 2) / 3, trv - (borderTopWidth * 2) / 3, CORNER.TOP_RIGHT)
+                : new Vector(bounds.left + bounds.width - (borderRightWidth * 2) / 3, bounds.top + (borderTopWidth * 2) / 3);
+        this.bottomRightBorderDoubleInnerBox =
+            brh > 0 || brv > 0
+                ? getCurvePoints(bounds.left + bottomWidth, bounds.top + rightHeight, brh - (borderRightWidth * 2) / 3, brv - (borderBottomWidth * 2) / 3, CORNER.BOTTOM_RIGHT)
+                : new Vector(bounds.left + bounds.width - (borderRightWidth * 2) / 3, bounds.top + bounds.height - (borderBottomWidth * 2) / 3);
+        this.bottomLeftBorderDoubleInnerBox =
+            blh > 0 || blv > 0
+                ? getCurvePoints(bounds.left + (borderLeftWidth * 2) / 3, bounds.top + leftHeight, blh - (borderLeftWidth * 2) / 3, blv - (borderBottomWidth * 2) / 3, CORNER.BOTTOM_LEFT)
+                : new Vector(bounds.left + (borderLeftWidth * 2) / 3, bounds.top + bounds.height - (borderBottomWidth * 2) / 3);
+        this.topLeftBorderStroke =
+            tlh > 0 || tlv > 0
+                ? getCurvePoints(bounds.left + borderLeftWidth / 2, bounds.top + borderTopWidth / 2, tlh - borderLeftWidth / 2, tlv - borderTopWidth / 2, CORNER.TOP_LEFT)
+                : new Vector(bounds.left + borderLeftWidth / 2, bounds.top + borderTopWidth / 2);
+        this.topRightBorderStroke =
+            tlh > 0 || tlv > 0
+                ? getCurvePoints(bounds.left + topWidth, bounds.top + borderTopWidth / 2, trh - borderRightWidth / 2, trv - borderTopWidth / 2, CORNER.TOP_RIGHT)
+                : new Vector(bounds.left + bounds.width - borderRightWidth / 2, bounds.top + borderTopWidth / 2);
+        this.bottomRightBorderStroke =
+            brh > 0 || brv > 0
+                ? getCurvePoints(bounds.left + bottomWidth, bounds.top + rightHeight, brh - borderRightWidth / 2, brv - borderBottomWidth / 2, CORNER.BOTTOM_RIGHT)
+                : new Vector(bounds.left + bounds.width - borderRightWidth / 2, bounds.top + bounds.height - borderBottomWidth / 2);
+        this.bottomLeftBorderStroke =
+            blh > 0 || blv > 0
+                ? getCurvePoints(bounds.left + borderLeftWidth / 2, bounds.top + leftHeight, blh - borderLeftWidth / 2, blv - borderBottomWidth / 2, CORNER.BOTTOM_LEFT)
+                : new Vector(bounds.left + borderLeftWidth / 2, bounds.top + bounds.height - borderBottomWidth / 2);
+        this.topLeftBorderBox =
+            tlh > 0 || tlv > 0
+                ? getCurvePoints(bounds.left, bounds.top, tlh, tlv, CORNER.TOP_LEFT)
+                : new Vector(bounds.left, bounds.top);
+        this.topRightBorderBox =
+            trh > 0 || trv > 0
+                ? getCurvePoints(bounds.left + topWidth, bounds.top, trh, trv, CORNER.TOP_RIGHT)
+                : new Vector(bounds.left + bounds.width, bounds.top);
+        this.bottomRightBorderBox =
+            brh > 0 || brv > 0
+                ? getCurvePoints(bounds.left + bottomWidth, bounds.top + rightHeight, brh, brv, CORNER.BOTTOM_RIGHT)
+                : new Vector(bounds.left + bounds.width, bounds.top + bounds.height);
+        this.bottomLeftBorderBox =
+            blh > 0 || blv > 0
+                ? getCurvePoints(bounds.left, bounds.top + leftHeight, blh, blv, CORNER.BOTTOM_LEFT)
+                : new Vector(bounds.left, bounds.top + bounds.height);
+        this.topLeftPaddingBox =
+            tlh > 0 || tlv > 0
+                ? getCurvePoints(bounds.left + borderLeftWidth, bounds.top + borderTopWidth, Math.max(0, tlh - borderLeftWidth), Math.max(0, tlv - borderTopWidth), CORNER.TOP_LEFT)
+                : new Vector(bounds.left + borderLeftWidth, bounds.top + borderTopWidth);
+        this.topRightPaddingBox =
+            trh > 0 || trv > 0
+                ? getCurvePoints(bounds.left + Math.min(topWidth, bounds.width - borderRightWidth), bounds.top + borderTopWidth, topWidth > bounds.width + borderRightWidth ? 0 : Math.max(0, trh - borderRightWidth), Math.max(0, trv - borderTopWidth), CORNER.TOP_RIGHT)
+                : new Vector(bounds.left + bounds.width - borderRightWidth, bounds.top + borderTopWidth);
+        this.bottomRightPaddingBox =
+            brh > 0 || brv > 0
+                ? getCurvePoints(bounds.left + Math.min(bottomWidth, bounds.width - borderLeftWidth), bounds.top + Math.min(rightHeight, bounds.height - borderBottomWidth), Math.max(0, brh - borderRightWidth), Math.max(0, brv - borderBottomWidth), CORNER.BOTTOM_RIGHT)
+                : new Vector(bounds.left + bounds.width - borderRightWidth, bounds.top + bounds.height - borderBottomWidth);
+        this.bottomLeftPaddingBox =
+            blh > 0 || blv > 0
+                ? getCurvePoints(bounds.left + borderLeftWidth, bounds.top + Math.min(leftHeight, bounds.height - borderBottomWidth), Math.max(0, blh - borderLeftWidth), Math.max(0, blv - borderBottomWidth), CORNER.BOTTOM_LEFT)
+                : new Vector(bounds.left + borderLeftWidth, bounds.top + bounds.height - borderBottomWidth);
+        this.topLeftContentBox =
+            tlh > 0 || tlv > 0
+                ? getCurvePoints(bounds.left + borderLeftWidth + paddingLeft, bounds.top + borderTopWidth + paddingTop, Math.max(0, tlh - (borderLeftWidth + paddingLeft)), Math.max(0, tlv - (borderTopWidth + paddingTop)), CORNER.TOP_LEFT)
+                : new Vector(bounds.left + borderLeftWidth + paddingLeft, bounds.top + borderTopWidth + paddingTop);
+        this.topRightContentBox =
+            trh > 0 || trv > 0
+                ? getCurvePoints(bounds.left + Math.min(topWidth, bounds.width + borderLeftWidth + paddingLeft), bounds.top + borderTopWidth + paddingTop, topWidth > bounds.width + borderLeftWidth + paddingLeft ? 0 : trh - borderLeftWidth + paddingLeft, trv - (borderTopWidth + paddingTop), CORNER.TOP_RIGHT)
+                : new Vector(bounds.left + bounds.width - (borderRightWidth + paddingRight), bounds.top + borderTopWidth + paddingTop);
+        this.bottomRightContentBox =
+            brh > 0 || brv > 0
+                ? getCurvePoints(bounds.left + Math.min(bottomWidth, bounds.width - (borderLeftWidth + paddingLeft)), bounds.top + Math.min(rightHeight, bounds.height + borderTopWidth + paddingTop), Math.max(0, brh - (borderRightWidth + paddingRight)), brv - (borderBottomWidth + paddingBottom), CORNER.BOTTOM_RIGHT)
+                : new Vector(bounds.left + bounds.width - (borderRightWidth + paddingRight), bounds.top + bounds.height - (borderBottomWidth + paddingBottom));
+        this.bottomLeftContentBox =
+            blh > 0 || blv > 0
+                ? getCurvePoints(bounds.left + borderLeftWidth + paddingLeft, bounds.top + leftHeight, Math.max(0, blh - (borderLeftWidth + paddingLeft)), blv - (borderBottomWidth + paddingBottom), CORNER.BOTTOM_LEFT)
+                : new Vector(bounds.left + borderLeftWidth + paddingLeft, bounds.top + bounds.height - (borderBottomWidth + paddingBottom));
+    }
+}
+var CORNER;
+(function (CORNER) {
+    CORNER[CORNER["TOP_LEFT"] = 0] = "TOP_LEFT";
+    CORNER[CORNER["TOP_RIGHT"] = 1] = "TOP_RIGHT";
+    CORNER[CORNER["BOTTOM_RIGHT"] = 2] = "BOTTOM_RIGHT";
+    CORNER[CORNER["BOTTOM_LEFT"] = 3] = "BOTTOM_LEFT";
+})(CORNER || (CORNER = {}));
+const getCurvePoints = (x, y, r1, r2, position) => {
+    const kappa = 4 * ((Math.sqrt(2) - 1) / 3);
+    const ox = r1 * kappa; // control point offset horizontal
+    const oy = r2 * kappa; // control point offset vertical
+    const xm = x + r1; // x-middle
+    const ym = y + r2; // y-middle
+    switch (position) {
+        case CORNER.TOP_LEFT:
+            return new BezierCurve(new Vector(x, ym), new Vector(x, ym - oy), new Vector(xm - ox, y), new Vector(xm, y));
+        case CORNER.TOP_RIGHT:
+            return new BezierCurve(new Vector(x, y), new Vector(x + ox, y), new Vector(xm, ym - oy), new Vector(xm, ym));
+        case CORNER.BOTTOM_RIGHT:
+            return new BezierCurve(new Vector(xm, y), new Vector(xm, y + oy), new Vector(x + ox, ym), new Vector(x, ym));
+        case CORNER.BOTTOM_LEFT:
+        default:
+            return new BezierCurve(new Vector(xm, ym), new Vector(xm - ox, ym), new Vector(x, y + oy), new Vector(x, y));
+    }
+};
+const calculateBorderBoxPath = (curves) => {
+    return [curves.topLeftBorderBox, curves.topRightBorderBox, curves.bottomRightBorderBox, curves.bottomLeftBorderBox];
+};
+const calculateContentBoxPath = (curves) => {
+    return [
+        curves.topLeftContentBox,
+        curves.topRightContentBox,
+        curves.bottomRightContentBox,
+        curves.bottomLeftContentBox
+    ];
+};
+const calculatePaddingBoxPath = (curves) => {
+    return [
+        curves.topLeftPaddingBox,
+        curves.topRightPaddingBox,
+        curves.bottomRightPaddingBox,
+        curves.bottomLeftPaddingBox
+    ];
+};
+
+class TransformEffect {
+    constructor(offsetX, offsetY, matrix) {
+        this.offsetX = offsetX;
+        this.offsetY = offsetY;
+        this.matrix = matrix;
+        this.type = 0 /* EffectType.TRANSFORM */;
+        this.target = 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */;
+    }
+}
+class ClipEffect {
+    constructor(path, target) {
+        this.path = path;
+        this.target = target;
+        this.type = 1 /* EffectType.CLIP */;
+    }
+}
+class OpacityEffect {
+    constructor(opacity) {
+        this.opacity = opacity;
+        this.type = 2 /* EffectType.OPACITY */;
+        this.target = 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */;
+    }
+}
+const isTransformEffect = (effect) => effect.type === 0 /* EffectType.TRANSFORM */;
+const isClipEffect = (effect) => effect.type === 1 /* EffectType.CLIP */;
+const isOpacityEffect = (effect) => effect.type === 2 /* EffectType.OPACITY */;
+
+const equalPath = (a, b) => {
+    if (a.length === b.length) {
+        return a.some((v, i) => v === b[i]);
+    }
+    return false;
+};
+const transformPath = (path, deltaX, deltaY, deltaW, deltaH) => {
+    return path.map((point, index) => {
+        switch (index) {
+            case 0:
+                return point.add(deltaX, deltaY);
+            case 1:
+                return point.add(deltaX + deltaW, deltaY);
+            case 2:
+                return point.add(deltaX + deltaW, deltaY + deltaH);
+            case 3:
+                return point.add(deltaX, deltaY + deltaH);
+        }
+        return point;
+    });
+};
+
+class StackingContext {
+    constructor(container) {
+        this.element = container;
+        this.inlineLevel = [];
+        this.nonInlineLevel = [];
+        this.negativeZIndex = [];
+        this.zeroOrAutoZIndexOrTransformedOrOpacity = [];
+        this.positiveZIndex = [];
+        this.nonPositionedFloats = [];
+        this.nonPositionedInlineLevel = [];
+    }
+}
+class ElementPaint {
+    constructor(container, parent) {
+        this.container = container;
+        this.parent = parent;
+        this.effects = [];
+        this.curves = new BoundCurves(this.container);
+        if (this.container.styles.opacity < 1) {
+            this.effects.push(new OpacityEffect(this.container.styles.opacity));
+        }
+        if (this.container.styles.rotate !== null) {
+            const origin = this.container.styles.transformOrigin;
+            const offsetX = this.container.bounds.left + getAbsoluteValue(origin[0], this.container.bounds.width);
+            const offsetY = this.container.bounds.top + getAbsoluteValue(origin[1], this.container.bounds.height);
+            // Apply rotate property if present
+            const angle = this.container.styles.rotate;
+            const rad = (angle * Math.PI) / 180;
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            const rotateMatrix = [cos, sin, -sin, cos, 0, 0];
+            this.effects.push(new TransformEffect(offsetX, offsetY, rotateMatrix));
+        }
+        if (this.container.styles.transform !== null) {
+            const origin = this.container.styles.transformOrigin;
+            const offsetX = this.container.bounds.left + getAbsoluteValue(origin[0], this.container.bounds.width);
+            const offsetY = this.container.bounds.top + getAbsoluteValue(origin[1], this.container.bounds.height);
+            const matrix = this.container.styles.transform;
+            this.effects.push(new TransformEffect(offsetX, offsetY, matrix));
+        }
+        if (this.container.styles.overflowX !== 0 /* OVERFLOW.VISIBLE */) {
+            const borderBox = calculateBorderBoxPath(this.curves);
+            const paddingBox = calculatePaddingBoxPath(this.curves);
+            if (equalPath(borderBox, paddingBox)) {
+                this.effects.push(new ClipEffect(borderBox, 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */));
+            }
+            else {
+                this.effects.push(new ClipEffect(borderBox, 2 /* EffectTarget.BACKGROUND_BORDERS */));
+                this.effects.push(new ClipEffect(paddingBox, 4 /* EffectTarget.CONTENT */));
+            }
+        }
+    }
+    getEffects(target) {
+        let inFlow = [2 /* POSITION.ABSOLUTE */, 3 /* POSITION.FIXED */].indexOf(this.container.styles.position) === -1;
+        let parent = this.parent;
+        const effects = this.effects.slice(0);
+        while (parent) {
+            const croplessEffects = parent.effects.filter((effect) => !isClipEffect(effect));
+            if (inFlow || parent.container.styles.position !== 0 /* POSITION.STATIC */ || !parent.parent) {
+                inFlow = [2 /* POSITION.ABSOLUTE */, 3 /* POSITION.FIXED */].indexOf(parent.container.styles.position) === -1;
+                if (parent.container.styles.overflowX !== 0 /* OVERFLOW.VISIBLE */) {
+                    const borderBox = calculateBorderBoxPath(parent.curves);
+                    const paddingBox = calculatePaddingBoxPath(parent.curves);
+                    if (!equalPath(borderBox, paddingBox)) {
+                        effects.unshift(new ClipEffect(paddingBox, 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */));
+                    }
+                }
+                effects.unshift(...croplessEffects);
+            }
+            else {
+                effects.unshift(...croplessEffects);
+            }
+            parent = parent.parent;
+        }
+        return effects.filter((effect) => contains(effect.target, target));
+    }
+}
+const parseStackTree = (parent, stackingContext, realStackingContext, listItems) => {
+    parent.container.elements.forEach((child) => {
+        const treatAsRealStackingContext = contains(child.flags, 4 /* FLAGS.CREATES_REAL_STACKING_CONTEXT */);
+        const createsStackingContext = contains(child.flags, 2 /* FLAGS.CREATES_STACKING_CONTEXT */);
+        const paintContainer = new ElementPaint(child, parent);
+        if (contains(child.styles.display, 2048 /* DISPLAY.LIST_ITEM */)) {
+            listItems.push(paintContainer);
+        }
+        const listOwnerItems = contains(child.flags, 8 /* FLAGS.IS_LIST_OWNER */) ? [] : listItems;
+        if (treatAsRealStackingContext || createsStackingContext) {
+            const parentStack = treatAsRealStackingContext || child.styles.isPositioned() ? realStackingContext : stackingContext;
+            const stack = new StackingContext(paintContainer);
+            if (child.styles.isPositioned() || child.styles.opacity < 1 || child.styles.isTransformed()) {
+                const order = child.styles.zIndex.order;
+                if (order < 0) {
+                    let index = 0;
+                    parentStack.negativeZIndex.some((current, i) => {
+                        if (order > current.element.container.styles.zIndex.order) {
+                            index = i;
+                            return false;
+                        }
+                        else if (index > 0) {
+                            return true;
+                        }
+                        return false;
+                    });
+                    parentStack.negativeZIndex.splice(index, 0, stack);
+                }
+                else if (order > 0) {
+                    let index = 0;
+                    parentStack.positiveZIndex.some((current, i) => {
+                        if (order >= current.element.container.styles.zIndex.order) {
+                            index = i + 1;
+                            return false;
+                        }
+                        else if (index > 0) {
+                            return true;
+                        }
+                        return false;
+                    });
+                    parentStack.positiveZIndex.splice(index, 0, stack);
+                }
+                else {
+                    parentStack.zeroOrAutoZIndexOrTransformedOrOpacity.push(stack);
+                }
+            }
+            else {
+                if (child.styles.isFloating()) {
+                    parentStack.nonPositionedFloats.push(stack);
+                }
+                else {
+                    parentStack.nonPositionedInlineLevel.push(stack);
+                }
+            }
+            parseStackTree(paintContainer, stack, treatAsRealStackingContext ? stack : realStackingContext, listOwnerItems);
+        }
+        else {
+            if (child.styles.isInlineLevel()) {
+                stackingContext.inlineLevel.push(paintContainer);
+            }
+            else {
+                stackingContext.nonInlineLevel.push(paintContainer);
+            }
+            parseStackTree(paintContainer, stackingContext, realStackingContext, listOwnerItems);
+        }
+        if (contains(child.flags, 8 /* FLAGS.IS_LIST_OWNER */)) {
+            processListItems(child, listOwnerItems);
+        }
+    });
+};
+const processListItems = (owner, elements) => {
+    let numbering = owner instanceof OLElementContainer ? owner.start : 1;
+    const reversed = owner instanceof OLElementContainer ? owner.reversed : false;
+    for (let i = 0; i < elements.length; i++) {
+        const item = elements[i];
+        if (item.container instanceof LIElementContainer &&
+            typeof item.container.value === 'number' &&
+            item.container.value !== 0) {
+            numbering = item.container.value;
+        }
+        item.listValue = createCounterText(numbering, item.container.styles.listStyleType, true);
+        numbering += reversed ? -1 : 1;
+    }
+};
+const parseStackingContexts = (container) => {
+    const paintContainer = new ElementPaint(container, null);
+    const root = new StackingContext(paintContainer);
+    const listItems = [];
+    parseStackTree(paintContainer, root, root, listItems);
+    processListItems(paintContainer.container, listItems);
+    return root;
+};
+
+const parsePathForBorder = (curves, borderSide) => {
+    switch (borderSide) {
+        case 0:
+            return createPathFromCurves(curves.topLeftBorderBox, curves.topLeftPaddingBox, curves.topRightBorderBox, curves.topRightPaddingBox);
+        case 1:
+            return createPathFromCurves(curves.topRightBorderBox, curves.topRightPaddingBox, curves.bottomRightBorderBox, curves.bottomRightPaddingBox);
+        case 2:
+            return createPathFromCurves(curves.bottomRightBorderBox, curves.bottomRightPaddingBox, curves.bottomLeftBorderBox, curves.bottomLeftPaddingBox);
+        case 3:
+        default:
+            return createPathFromCurves(curves.bottomLeftBorderBox, curves.bottomLeftPaddingBox, curves.topLeftBorderBox, curves.topLeftPaddingBox);
+    }
+};
+const parsePathForBorderDoubleOuter = (curves, borderSide) => {
+    switch (borderSide) {
+        case 0:
+            return createPathFromCurves(curves.topLeftBorderBox, curves.topLeftBorderDoubleOuterBox, curves.topRightBorderBox, curves.topRightBorderDoubleOuterBox);
+        case 1:
+            return createPathFromCurves(curves.topRightBorderBox, curves.topRightBorderDoubleOuterBox, curves.bottomRightBorderBox, curves.bottomRightBorderDoubleOuterBox);
+        case 2:
+            return createPathFromCurves(curves.bottomRightBorderBox, curves.bottomRightBorderDoubleOuterBox, curves.bottomLeftBorderBox, curves.bottomLeftBorderDoubleOuterBox);
+        case 3:
+        default:
+            return createPathFromCurves(curves.bottomLeftBorderBox, curves.bottomLeftBorderDoubleOuterBox, curves.topLeftBorderBox, curves.topLeftBorderDoubleOuterBox);
+    }
+};
+const parsePathForBorderDoubleInner = (curves, borderSide) => {
+    switch (borderSide) {
+        case 0:
+            return createPathFromCurves(curves.topLeftBorderDoubleInnerBox, curves.topLeftPaddingBox, curves.topRightBorderDoubleInnerBox, curves.topRightPaddingBox);
+        case 1:
+            return createPathFromCurves(curves.topRightBorderDoubleInnerBox, curves.topRightPaddingBox, curves.bottomRightBorderDoubleInnerBox, curves.bottomRightPaddingBox);
+        case 2:
+            return createPathFromCurves(curves.bottomRightBorderDoubleInnerBox, curves.bottomRightPaddingBox, curves.bottomLeftBorderDoubleInnerBox, curves.bottomLeftPaddingBox);
+        case 3:
+        default:
+            return createPathFromCurves(curves.bottomLeftBorderDoubleInnerBox, curves.bottomLeftPaddingBox, curves.topLeftBorderDoubleInnerBox, curves.topLeftPaddingBox);
+    }
+};
+const parsePathForBorderStroke = (curves, borderSide) => {
+    switch (borderSide) {
+        case 0:
+            return createStrokePathFromCurves(curves.topLeftBorderStroke, curves.topRightBorderStroke);
+        case 1:
+            return createStrokePathFromCurves(curves.topRightBorderStroke, curves.bottomRightBorderStroke);
+        case 2:
+            return createStrokePathFromCurves(curves.bottomRightBorderStroke, curves.bottomLeftBorderStroke);
+        case 3:
+        default:
+            return createStrokePathFromCurves(curves.bottomLeftBorderStroke, curves.topLeftBorderStroke);
+    }
+};
+const createStrokePathFromCurves = (outer1, outer2) => {
+    const path = [];
+    if (isBezierCurve(outer1)) {
+        path.push(outer1.subdivide(0.5, false));
+    }
+    else {
+        path.push(outer1);
+    }
+    if (isBezierCurve(outer2)) {
+        path.push(outer2.subdivide(0.5, true));
+    }
+    else {
+        path.push(outer2);
+    }
+    return path;
+};
+const createPathFromCurves = (outer1, inner1, outer2, inner2) => {
+    const path = [];
+    if (isBezierCurve(outer1)) {
+        path.push(outer1.subdivide(0.5, false));
+    }
+    else {
+        path.push(outer1);
+    }
+    if (isBezierCurve(outer2)) {
+        path.push(outer2.subdivide(0.5, true));
+    }
+    else {
+        path.push(outer2);
+    }
+    if (isBezierCurve(inner2)) {
+        path.push(inner2.subdivide(0.5, true).reverse());
+    }
+    else {
+        path.push(inner2);
+    }
+    if (isBezierCurve(inner1)) {
+        path.push(inner1.subdivide(0.5, false).reverse());
+    }
+    else {
+        path.push(inner1);
+    }
+    return path;
+};
+
+const paddingBox = (element) => {
+    const bounds = element.bounds;
+    const styles = element.styles;
+    return bounds.add(styles.borderLeftWidth, styles.borderTopWidth, -(styles.borderRightWidth + styles.borderLeftWidth), -(styles.borderTopWidth + styles.borderBottomWidth));
+};
+const contentBox = (element) => {
+    const styles = element.styles;
+    const bounds = element.bounds;
+    const paddingLeft = getAbsoluteValue(styles.paddingLeft, bounds.width);
+    const paddingRight = getAbsoluteValue(styles.paddingRight, bounds.width);
+    const paddingTop = getAbsoluteValue(styles.paddingTop, bounds.width);
+    const paddingBottom = getAbsoluteValue(styles.paddingBottom, bounds.width);
+    return bounds.add(paddingLeft + styles.borderLeftWidth, paddingTop + styles.borderTopWidth, -(styles.borderRightWidth + styles.borderLeftWidth + paddingLeft + paddingRight), -(styles.borderTopWidth + styles.borderBottomWidth + paddingTop + paddingBottom));
+};
+
+const calculateBackgroundPositioningArea = (backgroundOrigin, element) => {
+    if (backgroundOrigin === 0 /* BACKGROUND_ORIGIN.BORDER_BOX */) {
+        return element.bounds;
+    }
+    if (backgroundOrigin === 2 /* BACKGROUND_ORIGIN.CONTENT_BOX */) {
+        return contentBox(element);
+    }
+    return paddingBox(element);
+};
+const calculateBackgroundPaintingArea = (backgroundClip, element) => {
+    if (backgroundClip === 0 /* BACKGROUND_CLIP.BORDER_BOX */) {
+        return element.bounds;
+    }
+    if (backgroundClip === 2 /* BACKGROUND_CLIP.CONTENT_BOX */) {
+        return contentBox(element);
+    }
+    return paddingBox(element);
+};
+const calculateBackgroundRendering = (container, index, intrinsicSize) => {
+    const backgroundPositioningArea = calculateBackgroundPositioningArea(getBackgroundValueForIndex(container.styles.backgroundOrigin, index), container);
+    const backgroundPaintingArea = calculateBackgroundPaintingArea(getBackgroundValueForIndex(container.styles.backgroundClip, index), container);
+    const backgroundImageSize = calculateBackgroundSize(getBackgroundValueForIndex(container.styles.backgroundSize, index), intrinsicSize, backgroundPositioningArea);
+    let [sizeWidth, sizeHeight] = backgroundImageSize;
+    const position = getAbsoluteValueForTuple(getBackgroundValueForIndex(container.styles.backgroundPosition, index), backgroundPositioningArea.width - sizeWidth, backgroundPositioningArea.height - sizeHeight);
+    const path = calculateBackgroundRepeatPath(getBackgroundValueForIndex(container.styles.backgroundRepeat, index), position, backgroundImageSize, backgroundPositioningArea, backgroundPaintingArea);
+    const offsetX = Math.round(backgroundPositioningArea.left + position[0]);
+    const offsetY = Math.round(backgroundPositioningArea.top + position[1]);
+    sizeWidth = Math.max(1, sizeWidth);
+    sizeHeight = Math.max(1, sizeHeight);
+    return [path, offsetX, offsetY, sizeWidth, sizeHeight];
+};
+const isAuto = (token) => isIdentToken(token) && token.value === BACKGROUND_SIZE.AUTO;
+const hasIntrinsicValue = (value) => typeof value === 'number';
+const calculateBackgroundSize = (size, [intrinsicWidth, intrinsicHeight, intrinsicProportion], bounds) => {
+    const [first, second] = size;
+    if (!first) {
+        return [0, 0];
+    }
+    if (isLengthPercentage(first) && second && isLengthPercentage(second)) {
+        return [getAbsoluteValue(first, bounds.width), getAbsoluteValue(second, bounds.height)];
+    }
+    const hasIntrinsicProportion = hasIntrinsicValue(intrinsicProportion);
+    if (isIdentToken(first) && (first.value === BACKGROUND_SIZE.CONTAIN || first.value === BACKGROUND_SIZE.COVER)) {
+        if (hasIntrinsicValue(intrinsicProportion)) {
+            const targetRatio = bounds.width / bounds.height;
+            return targetRatio < intrinsicProportion !== (first.value === BACKGROUND_SIZE.COVER)
+                ? [bounds.width, bounds.width / intrinsicProportion]
+                : [bounds.height * intrinsicProportion, bounds.height];
+        }
+        return [bounds.width, bounds.height];
+    }
+    const hasIntrinsicWidth = hasIntrinsicValue(intrinsicWidth);
+    const hasIntrinsicHeight = hasIntrinsicValue(intrinsicHeight);
+    const hasIntrinsicDimensions = hasIntrinsicWidth || hasIntrinsicHeight;
+    // If the background-size is auto or auto auto:
+    if (isAuto(first) && (!second || isAuto(second))) {
+        // If the image has both horizontal and vertical intrinsic dimensions, it's rendered at that size.
+        if (hasIntrinsicWidth && hasIntrinsicHeight) {
+            return [intrinsicWidth, intrinsicHeight];
+        }
+        // If the image has no intrinsic dimensions and has no intrinsic proportions,
+        // it's rendered at the size of the background positioning area.
+        if (!hasIntrinsicProportion && !hasIntrinsicDimensions) {
+            return [bounds.width, bounds.height];
+        }
+        // TODO If the image has no intrinsic dimensions but has intrinsic proportions, it's rendered as if contain had been specified instead.
+        // If the image has only one intrinsic dimension and has intrinsic proportions, it's rendered at the size corresponding to that one dimension.
+        // The other dimension is computed using the specified dimension and the intrinsic proportions.
+        if (hasIntrinsicDimensions && hasIntrinsicProportion) {
+            const width = hasIntrinsicWidth
+                ? intrinsicWidth
+                : intrinsicHeight * intrinsicProportion;
+            const height = hasIntrinsicHeight
+                ? intrinsicHeight
+                : intrinsicWidth / intrinsicProportion;
+            return [width, height];
+        }
+        // If the image has only one intrinsic dimension but has no intrinsic proportions,
+        // it's rendered using the specified dimension and the other dimension of the background positioning area.
+        const width = hasIntrinsicWidth ? intrinsicWidth : bounds.width;
+        const height = hasIntrinsicHeight ? intrinsicHeight : bounds.height;
+        return [width, height];
+    }
+    // If the image has intrinsic proportions, it's stretched to the specified dimension.
+    // The unspecified dimension is computed using the specified dimension and the intrinsic proportions.
+    if (hasIntrinsicProportion) {
+        let width = 0;
+        let height = 0;
+        if (isLengthPercentage(first)) {
+            width = getAbsoluteValue(first, bounds.width);
+        }
+        else if (isLengthPercentage(second)) {
+            height = getAbsoluteValue(second, bounds.height);
+        }
+        if (isAuto(first)) {
+            width = height * intrinsicProportion;
+        }
+        else if (!second || isAuto(second)) {
+            height = width / intrinsicProportion;
+        }
+        return [width, height];
+    }
+    // If the image has no intrinsic proportions, it's stretched to the specified dimension.
+    // The unspecified dimension is computed using the image's corresponding intrinsic dimension,
+    // if there is one. If there is no such intrinsic dimension,
+    // it becomes the corresponding dimension of the background positioning area.
+    let width = null;
+    let height = null;
+    if (isLengthPercentage(first)) {
+        width = getAbsoluteValue(first, bounds.width);
+    }
+    else if (second && isLengthPercentage(second)) {
+        height = getAbsoluteValue(second, bounds.height);
+    }
+    if (width !== null && (!second || isAuto(second))) {
+        height =
+            hasIntrinsicWidth && hasIntrinsicHeight
+                ? (width / intrinsicWidth) * intrinsicHeight
+                : bounds.height;
+    }
+    if (height !== null && isAuto(first)) {
+        width =
+            hasIntrinsicWidth && hasIntrinsicHeight
+                ? (height / intrinsicHeight) * intrinsicWidth
+                : bounds.width;
+    }
+    if (width !== null && height !== null) {
+        return [width, height];
+    }
+    throw new Error(`Unable to calculate background-size for element`);
+};
+const getBackgroundValueForIndex = (values, index) => {
+    const value = values[index];
+    if (typeof value === 'undefined') {
+        return values[0];
+    }
+    return value;
+};
+const calculateBackgroundRepeatPath = (repeat, [x, y], [width, height], backgroundPositioningArea, backgroundPaintingArea) => {
+    switch (repeat) {
+        case 2 /* BACKGROUND_REPEAT.REPEAT_X */:
+            return [
+                new Vector(Math.round(backgroundPositioningArea.left), Math.round(backgroundPositioningArea.top + y)),
+                new Vector(Math.round(backgroundPositioningArea.left + backgroundPositioningArea.width), Math.round(backgroundPositioningArea.top + y)),
+                new Vector(Math.round(backgroundPositioningArea.left + backgroundPositioningArea.width), Math.round(height + backgroundPositioningArea.top + y)),
+                new Vector(Math.round(backgroundPositioningArea.left), Math.round(height + backgroundPositioningArea.top + y))
+            ];
+        case 3 /* BACKGROUND_REPEAT.REPEAT_Y */:
+            return [
+                new Vector(Math.round(backgroundPositioningArea.left + x), Math.round(backgroundPositioningArea.top)),
+                new Vector(Math.round(backgroundPositioningArea.left + x + width), Math.round(backgroundPositioningArea.top)),
+                new Vector(Math.round(backgroundPositioningArea.left + x + width), Math.round(backgroundPositioningArea.height + backgroundPositioningArea.top)),
+                new Vector(Math.round(backgroundPositioningArea.left + x), Math.round(backgroundPositioningArea.height + backgroundPositioningArea.top))
+            ];
+        case 1 /* BACKGROUND_REPEAT.NO_REPEAT */:
+            return [
+                new Vector(Math.round(backgroundPositioningArea.left + x), Math.round(backgroundPositioningArea.top + y)),
+                new Vector(Math.round(backgroundPositioningArea.left + x + width), Math.round(backgroundPositioningArea.top + y)),
+                new Vector(Math.round(backgroundPositioningArea.left + x + width), Math.round(backgroundPositioningArea.top + y + height)),
+                new Vector(Math.round(backgroundPositioningArea.left + x), Math.round(backgroundPositioningArea.top + y + height))
+            ];
+        default:
+            return [
+                new Vector(Math.round(backgroundPaintingArea.left), Math.round(backgroundPaintingArea.top)),
+                new Vector(Math.round(backgroundPaintingArea.left + backgroundPaintingArea.width), Math.round(backgroundPaintingArea.top)),
+                new Vector(Math.round(backgroundPaintingArea.left + backgroundPaintingArea.width), Math.round(backgroundPaintingArea.height + backgroundPaintingArea.top)),
+                new Vector(Math.round(backgroundPaintingArea.left), Math.round(backgroundPaintingArea.height + backgroundPaintingArea.top))
+            ];
+    }
+};
+
+const SMALL_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+const SAMPLE_TEXT = 'Hidden Text';
+class FontMetrics {
+    constructor(document) {
+        this._data = {};
+        this._document = document;
+    }
+    parseMetrics(fontFamily, fontSize) {
+        const container = this._document.createElement('div');
+        const img = this._document.createElement('img');
+        const span = this._document.createElement('span');
+        const body = this._document.body;
+        container.style.visibility = 'hidden';
+        container.style.fontFamily = fontFamily;
+        container.style.fontSize = fontSize;
+        container.style.margin = '0';
+        container.style.padding = '0';
+        container.style.whiteSpace = 'nowrap';
+        body.appendChild(container);
+        img.src = SMALL_IMAGE;
+        img.width = 1;
+        img.height = 1;
+        img.style.margin = '0';
+        img.style.padding = '0';
+        img.style.verticalAlign = 'baseline';
+        span.style.fontFamily = fontFamily;
+        span.style.fontSize = fontSize;
+        span.style.margin = '0';
+        span.style.padding = '0';
+        span.appendChild(this._document.createTextNode(SAMPLE_TEXT));
+        container.appendChild(span);
+        container.appendChild(img);
+        const baseline = img.offsetTop - span.offsetTop + 2;
+        container.removeChild(span);
+        container.appendChild(this._document.createTextNode(SAMPLE_TEXT));
+        container.style.lineHeight = 'normal';
+        img.style.verticalAlign = 'super';
+        const middle = img.offsetTop - container.offsetTop + 2;
+        body.removeChild(container);
+        return { baseline, middle };
+    }
+    getMetrics(fontFamily, fontSize) {
+        const key = `${fontFamily} ${fontSize}`;
+        if (typeof this._data[key] === 'undefined') {
+            this._data[key] = this.parseMetrics(fontFamily, fontSize);
+        }
+        return this._data[key];
+    }
+}
+
+class Renderer {
+    constructor(context, options) {
+        this.context = context;
+        this.options = options;
+    }
+}
+
+const MASK_OFFSET = 10000;
+class CanvasRenderer extends Renderer {
+    constructor(context, options) {
+        super(context, options);
+        this._activeEffects = [];
+        this.canvas = options.canvas ? options.canvas : document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        if (!options.canvas) {
+            this.canvas.width = Math.floor(options.width * options.scale);
+            this.canvas.height = Math.floor(options.height * options.scale);
+            this.canvas.style.width = `${options.width}px`;
+            this.canvas.style.height = `${options.height}px`;
+        }
+        this.fontMetrics = new FontMetrics(document);
+        this.ctx.scale(this.options.scale, this.options.scale);
+        this.ctx.translate(-options.x, -options.y);
+        this.ctx.textBaseline = 'bottom';
+        this._activeEffects = [];
+        this.context.logger.debug(`Canvas renderer initialized (${options.width}x${options.height}) with scale ${options.scale}`);
+    }
+    applyEffects(effects) {
+        while (this._activeEffects.length) {
+            this.popEffect();
+        }
+        effects.forEach((effect) => this.applyEffect(effect));
+    }
+    applyEffect(effect) {
+        this.ctx.save();
+        if (isOpacityEffect(effect)) {
+            this.ctx.globalAlpha = effect.opacity;
+        }
+        if (isTransformEffect(effect)) {
+            this.ctx.translate(effect.offsetX, effect.offsetY);
+            this.ctx.transform(effect.matrix[0], effect.matrix[1], effect.matrix[2], effect.matrix[3], effect.matrix[4], effect.matrix[5]);
+            this.ctx.translate(-effect.offsetX, -effect.offsetY);
+        }
+        if (isClipEffect(effect)) {
+            this.path(effect.path);
+            this.ctx.clip();
+        }
+        this._activeEffects.push(effect);
+    }
+    popEffect() {
+        this._activeEffects.pop();
+        this.ctx.restore();
+    }
+    async renderStack(stack) {
+        const styles = stack.element.container.styles;
+        if (styles.isVisible()) {
+            await this.renderStackContent(stack);
+        }
+    }
+    async renderNode(paint) {
+        if (contains(paint.container.flags, 16 /* FLAGS.DEBUG_RENDER */)) {
+            debugger;
+        }
+        if (paint.container.styles.isVisible()) {
+            await this.renderNodeBackgroundAndBorders(paint);
+            await this.renderNodeContent(paint);
+        }
+    }
+    renderTextWithLetterSpacing(text, letterSpacing, baseline) {
+        if (letterSpacing === 0) {
+            // Use alphabetic baseline for consistent text positioning across browsers
+            // Issue #129: text.bounds.top + text.bounds.height causes text to render too low
+            this.ctx.fillText(text.text, text.bounds.left, text.bounds.top + baseline);
+        }
+        else {
+            const letters = segmentGraphemes(text.text);
+            letters.reduce((left, letter) => {
+                this.ctx.fillText(letter, left, text.bounds.top + baseline);
+                return left + this.ctx.measureText(letter).width;
+            }, text.bounds.left);
+        }
+    }
+    createFontStyle(styles) {
+        const fontVariant = styles.fontVariant
+            .filter((variant) => variant === 'normal' || variant === 'small-caps')
+            .join('');
+        const fontFamily = fixIOSSystemFonts(styles.fontFamily).join(', ');
+        const fontSize = isDimensionToken(styles.fontSize)
+            ? `${styles.fontSize.number}${styles.fontSize.unit}`
+            : `${styles.fontSize.number}px`;
+        return [
+            [styles.fontStyle, fontVariant, styles.fontWeight, fontSize, fontFamily].join(' '),
+            fontFamily,
+            fontSize
+        ];
+    }
+    async renderTextNode(text, styles) {
+        const [font] = this.createFontStyle(styles);
+        this.ctx.font = font;
+        this.ctx.direction = styles.direction === 1 /* DIRECTION.RTL */ ? 'rtl' : 'ltr';
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'alphabetic';
+        const paintOrder = styles.paintOrder;
+        text.textBounds.forEach((text) => {
+            paintOrder.forEach((paintOrderLayer) => {
+                switch (paintOrderLayer) {
+                    case 0 /* PAINT_ORDER_LAYER.FILL */:
+                        this.ctx.fillStyle = asString(styles.color);
+                        this.renderTextWithLetterSpacing(text, styles.letterSpacing, styles.fontSize.number);
+                        const textShadows = styles.textShadow;
+                        if (textShadows.length && text.text.trim().length) {
+                            textShadows
+                                .slice(0)
+                                .reverse()
+                                .forEach((textShadow) => {
+                                this.ctx.shadowColor = asString(textShadow.color);
+                                this.ctx.shadowOffsetX = textShadow.offsetX.number * this.options.scale;
+                                this.ctx.shadowOffsetY = textShadow.offsetY.number * this.options.scale;
+                                this.ctx.shadowBlur = textShadow.blur.number;
+                                this.renderTextWithLetterSpacing(text, styles.letterSpacing, styles.fontSize.number);
+                            });
+                            this.ctx.shadowColor = '';
+                            this.ctx.shadowOffsetX = 0;
+                            this.ctx.shadowOffsetY = 0;
+                            this.ctx.shadowBlur = 0;
+                        }
+                        if (styles.textDecorationLine.length) {
+                            this.ctx.fillStyle = asString(styles.textDecorationColor || styles.color);
+                            const decorationLineHeight = 1;
+                            styles.textDecorationLine.forEach((textDecorationLine) => {
+                                // Fix the issue where textDecorationLine exhibits x-axis positioning errors on high-resolution devices due to varying devicePixelRatio, corrected by using relative values of element heights.
+                                switch (textDecorationLine) {
+                                    case 1 /* TEXT_DECORATION_LINE.UNDERLINE */:
+                                        this.ctx.fillRect(text.bounds.left, text.bounds.top + text.bounds.height - decorationLineHeight, text.bounds.width, decorationLineHeight);
+                                        break;
+                                    case 2 /* TEXT_DECORATION_LINE.OVERLINE */:
+                                        this.ctx.fillRect(text.bounds.left, text.bounds.top, text.bounds.width, decorationLineHeight);
+                                        break;
+                                    case 3 /* TEXT_DECORATION_LINE.LINE_THROUGH */:
+                                        this.ctx.fillRect(text.bounds.left, text.bounds.top + (text.bounds.height / 2 - decorationLineHeight / 2), text.bounds.width, decorationLineHeight);
+                                        break;
+                                }
+                            });
+                        }
+                        break;
+                    case 1 /* PAINT_ORDER_LAYER.STROKE */:
+                        if (styles.webkitTextStrokeWidth && text.text.trim().length) {
+                            this.ctx.strokeStyle = asString(styles.webkitTextStrokeColor);
+                            this.ctx.lineWidth = styles.webkitTextStrokeWidth;
+                            this.ctx.lineJoin = !!window.chrome ? 'miter' : 'round';
+                            // Issue #110: Use baseline (fontSize) for consistent positioning with fill
+                            // Previously used text.bounds.height which caused stroke to render too low
+                            const baseline = styles.fontSize.number;
+                            if (styles.letterSpacing === 0) {
+                                this.ctx.strokeText(text.text, text.bounds.left, text.bounds.top + baseline);
+                            }
+                            else {
+                                const letters = segmentGraphemes(text.text);
+                                letters.reduce((left, letter) => {
+                                    this.ctx.strokeText(letter, left, text.bounds.top + baseline);
+                                    return left + this.ctx.measureText(letter).width;
+                                }, text.bounds.left);
+                            }
+                        }
+                        this.ctx.strokeStyle = '';
+                        this.ctx.lineWidth = 0;
+                        this.ctx.lineJoin = 'miter';
+                        break;
+                }
+            });
+        });
+    }
+    renderReplacedElement(container, curves, image) {
+        const intrinsicWidth = image.naturalWidth || container.intrinsicWidth;
+        const intrinsicHeight = image.naturalHeight || container.intrinsicHeight;
+        if (image && intrinsicWidth > 0 && intrinsicHeight > 0) {
+            const box = contentBox(container);
+            const path = calculatePaddingBoxPath(curves);
+            this.path(path);
+            this.ctx.save();
+            this.ctx.clip();
+            let sx = 0, sy = 0, sw = intrinsicWidth, sh = intrinsicHeight, dx = box.left, dy = box.top, dw = box.width, dh = box.height;
+            const { objectFit } = container.styles;
+            const boxRatio = dw / dh;
+            const imgRatio = sw / sh;
+            if (objectFit === 2 /* OBJECT_FIT.CONTAIN */) {
+                if (imgRatio > boxRatio) {
+                    dh = dw / imgRatio;
+                    dy += (box.height - dh) / 2;
+                }
+                else {
+                    dw = dh * imgRatio;
+                    dx += (box.width - dw) / 2;
+                }
+            }
+            else if (objectFit === 4 /* OBJECT_FIT.COVER */) {
+                if (imgRatio > boxRatio) {
+                    sw = sh * boxRatio;
+                    sx += (intrinsicWidth - sw) / 2;
+                }
+                else {
+                    sh = sw / boxRatio;
+                    sy += (intrinsicHeight - sh) / 2;
+                }
+            }
+            else if (objectFit === 8 /* OBJECT_FIT.NONE */) {
+                if (sw > dw) {
+                    sx += (sw - dw) / 2;
+                    sw = dw;
+                }
+                else {
+                    dx += (dw - sw) / 2;
+                    dw = sw;
+                }
+                if (sh > dh) {
+                    sy += (sh - dh) / 2;
+                    sh = dh;
+                }
+                else {
+                    dy += (dh - sh) / 2;
+                    dh = sh;
+                }
+            }
+            else if (objectFit === 16 /* OBJECT_FIT.SCALE_DOWN */) {
+                const containW = imgRatio > boxRatio ? dw : dh * imgRatio;
+                const noneW = sw > dw ? sw : dw;
+                if (containW < noneW) {
+                    if (imgRatio > boxRatio) {
+                        dh = dw / imgRatio;
+                        dy += (box.height - dh) / 2;
+                    }
+                    else {
+                        dw = dh * imgRatio;
+                        dx += (box.width - dw) / 2;
+                    }
+                }
+                else {
+                    if (sw > dw) {
+                        sx += (sw - dw) / 2;
+                        sw = dw;
+                    }
+                    else {
+                        dx += (dw - sw) / 2;
+                        dw = sw;
+                    }
+                    if (sh > dh) {
+                        sy += (sh - dh) / 2;
+                        sh = dh;
+                    }
+                    else {
+                        dy += (dh - sh) / 2;
+                        dh = sh;
+                    }
+                }
+            }
+            this.ctx.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
+            this.ctx.restore();
+        }
+    }
+    async renderNodeContent(paint) {
+        this.applyEffects(paint.getEffects(4 /* EffectTarget.CONTENT */));
+        const container = paint.container;
+        const curves = paint.curves;
+        const styles = container.styles;
+        for (const child of container.textNodes) {
+            await this.renderTextNode(child, styles);
+        }
+        if (container instanceof ImageElementContainer) {
+            try {
+                const image = await this.context.cache.match(container.src);
+                this.renderReplacedElement(container, curves, image);
+            }
+            catch (e) {
+                this.context.logger.error(`Error loading image ${container.src}`);
+            }
+        }
+        if (container instanceof CanvasElementContainer) {
+            this.renderReplacedElement(container, curves, container.canvas);
+        }
+        if (container instanceof SVGElementContainer) {
+            try {
+                const image = await this.context.cache.match(container.svg);
+                this.renderReplacedElement(container, curves, image);
+            }
+            catch (e) {
+                this.context.logger.error(`Error loading svg ${container.svg.substring(0, 255)}`);
+            }
+        }
+        if (container instanceof IFrameElementContainer && container.tree) {
+            const iframeRenderer = new CanvasRenderer(this.context, {
+                scale: this.options.scale,
+                backgroundColor: container.backgroundColor,
+                x: 0,
+                y: 0,
+                width: container.width,
+                height: container.height
+            });
+            const canvas = await iframeRenderer.render(container.tree);
+            if (container.width && container.height) {
+                this.ctx.drawImage(canvas, 0, 0, container.width, container.height, container.bounds.left, container.bounds.top, container.bounds.width, container.bounds.height);
+            }
+        }
+        if (container instanceof InputElementContainer) {
+            const size = Math.min(container.bounds.width, container.bounds.height);
+            if (container.type === CHECKBOX) {
+                if (container.checked) {
+                    this.ctx.save();
+                    this.path([
+                        new Vector(container.bounds.left + size * 0.39363, container.bounds.top + size * 0.79),
+                        new Vector(container.bounds.left + size * 0.16, container.bounds.top + size * 0.5549),
+                        new Vector(container.bounds.left + size * 0.27347, container.bounds.top + size * 0.44071),
+                        new Vector(container.bounds.left + size * 0.39694, container.bounds.top + size * 0.5649),
+                        new Vector(container.bounds.left + size * 0.72983, container.bounds.top + size * 0.23),
+                        new Vector(container.bounds.left + size * 0.84, container.bounds.top + size * 0.34085),
+                        new Vector(container.bounds.left + size * 0.39363, container.bounds.top + size * 0.79)
+                    ]);
+                    this.ctx.fillStyle = asString(INPUT_COLOR);
+                    this.ctx.fill();
+                    this.ctx.restore();
+                }
+            }
+            else if (container.type === RADIO) {
+                if (container.checked) {
+                    this.ctx.save();
+                    this.ctx.beginPath();
+                    this.ctx.arc(container.bounds.left + size / 2, container.bounds.top + size / 2, size / 4, 0, Math.PI * 2, true);
+                    this.ctx.fillStyle = asString(INPUT_COLOR);
+                    this.ctx.fill();
+                    this.ctx.restore();
+                }
+            }
+        }
+        if (isTextInputElement(container) && container.value.length) {
+            const [font, fontFamily, fontSize] = this.createFontStyle(styles);
+            const { baseline } = this.fontMetrics.getMetrics(fontFamily, fontSize);
+            this.ctx.font = font;
+            // Fix for Issue #92: Use placeholder color when rendering placeholder text
+            const isPlaceholder = container instanceof InputElementContainer && container.isPlaceholder;
+            this.ctx.fillStyle = isPlaceholder ? asString(PLACEHOLDER_COLOR) : asString(styles.color);
+            this.ctx.textBaseline = 'alphabetic';
+            this.ctx.textAlign = canvasTextAlign(container.styles.textAlign);
+            const bounds = contentBox(container);
+            let x = 0;
+            switch (container.styles.textAlign) {
+                case 1 /* TEXT_ALIGN.CENTER */:
+                    x += bounds.width / 2;
+                    break;
+                case 2 /* TEXT_ALIGN.RIGHT */:
+                    x += bounds.width;
+                    break;
+            }
+            // Fix for Issue #92: Position text vertically centered in single-line input
+            // Only apply vertical centering for InputElementContainer, not for textarea or select
+            let verticalOffset = 0;
+            if (container instanceof InputElementContainer) {
+                const fontSizeValue = getAbsoluteValue(styles.fontSize, 0);
+                verticalOffset = (bounds.height - fontSizeValue) / 2;
+            }
+            // Create text bounds with horizontal and vertical offsets
+            // Height is not modified as it doesn't affect text rendering position
+            const textBounds = bounds.add(x, verticalOffset, 0, 0);
+            this.ctx.save();
+            this.path([
+                new Vector(bounds.left, bounds.top),
+                new Vector(bounds.left + bounds.width, bounds.top),
+                new Vector(bounds.left + bounds.width, bounds.top + bounds.height),
+                new Vector(bounds.left, bounds.top + bounds.height)
+            ]);
+            this.ctx.clip();
+            this.renderTextWithLetterSpacing(new TextBounds(container.value, textBounds), styles.letterSpacing, baseline);
+            this.ctx.restore();
+            this.ctx.textBaseline = 'alphabetic';
+            this.ctx.textAlign = 'left';
+        }
+        if (contains(container.styles.display, 2048 /* DISPLAY.LIST_ITEM */)) {
+            if (container.styles.listStyleImage !== null) {
+                const img = container.styles.listStyleImage;
+                if (img.type === 0 /* CSSImageType.URL */) {
+                    let image;
+                    const url = img.url;
+                    try {
+                        image = await this.context.cache.match(url);
+                        this.ctx.drawImage(image, container.bounds.left - (image.width + 10), container.bounds.top);
+                    }
+                    catch (e) {
+                        this.context.logger.error(`Error loading list-style-image ${url}`);
+                    }
+                }
+            }
+            else if (paint.listValue && container.styles.listStyleType !== -1 /* LIST_STYLE_TYPE.NONE */) {
+                const [font] = this.createFontStyle(styles);
+                this.ctx.font = font;
+                this.ctx.fillStyle = asString(styles.color);
+                this.ctx.textBaseline = 'middle';
+                this.ctx.textAlign = 'right';
+                const bounds = new Bounds(container.bounds.left, container.bounds.top + getAbsoluteValue(container.styles.paddingTop, container.bounds.width), container.bounds.width, computeLineHeight(styles.lineHeight, styles.fontSize.number) / 2 + 1);
+                this.renderTextWithLetterSpacing(new TextBounds(paint.listValue, bounds), styles.letterSpacing, computeLineHeight(styles.lineHeight, styles.fontSize.number) / 2 + 2);
+                this.ctx.textBaseline = 'bottom';
+                this.ctx.textAlign = 'left';
+            }
+        }
+    }
+    async renderStackContent(stack) {
+        if (contains(stack.element.container.flags, 16 /* FLAGS.DEBUG_RENDER */)) {
+            debugger;
+        }
+        // https://www.w3.org/TR/css-position-3/#painting-order
+        // 1. the background and borders of the element forming the stacking context.
+        await this.renderNodeBackgroundAndBorders(stack.element);
+        // 2. the child stacking contexts with negative stack levels (most negative first).
+        for (const child of stack.negativeZIndex) {
+            await this.renderStack(child);
+        }
+        // 3. For all its in-flow, non-positioned, block-level descendants in tree order:
+        await this.renderNodeContent(stack.element);
+        for (const child of stack.nonInlineLevel) {
+            await this.renderNode(child);
+        }
+        // 4. All non-positioned floating descendants, in tree order. For each one of these,
+        // treat the element as if it created a new stacking context, but any positioned descendants and descendants
+        // which actually create a new stacking context should be considered part of the parent stacking context,
+        // not this new one.
+        for (const child of stack.nonPositionedFloats) {
+            await this.renderStack(child);
+        }
+        // 5. the in-flow, inline-level, non-positioned descendants, including inline tables and inline blocks.
+        for (const child of stack.nonPositionedInlineLevel) {
+            await this.renderStack(child);
+        }
+        for (const child of stack.inlineLevel) {
+            await this.renderNode(child);
+        }
+        // 6. All positioned, opacity or transform descendants, in tree order that fall into the following categories:
+        //  All positioned descendants with 'z-index: auto' or 'z-index: 0', in tree order.
+        //  For those with 'z-index: auto', treat the element as if it created a new stacking context,
+        //  but any positioned descendants and descendants which actually create a new stacking context should be
+        //  considered part of the parent stacking context, not this new one. For those with 'z-index: 0',
+        //  treat the stacking context generated atomically.
+        //
+        //  All opacity descendants with opacity less than 1
+        //
+        //  All transform descendants with transform other than none
+        for (const child of stack.zeroOrAutoZIndexOrTransformedOrOpacity) {
+            await this.renderStack(child);
+        }
+        // 7. Stacking contexts formed by positioned descendants with z-indices greater than or equal to 1 in z-index
+        // order (smallest first) then tree order.
+        for (const child of stack.positiveZIndex) {
+            await this.renderStack(child);
+        }
+    }
+    mask(paths) {
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, 0);
+        // Use logical dimensions (options.width/height) instead of canvas pixel dimensions
+        // because context has already been scaled by this.options.scale
+        // Fix for Issue #126: Using canvas pixel dimensions causes broken output
+        this.ctx.lineTo(this.options.width, 0);
+        this.ctx.lineTo(this.options.width, this.options.height);
+        this.ctx.lineTo(0, this.options.height);
+        this.ctx.lineTo(0, 0);
+        this.formatPath(paths.slice(0).reverse());
+        this.ctx.closePath();
+    }
+    path(paths) {
+        this.ctx.beginPath();
+        this.formatPath(paths);
+        this.ctx.closePath();
+    }
+    formatPath(paths) {
+        paths.forEach((point, index) => {
+            const start = isBezierCurve(point) ? point.start : point;
+            if (index === 0) {
+                this.ctx.moveTo(start.x, start.y);
+            }
+            else {
+                this.ctx.lineTo(start.x, start.y);
+            }
+            if (isBezierCurve(point)) {
+                this.ctx.bezierCurveTo(point.startControl.x, point.startControl.y, point.endControl.x, point.endControl.y, point.end.x, point.end.y);
+            }
+        });
+    }
+    renderRepeat(path, pattern, offsetX, offsetY) {
+        this.path(path);
+        this.ctx.fillStyle = pattern;
+        this.ctx.translate(offsetX, offsetY);
+        this.ctx.fill();
+        this.ctx.translate(-offsetX, -offsetY);
+    }
+    resizeImage(image, width, height) {
+        // https://github.com/niklasvh/html2canvas/pull/2911
+        // if (image.width === width && image.height === height) {
+        //     return image;
+        // }
+        const ownerDocument = this.canvas.ownerDocument ?? document;
+        const canvas = ownerDocument.createElement('canvas');
+        canvas.width = Math.max(1, width);
+        canvas.height = Math.max(1, height);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, width, height);
+        return canvas;
+    }
+    async renderBackgroundImage(container) {
+        let index = container.styles.backgroundImage.length - 1;
+        for (const backgroundImage of container.styles.backgroundImage.slice(0).reverse()) {
+            if (backgroundImage.type === 0 /* CSSImageType.URL */) {
+                let image;
+                const url = backgroundImage.url;
+                try {
+                    image = await this.context.cache.match(url);
+                }
+                catch (e) {
+                    this.context.logger.error(`Error loading background-image ${url}`);
+                }
+                if (image) {
+                    const imageWidth = isNaN(image.width) || image.width === 0 ? 1 : image.width;
+                    const imageHeight = isNaN(image.height) || image.height === 0 ? 1 : image.height;
+                    const [path, x, y, width, height] = calculateBackgroundRendering(container, index, [
+                        imageWidth,
+                        imageHeight,
+                        imageWidth / imageHeight
+                    ]);
+                    const pattern = this.ctx.createPattern(this.resizeImage(image, width, height), 'repeat');
+                    this.renderRepeat(path, pattern, x, y);
+                }
+            }
+            else if (isLinearGradient(backgroundImage)) {
+                const [path, x, y, width, height] = calculateBackgroundRendering(container, index, [null, null, null]);
+                const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(backgroundImage.angle, width, height);
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
+                processColorStops(backgroundImage.stops, lineLength || 1).forEach((colorStop) => gradient.addColorStop(colorStop.stop, asString(colorStop.color)));
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, width, height);
+                if (width > 0 && height > 0) {
+                    const pattern = this.ctx.createPattern(canvas, 'repeat');
+                    this.renderRepeat(path, pattern, x, y);
+                }
+            }
+            else if (isRadialGradient(backgroundImage)) {
+                const [path, left, top, width, height] = calculateBackgroundRendering(container, index, [
+                    null,
+                    null,
+                    null
+                ]);
+                const position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
+                const x = getAbsoluteValue(position[0], width);
+                const y = getAbsoluteValue(position[position.length - 1], height);
+                let [rx, ry] = calculateRadius(backgroundImage, x, y, width, height);
+                // Handle edge case where radial gradient size is 0
+                // Use a minimum value of 0.01 to ensure gradient is still rendered
+                if (rx === 0 || ry === 0) {
+                    rx = Math.max(rx, 0.01);
+                    ry = Math.max(ry, 0.01);
+                }
+                if (rx > 0 && ry > 0) {
+                    const radialGradient = this.ctx.createRadialGradient(left + x, top + y, 0, left + x, top + y, rx);
+                    processColorStops(backgroundImage.stops, rx * 2).forEach((colorStop) => radialGradient.addColorStop(colorStop.stop, asString(colorStop.color)));
+                    this.path(path);
+                    this.ctx.fillStyle = radialGradient;
+                    if (rx !== ry) {
+                        // transforms for elliptical radial gradient
+                        const midX = container.bounds.left + 0.5 * container.bounds.width;
+                        const midY = container.bounds.top + 0.5 * container.bounds.height;
+                        const f = ry / rx;
+                        const invF = 1 / f;
+                        this.ctx.save();
+                        this.ctx.translate(midX, midY);
+                        this.ctx.transform(1, 0, 0, f, 0, 0);
+                        this.ctx.translate(-midX, -midY);
+                        this.ctx.fillRect(left, invF * (top - midY) + midY, width, height * invF);
+                        this.ctx.restore();
+                    }
+                    else {
+                        this.ctx.fill();
+                    }
+                }
+            }
+            index--;
+        }
+    }
+    async renderSolidBorder(color, side, curvePoints) {
+        this.path(parsePathForBorder(curvePoints, side));
+        this.ctx.fillStyle = asString(color);
+        this.ctx.fill();
+    }
+    async renderDoubleBorder(color, width, side, curvePoints) {
+        if (width < 3) {
+            await this.renderSolidBorder(color, side, curvePoints);
+            return;
+        }
+        const outerPaths = parsePathForBorderDoubleOuter(curvePoints, side);
+        this.path(outerPaths);
+        this.ctx.fillStyle = asString(color);
+        this.ctx.fill();
+        const innerPaths = parsePathForBorderDoubleInner(curvePoints, side);
+        this.path(innerPaths);
+        this.ctx.fill();
+    }
+    async renderNodeBackgroundAndBorders(paint) {
+        this.applyEffects(paint.getEffects(2 /* EffectTarget.BACKGROUND_BORDERS */));
+        const styles = paint.container.styles;
+        const hasBackground = !isTransparent(styles.backgroundColor) || styles.backgroundImage.length;
+        const borders = [
+            { style: styles.borderTopStyle, color: styles.borderTopColor, width: styles.borderTopWidth },
+            { style: styles.borderRightStyle, color: styles.borderRightColor, width: styles.borderRightWidth },
+            { style: styles.borderBottomStyle, color: styles.borderBottomColor, width: styles.borderBottomWidth },
+            { style: styles.borderLeftStyle, color: styles.borderLeftColor, width: styles.borderLeftWidth }
+        ];
+        const backgroundPaintingArea = calculateBackgroundCurvedPaintingArea(getBackgroundValueForIndex(styles.backgroundClip, 0), paint.curves);
+        if (hasBackground || styles.boxShadow.length) {
+            this.ctx.save();
+            this.path(backgroundPaintingArea);
+            this.ctx.clip();
+            if (!isTransparent(styles.backgroundColor)) {
+                this.ctx.fillStyle = asString(styles.backgroundColor);
+                this.ctx.fill();
+            }
+            await this.renderBackgroundImage(paint.container);
+            this.ctx.restore();
+            styles.boxShadow
+                .slice(0)
+                .reverse()
+                .forEach((shadow) => {
+                this.ctx.save();
+                const borderBoxArea = calculateBorderBoxPath(paint.curves);
+                const maskOffset = shadow.inset ? 0 : MASK_OFFSET;
+                const shadowPaintingArea = transformPath(borderBoxArea, -maskOffset + (shadow.inset ? 1 : -1) * shadow.spread.number, (shadow.inset ? 1 : -1) * shadow.spread.number, shadow.spread.number * (shadow.inset ? -2 : 2), shadow.spread.number * (shadow.inset ? -2 : 2));
+                if (shadow.inset) {
+                    this.path(borderBoxArea);
+                    this.ctx.clip();
+                    this.mask(shadowPaintingArea);
+                }
+                else {
+                    this.mask(borderBoxArea);
+                    this.ctx.clip();
+                    this.path(shadowPaintingArea);
+                }
+                this.ctx.shadowOffsetX = shadow.offsetX.number + maskOffset;
+                this.ctx.shadowOffsetY = shadow.offsetY.number;
+                this.ctx.shadowColor = asString(shadow.color);
+                this.ctx.shadowBlur = shadow.blur.number;
+                this.ctx.fillStyle = shadow.inset ? asString(shadow.color) : 'rgba(0,0,0,1)';
+                this.ctx.fill();
+                this.ctx.restore();
+            });
+        }
+        let side = 0;
+        for (const border of borders) {
+            if (border.style !== 0 /* BORDER_STYLE.NONE */ && !isTransparent(border.color) && border.width > 0) {
+                if (border.style === 2 /* BORDER_STYLE.DASHED */) {
+                    await this.renderDashedDottedBorder(border.color, border.width, side, paint.curves, 2 /* BORDER_STYLE.DASHED */);
+                }
+                else if (border.style === 3 /* BORDER_STYLE.DOTTED */) {
+                    await this.renderDashedDottedBorder(border.color, border.width, side, paint.curves, 3 /* BORDER_STYLE.DOTTED */);
+                }
+                else if (border.style === 4 /* BORDER_STYLE.DOUBLE */) {
+                    await this.renderDoubleBorder(border.color, border.width, side, paint.curves);
+                }
+                else {
+                    await this.renderSolidBorder(border.color, side, paint.curves);
+                }
+            }
+            side++;
+        }
+    }
+    async renderDashedDottedBorder(color, width, side, curvePoints, style) {
+        this.ctx.save();
+        const strokePaths = parsePathForBorderStroke(curvePoints, side);
+        const boxPaths = parsePathForBorder(curvePoints, side);
+        if (style === 2 /* BORDER_STYLE.DASHED */) {
+            this.path(boxPaths);
+            this.ctx.clip();
+        }
+        let startX, startY, endX, endY;
+        if (isBezierCurve(boxPaths[0])) {
+            startX = boxPaths[0].start.x;
+            startY = boxPaths[0].start.y;
+        }
+        else {
+            startX = boxPaths[0].x;
+            startY = boxPaths[0].y;
+        }
+        if (isBezierCurve(boxPaths[1])) {
+            endX = boxPaths[1].end.x;
+            endY = boxPaths[1].end.y;
+        }
+        else {
+            endX = boxPaths[1].x;
+            endY = boxPaths[1].y;
+        }
+        let length;
+        if (side === 0 || side === 2) {
+            length = Math.abs(startX - endX);
+        }
+        else {
+            length = Math.abs(startY - endY);
+        }
+        this.ctx.beginPath();
+        if (style === 3 /* BORDER_STYLE.DOTTED */) {
+            this.formatPath(strokePaths);
+        }
+        else {
+            this.formatPath(boxPaths.slice(0, 2));
+        }
+        let dashLength = width < 3 ? width * 3 : width * 2;
+        let spaceLength = width < 3 ? width * 2 : width;
+        if (style === 3 /* BORDER_STYLE.DOTTED */) {
+            dashLength = width;
+            spaceLength = width;
+        }
+        let useLineDash = true;
+        if (length <= dashLength * 2) {
+            useLineDash = false;
+        }
+        else if (length <= dashLength * 2 + spaceLength) {
+            const multiplier = length / (2 * dashLength + spaceLength);
+            dashLength *= multiplier;
+            spaceLength *= multiplier;
+        }
+        else {
+            const numberOfDashes = Math.floor((length + spaceLength) / (dashLength + spaceLength));
+            const minSpace = (length - numberOfDashes * dashLength) / (numberOfDashes - 1);
+            const maxSpace = (length - (numberOfDashes + 1) * dashLength) / numberOfDashes;
+            spaceLength =
+                maxSpace <= 0 || Math.abs(spaceLength - minSpace) < Math.abs(spaceLength - maxSpace)
+                    ? minSpace
+                    : maxSpace;
+        }
+        if (useLineDash) {
+            if (style === 3 /* BORDER_STYLE.DOTTED */) {
+                this.ctx.setLineDash([0, dashLength + spaceLength]);
+            }
+            else {
+                this.ctx.setLineDash([dashLength, spaceLength]);
+            }
+        }
+        if (style === 3 /* BORDER_STYLE.DOTTED */) {
+            this.ctx.lineCap = 'round';
+            this.ctx.lineWidth = width;
+        }
+        else {
+            this.ctx.lineWidth = width * 2 + 1.1;
+        }
+        this.ctx.strokeStyle = asString(color);
+        this.ctx.stroke();
+        this.ctx.setLineDash([]);
+        // dashed round edge gap
+        if (style === 2 /* BORDER_STYLE.DASHED */) {
+            if (isBezierCurve(boxPaths[0])) {
+                const path1 = boxPaths[3];
+                const path2 = boxPaths[0];
+                this.ctx.beginPath();
+                this.formatPath([new Vector(path1.end.x, path1.end.y), new Vector(path2.start.x, path2.start.y)]);
+                this.ctx.stroke();
+            }
+            if (isBezierCurve(boxPaths[1])) {
+                const path1 = boxPaths[1];
+                const path2 = boxPaths[2];
+                this.ctx.beginPath();
+                this.formatPath([new Vector(path1.end.x, path1.end.y), new Vector(path2.start.x, path2.start.y)]);
+                this.ctx.stroke();
+            }
+        }
+        this.ctx.restore();
+    }
+    async render(element) {
+        if (this.options.backgroundColor) {
+            this.ctx.fillStyle = asString(this.options.backgroundColor);
+            this.ctx.fillRect(this.options.x, this.options.y, this.options.width, this.options.height);
+        }
+        const stack = parseStackingContexts(element);
+        await this.renderStack(stack);
+        this.applyEffects([]);
+        return this.canvas;
+    }
+}
+const isTextInputElement = (container) => {
+    if (container instanceof TextareaElementContainer) {
+        return true;
+    }
+    else if (container instanceof SelectElementContainer) {
+        return true;
+    }
+    else if (container instanceof InputElementContainer && container.type !== RADIO && container.type !== CHECKBOX) {
+        return true;
+    }
+    return false;
+};
+const calculateBackgroundCurvedPaintingArea = (clip, curves) => {
+    switch (clip) {
+        case 0 /* BACKGROUND_CLIP.BORDER_BOX */:
+            return calculateBorderBoxPath(curves);
+        case 2 /* BACKGROUND_CLIP.CONTENT_BOX */:
+            return calculateContentBoxPath(curves);
+        case 1 /* BACKGROUND_CLIP.PADDING_BOX */:
+        default:
+            return calculatePaddingBoxPath(curves);
+    }
+};
+const canvasTextAlign = (textAlign) => {
+    switch (textAlign) {
+        case 1 /* TEXT_ALIGN.CENTER */:
+            return 'center';
+        case 2 /* TEXT_ALIGN.RIGHT */:
+            return 'right';
+        case 0 /* TEXT_ALIGN.LEFT */:
+        default:
+            return 'left';
+    }
+};
+// see https://github.com/niklasvh/html2canvas/pull/2645
+const iOSBrokenFonts = ['-apple-system', 'system-ui'];
+const fixIOSSystemFonts = (fontFamilies) => {
+    return /iPhone OS 15_(0|1)/.test(window.navigator.userAgent)
+        ? fontFamilies.filter((fontFamily) => iOSBrokenFonts.indexOf(fontFamily) === -1)
+        : fontFamilies;
+};
+
+class ForeignObjectRenderer extends Renderer {
+    constructor(context, options) {
+        super(context, options);
+        this.canvas = options.canvas ? options.canvas : document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.options = options;
+        this.canvas.width = Math.floor(options.width * options.scale);
+        this.canvas.height = Math.floor(options.height * options.scale);
+        this.canvas.style.width = `${options.width}px`;
+        this.canvas.style.height = `${options.height}px`;
+        this.ctx.scale(this.options.scale, this.options.scale);
+        this.ctx.translate(-options.x, -options.y);
+        this.context.logger.debug(`EXPERIMENTAL ForeignObject renderer initialized (${options.width}x${options.height} at ${options.x},${options.y}) with scale ${options.scale}`);
+    }
+    async render(element) {
+        const svg = createForeignObjectSVG(this.options.width * this.options.scale, this.options.height * this.options.scale, this.options.scale, this.options.scale, element);
+        const img = await loadSerializedSVG(svg);
+        if (this.options.backgroundColor) {
+            this.ctx.fillStyle = asString(this.options.backgroundColor);
+            this.ctx.fillRect(0, 0, this.options.width * this.options.scale, this.options.height * this.options.scale);
+        }
+        this.ctx.drawImage(img, -this.options.x * this.options.scale, -this.options.y * this.options.scale);
+        return this.canvas;
+    }
+}
+const loadSerializedSVG = (svg) => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+        resolve(img);
+    };
+    img.onerror = reject;
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`;
+});
+
+class Logger {
+    constructor({ id, enabled }) {
+        this.id = id;
+        this.enabled = enabled;
+        this.start = Date.now();
+    }
+    debug(...args) {
+        if (this.enabled) {
+            // eslint-disable-next-line no-console
+            if (typeof window !== 'undefined' && window.console && typeof console.debug === 'function') {
+                // eslint-disable-next-line no-console
+                console.debug(this.id, `${this.getTime()}ms`, ...args);
+            }
+            else {
+                this.info(...args);
+            }
+        }
+    }
+    getTime() {
+        return Date.now() - this.start;
+    }
+    info(...args) {
+        if (this.enabled) {
+            // eslint-disable-next-line no-console
+            if (typeof window !== 'undefined' && window.console && typeof console.info === 'function') {
+                // eslint-disable-next-line no-console
+                console.info(this.id, `${this.getTime()}ms`, ...args);
+            }
+        }
+    }
+    warn(...args) {
+        if (this.enabled) {
+            if (typeof window !== 'undefined' && window.console && typeof console.warn === 'function') {
+                console.warn(this.id, `${this.getTime()}ms`, ...args);
+            }
+            else {
+                this.info(...args);
+            }
+        }
+    }
+    error(...args) {
+        if (this.enabled) {
+            if (typeof window !== 'undefined' && window.console && typeof console.error === 'function') {
+                console.error(this.id, `${this.getTime()}ms`, ...args);
+            }
+            else {
+                this.info(...args);
+            }
+        }
+    }
+}
+Logger.instances = {};
+
+class Context {
+    constructor(options, windowBounds) {
+        this.windowBounds = windowBounds;
+        this.instanceName = `#${Context.instanceCount++}`;
+        this.logger = new Logger({ id: this.instanceName, enabled: options.logging });
+        this.cache = options.cache ?? new Cache(this, options);
+    }
+}
+Context.instanceCount = 1;
+
+const html2canvas = (element, options = {}) => {
+    return renderElement(element, options);
+};
+if (typeof window !== 'undefined') {
+    CacheStorage.setContext(window);
+}
+const renderElement = async (element, opts) => {
+    if (!element || typeof element !== 'object') {
+        return Promise.reject('Invalid element provided as first argument');
+    }
+    const ownerDocument = element.ownerDocument;
+    if (!ownerDocument) {
+        throw new Error(`Element is not attached to a Document`);
+    }
+    const defaultView = ownerDocument.defaultView;
+    if (!defaultView) {
+        throw new Error(`Document is not attached to a Window`);
+    }
+    const resourceOptions = {
+        allowTaint: opts.allowTaint ?? false,
+        imageTimeout: opts.imageTimeout ?? 15000,
+        proxy: opts.proxy,
+        useCORS: opts.useCORS ?? false,
+        customIsSameOrigin: opts.customIsSameOrigin
+    };
+    const contextOptions = {
+        logging: opts.logging ?? true,
+        cache: opts.cache,
+        ...resourceOptions
+    };
+    const windowOptions = {
+        windowWidth: opts.windowWidth ?? defaultView.innerWidth,
+        windowHeight: opts.windowHeight ?? defaultView.innerHeight,
+        scrollX: opts.scrollX ?? defaultView.pageXOffset,
+        scrollY: opts.scrollY ?? defaultView.pageYOffset
+    };
+    const windowBounds = new Bounds(windowOptions.scrollX, windowOptions.scrollY, windowOptions.windowWidth, windowOptions.windowHeight);
+    const context = new Context(contextOptions, windowBounds);
+    const foreignObjectRendering = opts.foreignObjectRendering ?? false;
+    const cloneOptions = {
+        allowTaint: opts.allowTaint ?? false,
+        onclone: opts.onclone,
+        ignoreElements: opts.ignoreElements,
+        inlineImages: foreignObjectRendering,
+        copyStyles: foreignObjectRendering
+    };
+    context.logger.debug(`Starting document clone with size ${windowBounds.width}x${windowBounds.height} scrolled to ${-windowBounds.left},${-windowBounds.top}`);
+    const documentCloner = new DocumentCloner(context, element, cloneOptions);
+    const clonedElement = documentCloner.clonedReferenceElement;
+    if (!clonedElement) {
+        return Promise.reject(`Unable to find element in cloned iframe`);
+    }
+    const container = await documentCloner.toIFrame(ownerDocument, windowBounds);
+    const { width, height, left, top } = isBodyElement(clonedElement) || isHTMLElement(clonedElement)
+        ? parseDocumentSize(clonedElement.ownerDocument)
+        : parseBounds(context, clonedElement);
+    const backgroundColor = parseBackgroundColor(context, clonedElement, opts.backgroundColor);
+    const renderOptions = {
+        canvas: opts.canvas,
+        backgroundColor,
+        scale: opts.scale ?? defaultView.devicePixelRatio ?? 1,
+        x: (opts.x ?? 0) + left,
+        y: (opts.y ?? 0) + top,
+        width: opts.width ?? Math.ceil(width),
+        height: opts.height ?? Math.ceil(height)
+    };
+    let canvas;
+    if (foreignObjectRendering) {
+        context.logger.debug(`Document cloned, using foreign object rendering`);
+        const renderer = new ForeignObjectRenderer(context, renderOptions);
+        canvas = await renderer.render(clonedElement);
+    }
+    else {
+        context.logger.debug(`Document cloned, element located at ${left},${top} with size ${width}x${height} using computed rendering`);
+        context.logger.debug(`Starting DOM parsing`);
+        const root = parseTree(context, clonedElement);
+        if (backgroundColor === root.styles.backgroundColor) {
+            root.styles.backgroundColor = COLORS.TRANSPARENT;
+        }
+        context.logger.debug(`Starting renderer for element at ${renderOptions.x},${renderOptions.y} with size ${renderOptions.width}x${renderOptions.height}`);
+        const renderer = new CanvasRenderer(context, renderOptions);
+        canvas = await renderer.render(root);
+    }
+    if (opts.removeContainer ?? true) {
+        if (!DocumentCloner.destroy(container)) {
+            context.logger.error(`Cannot detach cloned iframe as it is not in the DOM anymore`);
+        }
+    }
+    context.logger.debug(`Finished rendering`);
+    return canvas;
+};
+const parseBackgroundColor = (context, element, backgroundColorOverride) => {
+    const ownerDocument = element.ownerDocument;
+    // http://www.w3.org/TR/css3-background/#special-backgrounds
+    const documentBackgroundColor = ownerDocument.documentElement
+        ? parseColor(context, getComputedStyle(ownerDocument.documentElement).backgroundColor)
+        : COLORS.TRANSPARENT;
+    const bodyBackgroundColor = ownerDocument.body
+        ? parseColor(context, getComputedStyle(ownerDocument.body).backgroundColor)
+        : COLORS.TRANSPARENT;
+    const defaultBackgroundColor = typeof backgroundColorOverride === 'string'
+        ? parseColor(context, backgroundColorOverride)
+        : backgroundColorOverride === null
+            ? COLORS.TRANSPARENT
+            : 0xffffffff;
+    return element === ownerDocument.documentElement
+        ? isTransparent(documentBackgroundColor)
+            ? isTransparent(bodyBackgroundColor)
+                ? defaultBackgroundColor
+                : bodyBackgroundColor
+            : documentBackgroundColor
+        : defaultBackgroundColor;
+};
+
+
+//# sourceMappingURL=html2canvas-pro.esm.js.map
 
 
 /***/ }),
@@ -30501,12 +39151,12 @@ __webpack_require__.r(__webpack_exports__);
 /** @license
  *
  * jsPDF - PDF Document creation from JavaScript
- * Version 3.0.2 Built on 2025-08-26T11:48:30.930Z
+ * Version 3.0.3 Built on 2025-09-18T08:03:54.261Z
  *                      CommitID 00000000
  *
- * Copyright (c) 2010-2021 James Hall <james@parall.ax>, https://github.com/MrRio/jsPDF
- *               2015-2021 yWorks GmbH, http://www.yworks.com
- *               2015-2021 Lukas Holländer <lukas.hollaender@yworks.com>, https://github.com/HackbrettXXX
+ * Copyright (c) 2010-2025 James Hall <james@parall.ax>, https://github.com/MrRio/jsPDF
+ *               2015-2025 yWorks GmbH, http://www.yworks.com
+ *               2015-2025 Lukas Holländer <lukas.hollaender@yworks.com>, https://github.com/HackbrettXXX
  *               2016-2018 Aras Abbasi <aras.abbasi@gmail.com>
  *               2010 Aaron Spike, https://github.com/acspike
  *               2012 Willow Systems Corporation, https://github.com/willowsystems
@@ -30583,7 +39233,7 @@ function p(t,e){var n=t[0],r=t[1],i=t[2],a=t[3];n=m(n,r,i,a,e[0],7,-680876936),a
  * https://www.cs.cmu.edu/~dst/Adobe/Gallery/anon21jul01-pdf-encryption.txt
  * https://github.com/foliojs/pdfkit/blob/master/lib/security.js
  * http://www.fpdf.org/en/script/script37.php
- */var F={print:4,modify:8,copy:16,"annot-forms":32};function I(t,e,n,r){this.v=1,this.r=2;var i=192;t.forEach(function(t){if(void 0!==F.perm)throw new Error("Invalid permission: "+t);i+=F[t]}),this.padding="(¿N^NuAd\0NVÿú\b..\0¶Ðh>/\f©þdSiz";var a=(e+this.padding).substr(0,32),o=(n+this.padding).substr(0,32);this.O=this.processOwnerPassword(a,o),this.P=-(1+(255^i)),this.encryptionKey=S(a+this.O+this.lsbFirstWord(this.P)+this.hexToBytes(r)).substr(0,5),this.U=k(this.encryptionKey,this.padding)}function j(t){if(/[^\u0000-\u00ff]/.test(t))throw new Error("Invalid PDF Name Object: "+t+", Only accept ASCII characters.");for(var e="",n=t.length,r=0;r<n;r++){var i=t.charCodeAt(r);e+=i<33||35===i||37===i||40===i||41===i||47===i||60===i||62===i||91===i||93===i||123===i||125===i||i>126?"#"+("0"+i.toString(16)).slice(-2):t[r]}return e}function C(e){if("object"!==(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e))throw new Error("Invalid Context passed to initialize PubSub (jsPDF-module)");var n={};this.subscribe=function(t,e,r){if(r=r||!1,"string"!=typeof t||"function"!=typeof e||"boolean"!=typeof r)throw new Error("Invalid arguments passed to PubSub.subscribe (jsPDF-module)");n.hasOwnProperty(t)||(n[t]={});var i=Math.random().toString(35);return n[t][i]=[e,!!r],i},this.unsubscribe=function(t){for(var e in n)if(n[e][t])return delete n[e][t],0===Object.keys(n[e]).length&&delete n[e],!0;return!1},this.publish=function(t){if(n.hasOwnProperty(t)){var r=Array.prototype.slice.call(arguments,1),a=[];for(var s in n[t]){var u=n[t][s];try{u[0].apply(e,r)}catch(c){i.console&&o.error("jsPDF PubSub Error",c.message,c)}u[1]&&a.push(s)}a.length&&a.forEach(this.unsubscribe)}},this.getTopics=function(){return n}}function O(t){if(!(this instanceof O))return new O(t);var e="opacity,stroke-opacity".split(",");for(var n in t)t.hasOwnProperty(n)&&e.indexOf(n)>=0&&(this[n]=t[n]);this.id="",this.objectNumber=-1}function B(t,e){this.gState=t,this.matrix=e,this.id="",this.objectNumber=-1}function M(t,e,n,r,i){if(!(this instanceof M))return new M(t,e,n,r,i);this.type="axial"===t?2:3,this.coords=e,this.colors=n,B.call(this,r,i)}function q(t,e,n,r,i){if(!(this instanceof q))return new q(t,e,n,r,i);this.boundingBox=t,this.xStep=e,this.yStep=n,this.stream="",this.cloneIndex=0,B.call(this,r,i)}function E(e){var n,r="string"==typeof arguments[0]?arguments[0]:"p",a=arguments[1],s=arguments[2],u=arguments[3],c=[],f=1,p=16,g="S",m=null;"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e=e||{})&&(r=e.orientation,a=e.unit||a,s=e.format||s,u=e.compress||e.compressPdf||u,null!==(m=e.encryption||null)&&(m.userPassword=m.userPassword||"",m.ownerPassword=m.ownerPassword||"",m.userPermissions=m.userPermissions||[]),f="number"==typeof e.userUnit?Math.abs(e.userUnit):1,void 0!==e.precision&&(n=e.precision),void 0!==e.floatPrecision&&(p=e.floatPrecision),g=e.defaultPathOperation||"S"),c=e.filters||(!0===u?["FlateEncode"]:c),a=a||"mm",r=(""+(r||"P")).toLowerCase();var v=e.putOnlyUsedFonts||!1,b={},y={internal:{},__private__:{}};y.__private__.PubSub=C;var w="1.3",N=y.__private__.getPdfVersion=function(){return w};y.__private__.setPdfVersion=function(t){w=t};var L={a0:[2383.94,3370.39],a1:[1683.78,2383.94],a2:[1190.55,1683.78],a3:[841.89,1190.55],a4:[595.28,841.89],a5:[419.53,595.28],a6:[297.64,419.53],a7:[209.76,297.64],a8:[147.4,209.76],a9:[104.88,147.4],a10:[73.7,104.88],b0:[2834.65,4008.19],b1:[2004.09,2834.65],b2:[1417.32,2004.09],b3:[1000.63,1417.32],b4:[708.66,1000.63],b5:[498.9,708.66],b6:[354.33,498.9],b7:[249.45,354.33],b8:[175.75,249.45],b9:[124.72,175.75],b10:[87.87,124.72],c0:[2599.37,3676.54],c1:[1836.85,2599.37],c2:[1298.27,1836.85],c3:[918.43,1298.27],c4:[649.13,918.43],c5:[459.21,649.13],c6:[323.15,459.21],c7:[229.61,323.15],c8:[161.57,229.61],c9:[113.39,161.57],c10:[79.37,113.39],dl:[311.81,623.62],letter:[612,792],"government-letter":[576,756],legal:[612,1008],"junior-legal":[576,360],ledger:[1224,792],tabloid:[792,1224],"credit-card":[153,243]};y.__private__.getPageFormats=function(){return L};var x=y.__private__.getPageFormat=function(t){return L[t]};s=s||"a4";var A="compat",S="advanced",_=A;function P(){this.saveGraphicsState(),lt(new Wt(St,0,0,-St,0,Ln()*St).toString()+" cm"),this.setFontSize(this.getFontSize()/St),g="n",_=S}function k(){this.restoreGraphicsState(),g="S",_=A}var F=y.__private__.combineFontStyleAndFontWeight=function(t,e){if("bold"==t&&"normal"==e||"bold"==t&&400==e||"normal"==t&&"italic"==e||"bold"==t&&"italic"==e)throw new Error("Invalid Combination of fontweight and fontstyle");return e&&(t=400==e||"normal"===e?"italic"===t?"italic":"normal":700!=e&&"bold"!==e||"normal"!==t?(700==e?"bold":e)+""+t:"bold"),t};y.advancedAPI=function(t){var e=_===A;return e&&P.call(this),"function"!=typeof t||(t(this),e&&k.call(this)),this},y.compatAPI=function(t){var e=_===S;return e&&k.call(this),"function"!=typeof t||(t(this),e&&P.call(this)),this},y.isAdvancedAPI=function(){return _===S};var B,R=function(t){if(_!==S)throw new Error(t+" is only available in 'advanced' API mode. You need to call advancedAPI() first.")},D=y.roundToPrecision=y.__private__.roundToPrecision=function(t,e){var r=n||e;if(isNaN(t)||isNaN(r))throw new Error("Invalid argument passed to jsPDF.roundToPrecision");return t.toFixed(r).replace(/0+$/,"")};B=y.hpf=y.__private__.hpf="number"==typeof p?function(t){if(isNaN(t))throw new Error("Invalid argument passed to jsPDF.hpf");return D(t,p)}:"smart"===p?function(t){if(isNaN(t))throw new Error("Invalid argument passed to jsPDF.hpf");return D(t,t>-1&&t<1?16:5)}:function(t){if(isNaN(t))throw new Error("Invalid argument passed to jsPDF.hpf");return D(t,16)};var T=y.f2=y.__private__.f2=function(t){if(isNaN(t))throw new Error("Invalid argument passed to jsPDF.f2");return D(t,2)},z=y.__private__.f3=function(t){if(isNaN(t))throw new Error("Invalid argument passed to jsPDF.f3");return D(t,3)},U=y.scale=y.__private__.scale=function(t){if(isNaN(t))throw new Error("Invalid argument passed to jsPDF.scale");return _===A?t*St:_===S?t:void 0},H=function(t){return U(function(t){return _===A?Ln()-t:_===S?t:void 0}(t))};y.__private__.setPrecision=y.setPrecision=function(t){"number"==typeof parseInt(t,10)&&(n=parseInt(t,10))};var W,V="00000000000000000000000000000000",G=y.__private__.getFileId=function(){return V},Y=y.__private__.setFileId=function(t){return V=void 0!==t&&/^[a-fA-F0-9]{32}$/.test(t)?t.toUpperCase():V.split("").map(function(){return"ABCDEF0123456789".charAt(Math.floor(16*Math.random()))}).join(""),null!==m&&(je=new I(m.userPermissions,m.userPassword,m.ownerPassword,V)),V};y.setFileId=function(t){return Y(t),this},y.getFileId=function(){return G()};var J=y.__private__.convertDateToPDFDate=function(t){var e=t.getTimezoneOffset(),n=e<0?"+":"-",r=Math.floor(Math.abs(e/60)),i=Math.abs(e%60),a=[n,Q(r),"'",Q(i),"'"].join("");return["D:",t.getFullYear(),Q(t.getMonth()+1),Q(t.getDate()),Q(t.getHours()),Q(t.getMinutes()),Q(t.getSeconds()),a].join("")},X=y.__private__.convertPDFDateToDate=function(t){var e=parseInt(t.substr(2,4),10),n=parseInt(t.substr(6,2),10)-1,r=parseInt(t.substr(8,2),10),i=parseInt(t.substr(10,2),10),a=parseInt(t.substr(12,2),10),o=parseInt(t.substr(14,2),10);return new Date(e,n,r,i,a,o,0)},K=y.__private__.setCreationDate=function(t){var e;if(void 0===t&&(t=new Date),t instanceof Date)e=J(t);else{if(!/^D:(20[0-2][0-9]|203[0-7]|19[7-9][0-9])(0[0-9]|1[0-2])([0-2][0-9]|3[0-1])(0[0-9]|1[0-9]|2[0-3])(0[0-9]|[1-5][0-9])(0[0-9]|[1-5][0-9])(\+0[0-9]|\+1[0-4]|-0[0-9]|-1[0-1])'(0[0-9]|[1-5][0-9])'?$/.test(t))throw new Error("Invalid argument passed to jsPDF.setCreationDate");e=t}return W=e},Z=y.__private__.getCreationDate=function(t){var e=W;return"jsDate"===t&&(e=X(W)),e};y.setCreationDate=function(t){return K(t),this},y.getCreationDate=function(t){return Z(t)};var $,Q=y.__private__.padd2=function(t){return("0"+parseInt(t)).slice(-2)},tt=y.__private__.padd2Hex=function(t){return("00"+(t=t.toString())).substr(t.length)},et=0,nt=[],rt=[],it=0,at=[],ot=[],st=!1,ut=rt;y.__private__.setCustomOutputDestination=function(t){st=!0,ut=t};var ct=function(t){st||(ut=t)};y.__private__.resetCustomOutputDestination=function(){st=!1,ut=rt};var lt=y.__private__.out=function(t){return t=t.toString(),it+=t.length+1,ut.push(t),ut},ht=y.__private__.write=function(t){return lt(1===arguments.length?t.toString():Array.prototype.join.call(arguments," "))},ft=y.__private__.getArrayBuffer=function(t){for(var e=t.length,n=new ArrayBuffer(e),r=new Uint8Array(n);e--;)r[e]=t.charCodeAt(e);return n},dt=[["Helvetica","helvetica","normal","WinAnsiEncoding"],["Helvetica-Bold","helvetica","bold","WinAnsiEncoding"],["Helvetica-Oblique","helvetica","italic","WinAnsiEncoding"],["Helvetica-BoldOblique","helvetica","bolditalic","WinAnsiEncoding"],["Courier","courier","normal","WinAnsiEncoding"],["Courier-Bold","courier","bold","WinAnsiEncoding"],["Courier-Oblique","courier","italic","WinAnsiEncoding"],["Courier-BoldOblique","courier","bolditalic","WinAnsiEncoding"],["Times-Roman","times","normal","WinAnsiEncoding"],["Times-Bold","times","bold","WinAnsiEncoding"],["Times-Italic","times","italic","WinAnsiEncoding"],["Times-BoldItalic","times","bolditalic","WinAnsiEncoding"],["ZapfDingbats","zapfdingbats","normal",null],["Symbol","symbol","normal",null]];y.__private__.getStandardFonts=function(){return dt};var pt=e.fontSize||16;y.__private__.setFontSize=y.setFontSize=function(t){return pt=_===S?t/St:t,this};var gt,mt=y.__private__.getFontSize=y.getFontSize=function(){return _===A?pt:pt*St},vt=e.R2L||!1;y.__private__.setR2L=y.setR2L=function(t){return vt=t,this},y.__private__.getR2L=y.getR2L=function(){return vt};var bt,yt=y.__private__.setZoomMode=function(t){if(/^(?:\d+\.\d*|\d*\.\d+|\d+)%$/.test(t))gt=t;else if(isNaN(t)){if(-1===[void 0,null,"fullwidth","fullheight","fullpage","original"].indexOf(t))throw new Error('zoom must be Integer (e.g. 2), a percentage Value (e.g. 300%) or fullwidth, fullheight, fullpage, original. "'+t+'" is not recognized.');gt=t}else gt=parseInt(t,10)};y.__private__.getZoomMode=function(){return gt};var wt,Nt=y.__private__.setPageMode=function(t){if(-1==[void 0,null,"UseNone","UseOutlines","UseThumbs","FullScreen"].indexOf(t))throw new Error('Page mode must be one of UseNone, UseOutlines, UseThumbs, or FullScreen. "'+t+'" is not recognized.');bt=t};y.__private__.getPageMode=function(){return bt};var Lt=y.__private__.setLayoutMode=function(t){if(-1==[void 0,null,"continuous","single","twoleft","tworight","two"].indexOf(t))throw new Error('Layout mode must be one of continuous, single, twoleft, tworight. "'+t+'" is not recognized.');wt=t};y.__private__.getLayoutMode=function(){return wt},y.__private__.setDisplayMode=y.setDisplayMode=function(t,e,n){return yt(t),Lt(e),Nt(n),this};var xt={title:"",subject:"",author:"",keywords:"",creator:""};y.__private__.getDocumentProperty=function(t){if(-1===Object.keys(xt).indexOf(t))throw new Error("Invalid argument passed to jsPDF.getDocumentProperty");return xt[t]},y.__private__.getDocumentProperties=function(){return xt},y.__private__.setDocumentProperties=y.setProperties=y.setDocumentProperties=function(t){for(var e in xt)xt.hasOwnProperty(e)&&t[e]&&(xt[e]=t[e]);return this},y.__private__.setDocumentProperty=function(t,e){if(-1===Object.keys(xt).indexOf(t))throw new Error("Invalid arguments passed to jsPDF.setDocumentProperty");return xt[t]=e};var At,St,_t,Pt,kt,Ft={},It={},jt=[],Ct={},Ot={},Bt={},Mt={},qt=null,Et=0,Rt=[],Dt=new C(y),Tt=e.hotfixes||[],zt={},Ut={},Ht=[],Wt=function t(e,n,r,i,a,o){if(!(this instanceof t))return new t(e,n,r,i,a,o);isNaN(e)&&(e=1),isNaN(n)&&(n=0),isNaN(r)&&(r=0),isNaN(i)&&(i=1),isNaN(a)&&(a=0),isNaN(o)&&(o=0),this._matrix=[e,n,r,i,a,o]};Object.defineProperty(Wt.prototype,"sx",{get:function(){return this._matrix[0]},set:function(t){this._matrix[0]=t}}),Object.defineProperty(Wt.prototype,"shy",{get:function(){return this._matrix[1]},set:function(t){this._matrix[1]=t}}),Object.defineProperty(Wt.prototype,"shx",{get:function(){return this._matrix[2]},set:function(t){this._matrix[2]=t}}),Object.defineProperty(Wt.prototype,"sy",{get:function(){return this._matrix[3]},set:function(t){this._matrix[3]=t}}),Object.defineProperty(Wt.prototype,"tx",{get:function(){return this._matrix[4]},set:function(t){this._matrix[4]=t}}),Object.defineProperty(Wt.prototype,"ty",{get:function(){return this._matrix[5]},set:function(t){this._matrix[5]=t}}),Object.defineProperty(Wt.prototype,"a",{get:function(){return this._matrix[0]},set:function(t){this._matrix[0]=t}}),Object.defineProperty(Wt.prototype,"b",{get:function(){return this._matrix[1]},set:function(t){this._matrix[1]=t}}),Object.defineProperty(Wt.prototype,"c",{get:function(){return this._matrix[2]},set:function(t){this._matrix[2]=t}}),Object.defineProperty(Wt.prototype,"d",{get:function(){return this._matrix[3]},set:function(t){this._matrix[3]=t}}),Object.defineProperty(Wt.prototype,"e",{get:function(){return this._matrix[4]},set:function(t){this._matrix[4]=t}}),Object.defineProperty(Wt.prototype,"f",{get:function(){return this._matrix[5]},set:function(t){this._matrix[5]=t}}),Object.defineProperty(Wt.prototype,"rotation",{get:function(){return Math.atan2(this.shx,this.sx)}}),Object.defineProperty(Wt.prototype,"scaleX",{get:function(){return this.decompose().scale.sx}}),Object.defineProperty(Wt.prototype,"scaleY",{get:function(){return this.decompose().scale.sy}}),Object.defineProperty(Wt.prototype,"isIdentity",{get:function(){return 1===this.sx&&0===this.shy&&0===this.shx&&1===this.sy&&0===this.tx&&0===this.ty}}),Wt.prototype.join=function(t){return[this.sx,this.shy,this.shx,this.sy,this.tx,this.ty].map(B).join(t)},Wt.prototype.multiply=function(t){var e=t.sx*this.sx+t.shy*this.shx,n=t.sx*this.shy+t.shy*this.sy,r=t.shx*this.sx+t.sy*this.shx,i=t.shx*this.shy+t.sy*this.sy,a=t.tx*this.sx+t.ty*this.shx+this.tx,o=t.tx*this.shy+t.ty*this.sy+this.ty;return new Wt(e,n,r,i,a,o)},Wt.prototype.decompose=function(){var t=this.sx,e=this.shy,n=this.shx,r=this.sy,i=this.tx,a=this.ty,o=Math.sqrt(t*t+e*e),s=(t/=o)*n+(e/=o)*r;n-=t*s,r-=e*s;var u=Math.sqrt(n*n+r*r);return s/=u,t*(r/=u)<e*(n/=u)&&(t=-t,e=-e,s=-s,o=-o),{scale:new Wt(o,0,0,u,0,0),translate:new Wt(1,0,0,1,i,a),rotate:new Wt(t,e,-e,t,0,0),skew:new Wt(1,0,s,1,0,0)}},Wt.prototype.toString=function(t){return this.join(" ")},Wt.prototype.inversed=function(){var t=this.sx,e=this.shy,n=this.shx,r=this.sy,i=this.tx,a=this.ty,o=1/(t*r-e*n),s=r*o,u=-e*o,c=-n*o,l=t*o;return new Wt(s,u,c,l,-s*i-c*a,-u*i-l*a)},Wt.prototype.applyToPoint=function(t){var e=t.x*this.sx+t.y*this.shx+this.tx,n=t.x*this.shy+t.y*this.sy+this.ty;return new gn(e,n)},Wt.prototype.applyToRectangle=function(t){var e=this.applyToPoint(t),n=this.applyToPoint(new gn(t.x+t.w,t.y+t.h));return new mn(e.x,e.y,n.x-e.x,n.y-e.y)},Wt.prototype.clone=function(){var t=this.sx,e=this.shy,n=this.shx,r=this.sy,i=this.tx,a=this.ty;return new Wt(t,e,n,r,i,a)},y.Matrix=Wt;var Vt=y.matrixMult=function(t,e){return e.multiply(t)},Gt=new Wt(1,0,0,1,0,0);y.unitMatrix=y.identityMatrix=Gt;var Yt=function(t,e){if(!Ot[t]){var n=(e instanceof M?"Sh":"P")+(Object.keys(Ct).length+1).toString(10);e.id=n,Ot[t]=n,Ct[n]=e,Dt.publish("addPattern",e)}};y.ShadingPattern=M,y.TilingPattern=q,y.addShadingPattern=function(t,e){return R("addShadingPattern()"),Yt(t,e),this},y.beginTilingPattern=function(t){R("beginTilingPattern()"),bn(t.boundingBox[0],t.boundingBox[1],t.boundingBox[2]-t.boundingBox[0],t.boundingBox[3]-t.boundingBox[1],t.matrix)},y.endTilingPattern=function(t,e){R("endTilingPattern()"),e.stream=ot[$].join("\n"),Yt(t,e),Dt.publish("endTilingPattern",e),Ht.pop().restore()};var Jt,Xt=y.__private__.newObject=function(){var t=Kt();return Zt(t,!0),t},Kt=y.__private__.newObjectDeferred=function(){return et++,nt[et]=function(){return it},et},Zt=function(t,e){return e="boolean"==typeof e&&e,nt[t]=it,e&&lt(t+" 0 obj"),t},$t=y.__private__.newAdditionalObject=function(){var t={objId:Kt(),content:""};return at.push(t),t},Qt=Kt(),te=Kt(),ee=y.__private__.decodeColorString=function(t){var e=t.split(" ");if(2!==e.length||"g"!==e[1]&&"G"!==e[1])5!==e.length||"k"!==e[4]&&"K"!==e[4]||(e=[(1-e[0])*(1-e[3]),(1-e[1])*(1-e[3]),(1-e[2])*(1-e[3]),"r"]);else{var n=parseFloat(e[0]);e=[n,n,n,"r"]}for(var r="#",i=0;i<3;i++)r+=("0"+Math.floor(255*parseFloat(e[i])).toString(16)).slice(-2);return r},ne=y.__private__.encodeColorString=function(e){var n;"string"==typeof e&&(e={ch1:e});var r=e.ch1,i=e.ch2,a=e.ch3,o=e.ch4,s="draw"===e.pdfColorType?["G","RG","K"]:["g","rg","k"];if("string"==typeof r&&"#"!==r.charAt(0)){var u=new h(r);if(u.ok)r=u.toHex();else if(!/^\d*\.?\d*$/.test(r))throw new Error('Invalid color "'+r+'" passed to jsPDF.encodeColorString.')}if("string"==typeof r&&/^#[0-9A-Fa-f]{3}$/.test(r)&&(r="#"+r[1]+r[1]+r[2]+r[2]+r[3]+r[3]),"string"==typeof r&&/^#[0-9A-Fa-f]{6}$/.test(r)){var c=parseInt(r.substr(1),16);r=c>>16&255,i=c>>8&255,a=255&c}if(void 0===i||void 0===o&&r===i&&i===a)n="string"==typeof r?r+" "+s[0]:2===e.precision?T(r/255)+" "+s[0]:z(r/255)+" "+s[0];else if(void 0===o||"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(o)){if(o&&!isNaN(o.a)&&0===o.a)return["1.","1.","1.",s[1]].join(" ");n="string"==typeof r?[r,i,a,s[1]].join(" "):2===e.precision?[T(r/255),T(i/255),T(a/255),s[1]].join(" "):[z(r/255),z(i/255),z(a/255),s[1]].join(" ")}else n="string"==typeof r?[r,i,a,o,s[2]].join(" "):2===e.precision?[T(r),T(i),T(a),T(o),s[2]].join(" "):[z(r),z(i),z(a),z(o),s[2]].join(" ");return n},re=y.__private__.getFilters=function(){return c},ie=y.__private__.putStream=function(t){var e=(t=t||{}).data||"",n=t.filters||re(),r=t.alreadyAppliedFilters||[],i=t.addLength1||!1,a=e.length,o=t.objectId,s=function(t){return t};if(null!==m&&void 0===o)throw new Error("ObjectId must be passed to putStream for file encryption");null!==m&&(s=je.encryptor(o,0));var u={};!0===n&&(n=["FlateEncode"]);var c=t.additionalKeyValues||[],l=(u=void 0!==E.API.processDataByFilters?E.API.processDataByFilters(e,n):{data:e,reverseChain:[]}).reverseChain+(Array.isArray(r)?r.join(" "):r.toString());if(0!==u.data.length&&(c.push({key:"Length",value:u.data.length}),!0===i&&c.push({key:"Length1",value:a})),0!=l.length)if(l.split("/").length-1==1)c.push({key:"Filter",value:l});else{c.push({key:"Filter",value:"["+l+"]"});for(var h=0;h<c.length;h+=1)if("DecodeParms"===c[h].key){for(var f=[],d=0;d<u.reverseChain.split("/").length-1;d+=1)f.push("null");f.push(c[h].value),c[h].value="["+f.join(" ")+"]"}}lt("<<");for(var p=0;p<c.length;p++)lt("/"+c[p].key+" "+c[p].value);lt(">>"),0!==u.data.length&&(lt("stream"),lt(s(u.data)),lt("endstream"))},ae=y.__private__.putPage=function(t){var e=t.number,n=t.data,r=t.objId,i=t.contentsObjId;Zt(r,!0),lt("<</Type /Page"),lt("/Parent "+t.rootDictionaryObjId+" 0 R"),lt("/Resources "+t.resourceDictionaryObjId+" 0 R"),lt("/MediaBox ["+parseFloat(B(t.mediaBox.bottomLeftX))+" "+parseFloat(B(t.mediaBox.bottomLeftY))+" "+B(t.mediaBox.topRightX)+" "+B(t.mediaBox.topRightY)+"]"),null!==t.cropBox&&lt("/CropBox ["+B(t.cropBox.bottomLeftX)+" "+B(t.cropBox.bottomLeftY)+" "+B(t.cropBox.topRightX)+" "+B(t.cropBox.topRightY)+"]"),null!==t.bleedBox&&lt("/BleedBox ["+B(t.bleedBox.bottomLeftX)+" "+B(t.bleedBox.bottomLeftY)+" "+B(t.bleedBox.topRightX)+" "+B(t.bleedBox.topRightY)+"]"),null!==t.trimBox&&lt("/TrimBox ["+B(t.trimBox.bottomLeftX)+" "+B(t.trimBox.bottomLeftY)+" "+B(t.trimBox.topRightX)+" "+B(t.trimBox.topRightY)+"]"),null!==t.artBox&&lt("/ArtBox ["+B(t.artBox.bottomLeftX)+" "+B(t.artBox.bottomLeftY)+" "+B(t.artBox.topRightX)+" "+B(t.artBox.topRightY)+"]"),"number"==typeof t.userUnit&&1!==t.userUnit&&lt("/UserUnit "+t.userUnit),Dt.publish("putPage",{objId:r,pageContext:Rt[e],pageNumber:e,page:n}),lt("/Contents "+i+" 0 R"),lt(">>"),lt("endobj");var a=n.join("\n");return _===S&&(a+="\nQ"),Zt(i,!0),ie({data:a,filters:re(),objectId:i}),lt("endobj"),r},oe=y.__private__.putPages=function(){var t,e,n=[];for(t=1;t<=Et;t++)Rt[t].objId=Kt(),Rt[t].contentsObjId=Kt();for(t=1;t<=Et;t++)n.push(ae({number:t,data:ot[t],objId:Rt[t].objId,contentsObjId:Rt[t].contentsObjId,mediaBox:Rt[t].mediaBox,cropBox:Rt[t].cropBox,bleedBox:Rt[t].bleedBox,trimBox:Rt[t].trimBox,artBox:Rt[t].artBox,userUnit:Rt[t].userUnit,rootDictionaryObjId:Qt,resourceDictionaryObjId:te}));Zt(Qt,!0),lt("<</Type /Pages");var r="/Kids [";for(e=0;e<Et;e++)r+=n[e]+" 0 R ";lt(r+"]"),lt("/Count "+Et),lt(">>"),lt("endobj"),Dt.publish("postPutPages")},se=function(t){Dt.publish("putFont",{font:t,out:lt,newObject:Xt,putStream:ie}),!0!==t.isAlreadyPutted&&(t.objectNumber=Xt(),lt("<<"),lt("/Type /Font"),lt("/BaseFont /"+j(t.postScriptName)),lt("/Subtype /Type1"),"string"==typeof t.encoding&&lt("/Encoding /"+t.encoding),lt("/FirstChar 32"),lt("/LastChar 255"),lt(">>"),lt("endobj"))},ue=function(t){t.objectNumber=Xt();var e=[];e.push({key:"Type",value:"/XObject"}),e.push({key:"Subtype",value:"/Form"}),e.push({key:"BBox",value:"["+[B(t.x),B(t.y),B(t.x+t.width),B(t.y+t.height)].join(" ")+"]"}),e.push({key:"Matrix",value:"["+t.matrix.toString()+"]"});var n=t.pages[1].join("\n");ie({data:n,additionalKeyValues:e,objectId:t.objectNumber}),lt("endobj")},ce=function(t,e){e||(e=21);var n=Xt(),r=function(t,e){var n,r=[],i=1/(e-1);for(n=0;n<1;n+=i)r.push(n);if(r.push(1),0!=t[0].offset){var a={offset:0,color:t[0].color};t.unshift(a)}if(1!=t[t.length-1].offset){var o={offset:1,color:t[t.length-1].color};t.push(o)}for(var s="",u=0,c=0;c<r.length;c++){for(n=r[c];n>t[u+1].offset;)u++;var l=t[u].offset,h=(n-l)/(t[u+1].offset-l),f=t[u].color,d=t[u+1].color;s+=tt(Math.round((1-h)*f[0]+h*d[0]).toString(16))+tt(Math.round((1-h)*f[1]+h*d[1]).toString(16))+tt(Math.round((1-h)*f[2]+h*d[2]).toString(16))}return s.trim()}(t.colors,e),i=[];i.push({key:"FunctionType",value:"0"}),i.push({key:"Domain",value:"[0.0 1.0]"}),i.push({key:"Size",value:"["+e+"]"}),i.push({key:"BitsPerSample",value:"8"}),i.push({key:"Range",value:"[0.0 1.0 0.0 1.0 0.0 1.0]"}),i.push({key:"Decode",value:"[0.0 1.0 0.0 1.0 0.0 1.0]"}),ie({data:r,additionalKeyValues:i,alreadyAppliedFilters:["/ASCIIHexDecode"],objectId:n}),lt("endobj"),t.objectNumber=Xt(),lt("<< /ShadingType "+t.type),lt("/ColorSpace /DeviceRGB");var a="/Coords ["+B(parseFloat(t.coords[0]))+" "+B(parseFloat(t.coords[1]))+" ";2===t.type?a+=B(parseFloat(t.coords[2]))+" "+B(parseFloat(t.coords[3])):a+=B(parseFloat(t.coords[2]))+" "+B(parseFloat(t.coords[3]))+" "+B(parseFloat(t.coords[4]))+" "+B(parseFloat(t.coords[5])),lt(a+="]"),t.matrix&&lt("/Matrix ["+t.matrix.toString()+"]"),lt("/Function "+n+" 0 R"),lt("/Extend [true true]"),lt(">>"),lt("endobj")},le=function(t,e){var n=Kt(),r=Xt();e.push({resourcesOid:n,objectOid:r}),t.objectNumber=r;var i=[];i.push({key:"Type",value:"/Pattern"}),i.push({key:"PatternType",value:"1"}),i.push({key:"PaintType",value:"1"}),i.push({key:"TilingType",value:"1"}),i.push({key:"BBox",value:"["+t.boundingBox.map(B).join(" ")+"]"}),i.push({key:"XStep",value:B(t.xStep)}),i.push({key:"YStep",value:B(t.yStep)}),i.push({key:"Resources",value:n+" 0 R"}),t.matrix&&i.push({key:"Matrix",value:"["+t.matrix.toString()+"]"}),ie({data:t.stream,additionalKeyValues:i,objectId:t.objectNumber}),lt("endobj")},he=function(t){for(var e in t.objectNumber=Xt(),lt("<<"),t)switch(e){case"opacity":lt("/ca "+T(t[e]));break;case"stroke-opacity":lt("/CA "+T(t[e]))}lt(">>"),lt("endobj")},fe=function(t){Zt(t.resourcesOid,!0),lt("<<"),lt("/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]"),function(){for(var t in lt("/Font <<"),Ft)Ft.hasOwnProperty(t)&&(!1===v||!0===v&&b.hasOwnProperty(t))&&lt("/"+t+" "+Ft[t].objectNumber+" 0 R");lt(">>")}(),function(){if(Object.keys(Ct).length>0){for(var t in lt("/Shading <<"),Ct)Ct.hasOwnProperty(t)&&Ct[t]instanceof M&&Ct[t].objectNumber>=0&&lt("/"+t+" "+Ct[t].objectNumber+" 0 R");Dt.publish("putShadingPatternDict"),lt(">>")}}(),function(t){if(Object.keys(Ct).length>0){for(var e in lt("/Pattern <<"),Ct)Ct.hasOwnProperty(e)&&Ct[e]instanceof y.TilingPattern&&Ct[e].objectNumber>=0&&Ct[e].objectNumber<t&&lt("/"+e+" "+Ct[e].objectNumber+" 0 R");Dt.publish("putTilingPatternDict"),lt(">>")}}(t.objectOid),function(){if(Object.keys(Bt).length>0){var t;for(t in lt("/ExtGState <<"),Bt)Bt.hasOwnProperty(t)&&Bt[t].objectNumber>=0&&lt("/"+t+" "+Bt[t].objectNumber+" 0 R");Dt.publish("putGStateDict"),lt(">>")}}(),function(){for(var t in lt("/XObject <<"),zt)zt.hasOwnProperty(t)&&zt[t].objectNumber>=0&&lt("/"+t+" "+zt[t].objectNumber+" 0 R");Dt.publish("putXobjectDict"),lt(">>")}(),lt(">>"),lt("endobj")},de=function(t){It[t.fontName]=It[t.fontName]||{},It[t.fontName][t.fontStyle]=t.id},pe=function(t,e,n,r,i){var a={id:"F"+(Object.keys(Ft).length+1).toString(10),postScriptName:t,fontName:e,fontStyle:n,encoding:r,isStandardFont:i||!1,metadata:{}};return Dt.publish("addFont",{font:a,instance:this}),Ft[a.id]=a,de(a),a.id},ge=y.__private__.pdfEscape=y.pdfEscape=function(t,e){return function(t,e){var n,r,i,a,o,s,u,c,l;if(i=(e=e||{}).sourceEncoding||"Unicode",o=e.outputEncoding,(e.autoencode||o)&&Ft[At].metadata&&Ft[At].metadata[i]&&Ft[At].metadata[i].encoding&&(a=Ft[At].metadata[i].encoding,!o&&Ft[At].encoding&&(o=Ft[At].encoding),!o&&a.codePages&&(o=a.codePages[0]),"string"==typeof o&&(o=a[o]),o)){for(u=!1,s=[],n=0,r=t.length;n<r;n++)(c=o[t.charCodeAt(n)])?s.push(String.fromCharCode(c)):s.push(t[n]),s[n].charCodeAt(0)>>8&&(u=!0);t=s.join("")}for(n=t.length;void 0===u&&0!==n;)t.charCodeAt(n-1)>>8&&(u=!0),n--;if(!u)return t;for(s=e.noBOM?[]:[254,255],n=0,r=t.length;n<r;n++){if((l=(c=t.charCodeAt(n))>>8)>>8)throw new Error("Character at position "+n+" of string '"+t+"' exceeds 16bits. Cannot be encoded into UCS-2 BE");s.push(l),s.push(c-(l<<8))}return String.fromCharCode.apply(void 0,s)}(t,e).replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)")},me=y.__private__.beginPage=function(t){ot[++Et]=[],Rt[Et]={objId:0,contentsObjId:0,userUnit:Number(f),artBox:null,bleedBox:null,cropBox:null,trimBox:null,mediaBox:{bottomLeftX:0,bottomLeftY:0,topRightX:Number(t[0]),topRightY:Number(t[1])}},ye(Et),ct(ot[$])},ve=function(t,e){var n,i,a;switch(r=e||r,"string"==typeof t&&(n=x(t.toLowerCase()),Array.isArray(n)&&(i=n[0],a=n[1])),Array.isArray(t)&&(i=t[0]*St,a=t[1]*St),isNaN(i)&&(i=s[0],a=s[1]),(i>14400||a>14400)&&(o.warn("A page in a PDF can not be wider or taller than 14400 userUnit. jsPDF limits the width/height to 14400"),i=Math.min(14400,i),a=Math.min(14400,a)),s=[i,a],r.substr(0,1)){case"l":a>i&&(s=[a,i]);break;case"p":i>a&&(s=[a,i])}me(s),Ze(Xe),lt(on),0!==fn&&lt(fn+" J"),0!==dn&&lt(dn+" j"),Dt.publish("addPage",{pageNumber:Et})},be=function(t){t>0&&t<=Et&&(ot.splice(t,1),Rt.splice(t,1),Et--,$>Et&&($=Et),this.setPage($))},ye=function(t){t>0&&t<=Et&&($=t)},we=y.__private__.getNumberOfPages=y.getNumberOfPages=function(){return ot.length-1},Ne=function(t,e,n){var r,i=void 0;return n=n||{},t=void 0!==t?t:Ft[At].fontName,e=void 0!==e?e:Ft[At].fontStyle,r=t.toLowerCase(),void 0!==It[r]&&void 0!==It[r][e]?i=It[r][e]:void 0!==It[t]&&void 0!==It[t][e]?i=It[t][e]:!1===n.disableWarning&&o.warn("Unable to look up font label for font '"+t+"', '"+e+"'. Refer to getFontList() for available fonts."),i||n.noFallback||null==(i=It.times[e])&&(i=It.times.normal),i},Le=y.__private__.putInfo=function(){var t=Xt(),e=function(t){return t};for(var n in null!==m&&(e=je.encryptor(t,0)),lt("<<"),lt("/Producer ("+ge(e("jsPDF "+E.version))+")"),xt)xt.hasOwnProperty(n)&&xt[n]&&lt("/"+n.substr(0,1).toUpperCase()+n.substr(1)+" ("+ge(e(xt[n]))+")");lt("/CreationDate ("+ge(e(W))+")"),lt(">>"),lt("endobj")},xe=y.__private__.putCatalog=function(t){var e=(t=t||{}).rootDictionaryObjId||Qt;switch(Xt(),lt("<<"),lt("/Type /Catalog"),lt("/Pages "+e+" 0 R"),gt||(gt="fullwidth"),gt){case"fullwidth":lt("/OpenAction [3 0 R /FitH null]");break;case"fullheight":lt("/OpenAction [3 0 R /FitV null]");break;case"fullpage":lt("/OpenAction [3 0 R /Fit]");break;case"original":lt("/OpenAction [3 0 R /XYZ null null 1]");break;default:var n=""+gt;"%"===n.substr(n.length-1)&&(gt=parseInt(gt)/100),"number"==typeof gt&&lt("/OpenAction [3 0 R /XYZ null null "+T(gt)+"]")}switch(wt||(wt="continuous"),wt){case"continuous":lt("/PageLayout /OneColumn");break;case"single":lt("/PageLayout /SinglePage");break;case"two":case"twoleft":lt("/PageLayout /TwoColumnLeft");break;case"tworight":lt("/PageLayout /TwoColumnRight")}bt&&lt("/PageMode /"+bt),Dt.publish("putCatalog"),lt(">>"),lt("endobj")},Ae=y.__private__.putTrailer=function(){lt("trailer"),lt("<<"),lt("/Size "+(et+1)),lt("/Root "+et+" 0 R"),lt("/Info "+(et-1)+" 0 R"),null!==m&&lt("/Encrypt "+je.oid+" 0 R"),lt("/ID [ <"+V+"> <"+V+"> ]"),lt(">>")},Se=y.__private__.putHeader=function(){lt("%PDF-"+w),lt("%ºß¬à")},_e=y.__private__.putXRef=function(){var t="0000000000";lt("xref"),lt("0 "+(et+1)),lt("0000000000 65535 f ");for(var e=1;e<=et;e++)"function"==typeof nt[e]?lt((t+nt[e]()).slice(-10)+" 00000 n "):void 0!==nt[e]?lt((t+nt[e]).slice(-10)+" 00000 n "):lt("0000000000 00000 n ")},Pe=y.__private__.buildDocument=function(){var t;et=0,it=0,rt=[],nt=[],at=[],Qt=Kt(),te=Kt(),ct(rt),Dt.publish("buildDocument"),Se(),oe(),function(){Dt.publish("putAdditionalObjects");for(var t=0;t<at.length;t++){var e=at[t];Zt(e.objId,!0),lt(e.content),lt("endobj")}Dt.publish("postPutAdditionalObjects")}(),t=[],function(){for(var t in Ft)Ft.hasOwnProperty(t)&&(!1===v||!0===v&&b.hasOwnProperty(t))&&se(Ft[t])}(),function(){var t;for(t in Bt)Bt.hasOwnProperty(t)&&he(Bt[t])}(),function(){for(var t in zt)zt.hasOwnProperty(t)&&ue(zt[t])}(),function(t){var e;for(e in Ct)Ct.hasOwnProperty(e)&&(Ct[e]instanceof M?ce(Ct[e]):Ct[e]instanceof q&&le(Ct[e],t))}(t),Dt.publish("putResources"),t.forEach(fe),fe({resourcesOid:te,objectOid:Number.MAX_SAFE_INTEGER}),Dt.publish("postPutResources"),null!==m&&(je.oid=Xt(),lt("<<"),lt("/Filter /Standard"),lt("/V "+je.v),lt("/R "+je.r),lt("/U <"+je.toHexString(je.U)+">"),lt("/O <"+je.toHexString(je.O)+">"),lt("/P "+je.P),lt(">>"),lt("endobj")),Le(),xe();var e=it;return _e(),Ae(),lt("startxref"),lt(""+e),lt("%%EOF"),ct(ot[$]),rt.join("\n")},ke=y.__private__.getBlob=function(t){return new Blob([ft(t)],{type:"application/pdf"})},Fe=y.output=y.__private__.output=(Jt=function(t,e){switch("string"==typeof(e=e||{})?e={filename:e}:e.filename=e.filename||"generated.pdf",t){case void 0:return Pe();case"save":y.save(e.filename);break;case"arraybuffer":return ft(Pe());case"blob":return ke(Pe());case"bloburi":case"bloburl":if(void 0!==i.URL&&"function"==typeof i.URL.createObjectURL)return i.URL&&i.URL.createObjectURL(ke(Pe()))||void 0;o.warn("bloburl is not supported by your system, because URL.createObjectURL is not supported by your browser.");break;case"datauristring":case"dataurlstring":var n="",r=Pe();try{n=d(r)}catch(m){n=d(unescape(encodeURIComponent(r)))}return"data:application/pdf;filename="+e.filename+";base64,"+n;case"pdfobjectnewwindow":if("[object Window]"===Object.prototype.toString.call(i)){var a="https://cdnjs.cloudflare.com/ajax/libs/pdfobject/2.1.1/pdfobject.min.js",s=' integrity="sha512-4ze/a9/4jqu+tX9dfOqJYSvyYd5M6qum/3HpCLr+/Jqf0whc37VUbkpNGHR7/8pSnCFw47T1fmIpwBV7UySh3g==" crossorigin="anonymous"';e.pdfObjectUrl&&(a=e.pdfObjectUrl,s="");var u='<html><style>html, body { padding: 0; margin: 0; } iframe { width: 100%; height: 100%; border: 0;}  </style><body><script src="'+a+'"'+s+'><\/script><script >PDFObject.embed("'+this.output("dataurlstring")+'", '+JSON.stringify(e)+");<\/script></body></html>",c=i.open();return null!==c&&c.document.write(u),c}throw new Error("The option pdfobjectnewwindow just works in a browser-environment.");case"pdfjsnewwindow":if("[object Window]"===Object.prototype.toString.call(i)){var l='<html><style>html, body { padding: 0; margin: 0; } iframe { width: 100%; height: 100%; border: 0;}  </style><body><iframe id="pdfViewer" src="'+(e.pdfJsUrl||"examples/PDF.js/web/viewer.html")+"?file=&downloadName="+e.filename+'" width="500px" height="400px" /></body></html>',h=i.open();if(null!==h){h.document.write(l);var f=this;h.document.documentElement.querySelector("#pdfViewer").onload=function(){h.document.title=e.filename,h.document.documentElement.querySelector("#pdfViewer").contentWindow.PDFViewerApplication.open(f.output("bloburl"))}}return h}throw new Error("The option pdfjsnewwindow just works in a browser-environment.");case"dataurlnewwindow":if("[object Window]"!==Object.prototype.toString.call(i))throw new Error("The option dataurlnewwindow just works in a browser-environment.");var p='<html><style>html, body { padding: 0; margin: 0; } iframe { width: 100%; height: 100%; border: 0;}  </style><body><iframe src="'+this.output("datauristring",e)+'"></iframe></body></html>',g=i.open();if(null!==g&&(g.document.write(p),g.document.title=e.filename),g||"undefined"==typeof safari)return g;break;case"datauri":case"dataurl":return i.document.location.href=this.output("datauristring",e);default:return null}},Jt.foo=function(){try{return Jt.apply(this,arguments)}catch(n){var t=n.stack||"";~t.indexOf(" at ")&&(t=t.split(" at ")[1]);var e="Error in function "+t.split("\n")[0].split("<")[0]+": "+n.message;if(!i.console)throw new Error(e);i.console.error(e,n),i.alert&&alert(e)}},Jt.foo.bar=Jt,Jt.foo),Ie=function(t){return!0===Array.isArray(Tt)&&Tt.indexOf(t)>-1};switch(a){case"pt":St=1;break;case"mm":St=72/25.4;break;case"cm":St=72/2.54;break;case"in":St=72;break;case"px":St=1==Ie("px_scaling")?.75:96/72;break;case"pc":case"em":St=12;break;case"ex":St=6;break;default:if("number"!=typeof a)throw new Error("Invalid unit: "+a);St=a}var je=null;K(),Y();var Ce=y.__private__.getPageInfo=y.getPageInfo=function(t){if(isNaN(t)||t%1!=0)throw new Error("Invalid argument passed to jsPDF.getPageInfo");return{objId:Rt[t].objId,pageNumber:t,pageContext:Rt[t]}},Oe=y.__private__.getPageInfoByObjId=function(t){if(isNaN(t)||t%1!=0)throw new Error("Invalid argument passed to jsPDF.getPageInfoByObjId");for(var e in Rt)if(Rt[e].objId===t)break;return Ce(e)},Be=y.__private__.getCurrentPageInfo=y.getCurrentPageInfo=function(){return{objId:Rt[$].objId,pageNumber:$,pageContext:Rt[$]}};y.addPage=function(){return ve.apply(this,arguments),this},y.setPage=function(){return ye.apply(this,arguments),ct.call(this,ot[$]),this},y.insertPage=function(t){return this.addPage(),this.movePage($,t),this},y.movePage=function(t,e){var n,r;if(t>e){n=ot[t],r=Rt[t];for(var i=t;i>e;i--)ot[i]=ot[i-1],Rt[i]=Rt[i-1];ot[e]=n,Rt[e]=r,this.setPage(e)}else if(t<e){n=ot[t],r=Rt[t];for(var a=t;a<e;a++)ot[a]=ot[a+1],Rt[a]=Rt[a+1];ot[e]=n,Rt[e]=r,this.setPage(e)}return this},y.deletePage=function(){return be.apply(this,arguments),this},y.__private__.text=y.text=function(e,n,r,i,a){var o,s,u,c,l,h,f,d,p,g=(i=i||{}).scope||this;if("number"==typeof e&&"number"==typeof n&&("string"==typeof r||Array.isArray(r))){var m=r;r=n,n=e,e=m}if(arguments[3]instanceof Wt==0?(u=arguments[4],c=arguments[5],"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(f=arguments[3])&&null!==f||("string"==typeof u&&(c=u,u=null),"string"==typeof f&&(c=f,f=null),"number"==typeof f&&(u=f,f=null),i={flags:f,angle:u,align:c})):(R("The transform parameter of text() with a Matrix value"),p=a),isNaN(n)||isNaN(r)||null==e)throw new Error("Invalid arguments passed to jsPDF.text");if(0===e.length)return g;var v,y="",w="number"==typeof i.lineHeightFactor?i.lineHeightFactor:Je,N=g.internal.scaleFactor;function L(t){return t=t.split("\t").join(Array(i.TabLen||9).join(" ")),ge(t,f)}function x(t){for(var e,n=t.concat(),r=[],i=n.length;i--;)"string"==typeof(e=n.shift())?r.push(e):Array.isArray(t)&&(1===e.length||void 0===e[1]&&void 0===e[2])?r.push(e[0]):r.push([e[0],e[1],e[2]]);return r}function A(t,e){var n;if("string"==typeof t)n=e(t)[0];else if(Array.isArray(t)){for(var r,i,a=t.concat(),o=[],s=a.length;s--;)"string"==typeof(r=a.shift())?o.push(e(r)[0]):Array.isArray(r)&&"string"==typeof r[0]&&(i=e(r[0],r[1],r[2]),o.push([i[0],i[1],i[2]]));n=o}return n}var P=!1,k=!0;if("string"==typeof e)P=!0;else if(Array.isArray(e)){var F=e.concat();s=[];for(var I,j=F.length;j--;)("string"!=typeof(I=F.shift())||Array.isArray(I)&&"string"!=typeof I[0])&&(k=!1);P=k}if(!1===P)throw new Error('Type of text must be string or Array. "'+e+'" is not recognized.');"string"==typeof e&&(e=e.match(/[\r?\n]/)?e.split(/\r\n|\r|\n/g):[e]);var C=pt/g.internal.scaleFactor,O=C*(w-1);switch(i.baseline){case"bottom":r-=O;break;case"top":r+=C-O;break;case"hanging":r+=C-2*O;break;case"middle":r+=C/2-O}if((h=i.maxWidth||0)>0&&("string"==typeof e?e=g.splitTextToSize(e,h):"[object Array]"===Object.prototype.toString.call(e)&&(e=e.reduce(function(t,e){return t.concat(g.splitTextToSize(e,h))},[]))),o={text:e,x:n,y:r,options:i,mutex:{pdfEscape:ge,activeFontKey:At,fonts:Ft,activeFontSize:pt}},Dt.publish("preProcessText",o),e=o.text,u=(i=o.options).angle,p instanceof Wt==0&&u&&"number"==typeof u){u*=Math.PI/180,0===i.rotationDirection&&(u=-u),_===S&&(u=-u);var M=Math.cos(u),q=Math.sin(u);p=new Wt(M,q,-q,M,0,0)}else u&&u instanceof Wt&&(p=u);_!==S||p||(p=Gt),void 0!==(l=i.charSpace||ln)&&(y+=B(U(l))+" Tc\n",this.setCharSpace(this.getCharSpace()||0)),void 0!==(d=i.horizontalScale)&&(y+=B(100*d)+" Tz\n"),i.lang;var E=-1,D=void 0!==i.renderingMode?i.renderingMode:i.stroke,T=g.internal.getCurrentPageInfo().pageContext;switch(D){case 0:case!1:case"fill":E=0;break;case 1:case!0:case"stroke":E=1;break;case 2:case"fillThenStroke":E=2;break;case 3:case"invisible":E=3;break;case 4:case"fillAndAddForClipping":E=4;break;case 5:case"strokeAndAddPathForClipping":E=5;break;case 6:case"fillThenStrokeAndAddToPathForClipping":E=6;break;case 7:case"addToPathForClipping":E=7}var z=void 0!==T.usedRenderingMode?T.usedRenderingMode:-1;-1!==E?y+=E+" Tr\n":-1!==z&&(y+="0 Tr\n"),-1!==E&&(T.usedRenderingMode=E),c=i.align||"left";var H,W=pt*w,V=g.internal.pageSize.getWidth(),G=Ft[At];l=i.charSpace||ln,h=i.maxWidth||0,f=Object.assign({autoencode:!0,noBOM:!0},i.flags);var Y=[],J=function(t){return g.getStringUnitWidth(t,{font:G,charSpace:l,fontSize:pt,doKerning:!1})*pt/N};if("[object Array]"===Object.prototype.toString.call(e)){var X;s=x(e),"left"!==c&&(H=s.map(J));var K,Z=0;if("right"===c){n-=H[0],e=[],j=s.length;for(var $=0;$<j;$++)0===$?(K=en(n),X=nn(r)):(K=U(Z-H[$]),X=-W),e.push([s[$],K,X]),Z=H[$]}else if("center"===c){n-=H[0]/2,e=[],j=s.length;for(var Q=0;Q<j;Q++)0===Q?(K=en(n),X=nn(r)):(K=U((Z-H[Q])/2),X=-W),e.push([s[Q],K,X]),Z=H[Q]}else if("left"===c){e=[],j=s.length;for(var tt=0;tt<j;tt++)e.push(s[tt])}else if("justify"===c&&"Identity-H"===G.encoding){e=[],j=s.length,h=0!==h?h:V;for(var et=0,nt=0;nt<j;nt++)if(X=0===nt?nn(r):-W,K=0===nt?en(n):et,nt<j-1){var rt=U((h-H[nt])/(s[nt].split(" ").length-1)),it=s[nt].split(" ");e.push([it[0]+" ",K,X]),et=0;for(var at=1;at<it.length;at++){var ot=(J(it[at-1]+" "+it[at])-J(it[at]))*N+rt;at==it.length-1?e.push([it[at],ot,0]):e.push([it[at]+" ",ot,0]),et-=ot}}else e.push([s[nt],K,X]);e.push(["",et,0])}else{if("justify"!==c)throw new Error('Unrecognized alignment option, use "left", "center", "right" or "justify".');for(e=[],j=s.length,h=0!==h?h:V,nt=0;nt<j;nt++)X=0===nt?nn(r):-W,K=0===nt?en(n):0,nt<j-1?Y.push(B(U((h-H[nt])/(s[nt].split(" ").length-1)))):Y.push(0),e.push([s[nt],K,X])}}!0===("boolean"==typeof i.R2L?i.R2L:vt)&&(e=A(e,function(t,e,n){return[t.split("").reverse().join(""),e,n]})),o={text:e,x:n,y:r,options:i,mutex:{pdfEscape:ge,activeFontKey:At,fonts:Ft,activeFontSize:pt}},Dt.publish("postProcessText",o),e=o.text,v=o.mutex.isHex||!1;var st=Ft[At].encoding;"WinAnsiEncoding"!==st&&"StandardEncoding"!==st||(e=A(e,function(t,e,n){return[L(t),e,n]})),s=x(e),e=[];for(var ut,ct,ht,ft=Array.isArray(s[0])?1:0,dt="",gt=function(t,e,n){var r="";return n instanceof Wt?(n="number"==typeof i.angle?Vt(n,new Wt(1,0,0,1,t,e)):Vt(new Wt(1,0,0,1,t,e),n),_===S&&(n=Vt(new Wt(1,0,0,-1,0,0),n)),r=n.join(" ")+" Tm\n"):r=B(t)+" "+B(e)+" Td\n",r},mt=0;mt<s.length;mt++){switch(dt="",ft){case 1:ht=(v?"<":"(")+s[mt][0]+(v?">":")"),ut=parseFloat(s[mt][1]),ct=parseFloat(s[mt][2]);break;case 0:ht=(v?"<":"(")+s[mt]+(v?">":")"),ut=en(n),ct=nn(r)}void 0!==Y&&void 0!==Y[mt]&&(dt=Y[mt]+" Tw\n"),0===mt?e.push(dt+gt(ut,ct,p)+ht):0===ft?e.push(dt+ht):1===ft&&e.push(dt+gt(ut,ct,p)+ht)}e=0===ft?e.join(" Tj\nT* "):e.join(" Tj\n"),e+=" Tj\n";var bt="BT\n/";return bt+=At+" "+pt+" Tf\n",bt+=B(pt*w)+" TL\n",bt+=un+"\n",bt+=y,bt+=e,lt(bt+="ET"),b[At]=!0,g};var Me=y.__private__.clip=y.clip=function(t){return lt("evenodd"===t?"W*":"W"),this};y.clipEvenOdd=function(){return Me("evenodd")},y.__private__.discardPath=y.discardPath=function(){return lt("n"),this};var qe=y.__private__.isValidStyle=function(t){var e=!1;return-1!==[void 0,null,"S","D","F","DF","FD","f","f*","B","B*","n"].indexOf(t)&&(e=!0),e};y.__private__.setDefaultPathOperation=y.setDefaultPathOperation=function(t){return qe(t)&&(g=t),this};var Ee=y.__private__.getStyle=y.getStyle=function(t){var e=g;switch(t){case"D":case"S":e="S";break;case"F":e="f";break;case"FD":case"DF":e="B";break;case"f":case"f*":case"B":case"B*":e=t}return e},Re=y.close=function(){return lt("h"),this};y.stroke=function(){return lt("S"),this},y.fill=function(t){return De("f",t),this},y.fillEvenOdd=function(t){return De("f*",t),this},y.fillStroke=function(t){return De("B",t),this},y.fillStrokeEvenOdd=function(t){return De("B*",t),this};var De=function(e,n){"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(n)?Ue(n,e):lt(e)},Te=function(t){null===t||_===S&&void 0===t||(t=Ee(t),lt(t))};function ze(t,e,n,r,i){var a=new q(e||this.boundingBox,n||this.xStep,r||this.yStep,this.gState,i||this.matrix);a.stream=this.stream;var o=t+"$$"+this.cloneIndex+++"$$";return Yt(o,a),a}var Ue=function(t,e){var n=Ot[t.key],r=Ct[n];if(r instanceof M)lt("q"),lt(He(e)),r.gState&&y.setGState(r.gState),lt(t.matrix.toString()+" cm"),lt("/"+n+" sh"),lt("Q");else if(r instanceof q){var i=new Wt(1,0,0,-1,0,Ln());t.matrix&&(i=i.multiply(t.matrix||Gt),n=ze.call(r,t.key,t.boundingBox,t.xStep,t.yStep,i).id),lt("q"),lt("/Pattern cs"),lt("/"+n+" scn"),r.gState&&y.setGState(r.gState),lt(e),lt("Q")}},He=function(t){switch(t){case"f":case"F":case"n":return"W n";case"f*":return"W* n";case"B":case"S":return"W S";case"B*":return"W* S"}},We=y.moveTo=function(t,e){return lt(B(U(t))+" "+B(H(e))+" m"),this},Ve=y.lineTo=function(t,e){return lt(B(U(t))+" "+B(H(e))+" l"),this},Ge=y.curveTo=function(t,e,n,r,i,a){return lt([B(U(t)),B(H(e)),B(U(n)),B(H(r)),B(U(i)),B(H(a)),"c"].join(" ")),this};y.__private__.line=y.line=function(t,e,n,r,i){if(isNaN(t)||isNaN(e)||isNaN(n)||isNaN(r)||!qe(i))throw new Error("Invalid arguments passed to jsPDF.line");return _===A?this.lines([[n-t,r-e]],t,e,[1,1],i||"S"):this.lines([[n-t,r-e]],t,e,[1,1]).stroke()},y.__private__.lines=y.lines=function(t,e,n,r,i,a){var o,s,u,c,l,h,f,d,p,g,m,v;if("number"==typeof t&&(v=n,n=e,e=t,t=v),r=r||[1,1],a=a||!1,isNaN(e)||isNaN(n)||!Array.isArray(t)||!Array.isArray(r)||!qe(i)||"boolean"!=typeof a)throw new Error("Invalid arguments passed to jsPDF.lines");for(We(e,n),o=r[0],s=r[1],c=t.length,g=e,m=n,u=0;u<c;u++)2===(l=t[u]).length?(g=l[0]*o+g,m=l[1]*s+m,Ve(g,m)):(h=l[0]*o+g,f=l[1]*s+m,d=l[2]*o+g,p=l[3]*s+m,g=l[4]*o+g,m=l[5]*s+m,Ge(h,f,d,p,g,m));return a&&Re(),Te(i),this},y.path=function(t){for(var e=0;e<t.length;e++){var n=t[e],r=n.c;switch(n.op){case"m":We(r[0],r[1]);break;case"l":Ve(r[0],r[1]);break;case"c":Ge.apply(this,r);break;case"h":Re()}}return this},y.__private__.rect=y.rect=function(t,e,n,r,i){if(isNaN(t)||isNaN(e)||isNaN(n)||isNaN(r)||!qe(i))throw new Error("Invalid arguments passed to jsPDF.rect");return _===A&&(r=-r),lt([B(U(t)),B(H(e)),B(U(n)),B(U(r)),"re"].join(" ")),Te(i),this},y.__private__.triangle=y.triangle=function(t,e,n,r,i,a,o){if(isNaN(t)||isNaN(e)||isNaN(n)||isNaN(r)||isNaN(i)||isNaN(a)||!qe(o))throw new Error("Invalid arguments passed to jsPDF.triangle");return this.lines([[n-t,r-e],[i-n,a-r],[t-i,e-a]],t,e,[1,1],o,!0),this},y.__private__.roundedRect=y.roundedRect=function(t,e,n,r,i,a,o){if(isNaN(t)||isNaN(e)||isNaN(n)||isNaN(r)||isNaN(i)||isNaN(a)||!qe(o))throw new Error("Invalid arguments passed to jsPDF.roundedRect");var s=4/3*(Math.SQRT2-1);return i=Math.min(i,.5*n),a=Math.min(a,.5*r),this.lines([[n-2*i,0],[i*s,0,i,a-a*s,i,a],[0,r-2*a],[0,a*s,-i*s,a,-i,a],[2*i-n,0],[-i*s,0,-i,-a*s,-i,-a],[0,2*a-r],[0,-a*s,i*s,-a,i,-a]],t+i,e,[1,1],o,!0),this},y.__private__.ellipse=y.ellipse=function(t,e,n,r,i){if(isNaN(t)||isNaN(e)||isNaN(n)||isNaN(r)||!qe(i))throw new Error("Invalid arguments passed to jsPDF.ellipse");var a=4/3*(Math.SQRT2-1)*n,o=4/3*(Math.SQRT2-1)*r;return We(t+n,e),Ge(t+n,e-o,t+a,e-r,t,e-r),Ge(t-a,e-r,t-n,e-o,t-n,e),Ge(t-n,e+o,t-a,e+r,t,e+r),Ge(t+a,e+r,t+n,e+o,t+n,e),Te(i),this},y.__private__.circle=y.circle=function(t,e,n,r){if(isNaN(t)||isNaN(e)||isNaN(n)||!qe(r))throw new Error("Invalid arguments passed to jsPDF.circle");return this.ellipse(t,e,n,n,r)},y.setFont=function(t,e,n){return n&&(e=F(e,n)),At=Ne(t,e,{disableWarning:!1}),this};var Ye=y.__private__.getFont=y.getFont=function(){return Ft[Ne.apply(y,arguments)]};y.__private__.getFontList=y.getFontList=function(){var t,e,n={};for(t in It)if(It.hasOwnProperty(t))for(e in n[t]=[],It[t])It[t].hasOwnProperty(e)&&n[t].push(e);return n},y.addFont=function(t,e,n,r,i){var a=["StandardEncoding","MacRomanEncoding","Identity-H","WinAnsiEncoding"];return arguments[3]&&-1!==a.indexOf(arguments[3])?i=arguments[3]:arguments[3]&&-1==a.indexOf(arguments[3])&&(n=F(n,r)),pe.call(this,t,e,n,i=i||"Identity-H")};var Je,Xe=e.lineWidth||.200025,Ke=y.__private__.getLineWidth=y.getLineWidth=function(){return Xe},Ze=y.__private__.setLineWidth=y.setLineWidth=function(t){return Xe=t,lt(B(U(t))+" w"),this};y.__private__.setLineDash=E.API.setLineDash=E.API.setLineDashPattern=function(t,e){if(t=t||[],e=e||0,isNaN(e)||!Array.isArray(t))throw new Error("Invalid arguments passed to jsPDF.setLineDash");return t=t.map(function(t){return B(U(t))}).join(" "),e=B(U(e)),lt("["+t+"] "+e+" d"),this};var $e=y.__private__.getLineHeight=y.getLineHeight=function(){return pt*Je};y.__private__.getLineHeight=y.getLineHeight=function(){return pt*Je};var Qe=y.__private__.setLineHeightFactor=y.setLineHeightFactor=function(t){return"number"==typeof(t=t||1.15)&&(Je=t),this},tn=y.__private__.getLineHeightFactor=y.getLineHeightFactor=function(){return Je};Qe(e.lineHeight);var en=y.__private__.getHorizontalCoordinate=function(t){return U(t)},nn=y.__private__.getVerticalCoordinate=function(t){return _===S?t:Rt[$].mediaBox.topRightY-Rt[$].mediaBox.bottomLeftY-U(t)},rn=y.__private__.getHorizontalCoordinateString=y.getHorizontalCoordinateString=function(t){return B(en(t))},an=y.__private__.getVerticalCoordinateString=y.getVerticalCoordinateString=function(t){return B(nn(t))},on=e.strokeColor||"0 G";y.__private__.getStrokeColor=y.getDrawColor=function(){return ee(on)},y.__private__.setStrokeColor=y.setDrawColor=function(t,e,n,r){return on=ne({ch1:t,ch2:e,ch3:n,ch4:r,pdfColorType:"draw",precision:2}),lt(on),this};var sn=e.fillColor||"0 g";y.__private__.getFillColor=y.getFillColor=function(){return ee(sn)},y.__private__.setFillColor=y.setFillColor=function(t,e,n,r){return sn=ne({ch1:t,ch2:e,ch3:n,ch4:r,pdfColorType:"fill",precision:2}),lt(sn),this};var un=e.textColor||"0 g",cn=y.__private__.getTextColor=y.getTextColor=function(){return ee(un)};y.__private__.setTextColor=y.setTextColor=function(t,e,n,r){return un=ne({ch1:t,ch2:e,ch3:n,ch4:r,pdfColorType:"text",precision:3}),this};var ln=e.charSpace,hn=y.__private__.getCharSpace=y.getCharSpace=function(){return parseFloat(ln||0)};y.__private__.setCharSpace=y.setCharSpace=function(t){if(isNaN(t))throw new Error("Invalid argument passed to jsPDF.setCharSpace");return ln=t,this};var fn=0;y.CapJoinStyles={0:0,butt:0,but:0,miter:0,1:1,round:1,rounded:1,circle:1,2:2,projecting:2,project:2,square:2,bevel:2},y.__private__.setLineCap=y.setLineCap=function(t){var e=y.CapJoinStyles[t];if(void 0===e)throw new Error("Line cap style of '"+t+"' is not recognized. See or extend .CapJoinStyles property for valid styles");return fn=e,lt(e+" J"),this};var dn=0;y.__private__.setLineJoin=y.setLineJoin=function(t){var e=y.CapJoinStyles[t];if(void 0===e)throw new Error("Line join style of '"+t+"' is not recognized. See or extend .CapJoinStyles property for valid styles");return dn=e,lt(e+" j"),this},y.__private__.setLineMiterLimit=y.__private__.setMiterLimit=y.setLineMiterLimit=y.setMiterLimit=function(t){if(t=t||0,isNaN(t))throw new Error("Invalid argument passed to jsPDF.setLineMiterLimit");return lt(B(U(t))+" M"),this},y.GState=O,y.setGState=function(t){(t="string"==typeof t?Bt[Mt[t]]:pn(null,t)).equals(qt)||(lt("/"+t.id+" gs"),qt=t)};var pn=function(t,e){if(!t||!Mt[t]){var n=!1;for(var r in Bt)if(Bt.hasOwnProperty(r)&&Bt[r].equals(e)){n=!0;break}if(n)e=Bt[r];else{var i="GS"+(Object.keys(Bt).length+1).toString(10);Bt[i]=e,e.id=i}return t&&(Mt[t]=e.id),Dt.publish("addGState",e),e}};y.addGState=function(t,e){return pn(t,e),this},y.saveGraphicsState=function(){return lt("q"),jt.push({key:At,size:pt,color:un}),this},y.restoreGraphicsState=function(){lt("Q");var t=jt.pop();return At=t.key,pt=t.size,un=t.color,qt=null,this},y.setCurrentTransformationMatrix=function(t){return lt(t.toString()+" cm"),this},y.comment=function(t){return lt("#"+t),this};var gn=function(t,e){var n=t||0;Object.defineProperty(this,"x",{enumerable:!0,get:function(){return n},set:function(t){isNaN(t)||(n=parseFloat(t))}});var r=e||0;Object.defineProperty(this,"y",{enumerable:!0,get:function(){return r},set:function(t){isNaN(t)||(r=parseFloat(t))}});var i="pt";return Object.defineProperty(this,"type",{enumerable:!0,get:function(){return i},set:function(t){i=t.toString()}}),this},mn=function(t,e,n,r){gn.call(this,t,e),this.type="rect";var i=n||0;Object.defineProperty(this,"w",{enumerable:!0,get:function(){return i},set:function(t){isNaN(t)||(i=parseFloat(t))}});var a=r||0;return Object.defineProperty(this,"h",{enumerable:!0,get:function(){return a},set:function(t){isNaN(t)||(a=parseFloat(t))}}),this},vn=function(){this.page=Et,this.currentPage=$,this.pages=ot.slice(0),this.pagesContext=Rt.slice(0),this.x=_t,this.y=Pt,this.matrix=kt,this.width=wn($),this.height=Ln($),this.outputDestination=ut,this.id="",this.objectNumber=-1};vn.prototype.restore=function(){Et=this.page,$=this.currentPage,Rt=this.pagesContext,ot=this.pages,_t=this.x,Pt=this.y,kt=this.matrix,Nn($,this.width),xn($,this.height),ut=this.outputDestination};var bn=function(t,e,n,r,i){Ht.push(new vn),Et=$=0,ot=[],_t=t,Pt=e,kt=i,me([n,r])};for(var yn in y.beginFormObject=function(t,e,n,r,i){return bn(t,e,n,r,i),this},y.endFormObject=function(t){return function(t){if(Ut[t])Ht.pop().restore();else{var e=new vn,n="Xo"+(Object.keys(zt).length+1).toString(10);e.id=n,Ut[t]=n,zt[n]=e,Dt.publish("addFormObject",e),Ht.pop().restore()}}(t),this},y.doFormObject=function(t,e){var n=zt[Ut[t]];return lt("q"),lt(e.toString()+" cm"),lt("/"+n.id+" Do"),lt("Q"),this},y.getFormObject=function(t){var e=zt[Ut[t]];return{x:e.x,y:e.y,width:e.width,height:e.height,matrix:e.matrix}},y.save=function(t,e){return t=t||"generated.pdf",(e=e||{}).returnPromise=e.returnPromise||!1,!1===e.returnPromise?(l(ke(Pe()),t),"function"==typeof l.unload&&i.setTimeout&&setTimeout(l.unload,911),this):new Promise(function(e,n){try{var r=l(ke(Pe()),t);"function"==typeof l.unload&&i.setTimeout&&setTimeout(l.unload,911),e(r)}catch(a){n(a.message)}})},E.API)E.API.hasOwnProperty(yn)&&("events"===yn&&E.API.events.length?function(t,e){var n,r,i;for(i=e.length-1;-1!==i;i--)n=e[i][0],r=e[i][1],t.subscribe.apply(t,[n].concat("function"==typeof r?[r]:r))}(Dt,E.API.events):y[yn]=E.API[yn]);var wn=y.getPageWidth=function(t){return(Rt[t=t||$].mediaBox.topRightX-Rt[t].mediaBox.bottomLeftX)/St},Nn=y.setPageWidth=function(t,e){Rt[t].mediaBox.topRightX=e*St+Rt[t].mediaBox.bottomLeftX},Ln=y.getPageHeight=function(t){return(Rt[t=t||$].mediaBox.topRightY-Rt[t].mediaBox.bottomLeftY)/St},xn=y.setPageHeight=function(t,e){Rt[t].mediaBox.topRightY=e*St+Rt[t].mediaBox.bottomLeftY};return y.internal={pdfEscape:ge,getStyle:Ee,getFont:Ye,getFontSize:mt,getCharSpace:hn,getTextColor:cn,getLineHeight:$e,getLineHeightFactor:tn,getLineWidth:Ke,write:ht,getHorizontalCoordinate:en,getVerticalCoordinate:nn,getCoordinateString:rn,getVerticalCoordinateString:an,collections:{},newObject:Xt,newAdditionalObject:$t,newObjectDeferred:Kt,newObjectDeferredBegin:Zt,getFilters:re,putStream:ie,events:Dt,scaleFactor:St,pageSize:{getWidth:function(){return wn($)},setWidth:function(t){Nn($,t)},getHeight:function(){return Ln($)},setHeight:function(t){xn($,t)}},encryptionOptions:m,encryption:je,getEncryptor:function(t){return null!==m?je.encryptor(t,0):function(t){return t}},output:Fe,getNumberOfPages:we,pages:ot,out:lt,f2:T,f3:z,getPageInfo:Ce,getPageInfoByObjId:Oe,getCurrentPageInfo:Be,getPDFVersion:N,Point:gn,Rectangle:mn,Matrix:Wt,hasHotfix:Ie},Object.defineProperty(y.internal.pageSize,"width",{get:function(){return wn($)},set:function(t){Nn($,t)},enumerable:!0,configurable:!0}),Object.defineProperty(y.internal.pageSize,"height",{get:function(){return Ln($)},set:function(t){xn($,t)},enumerable:!0,configurable:!0}),function(t){for(var e=0,n=dt.length;e<n;e++){var r=pe.call(this,t[e][0],t[e][1],t[e][2],dt[e][3],!0);!1===v&&(b[r]=!0);var i=t[e][0].split("-");de({id:r,fontName:i[0],fontStyle:i[1]||""})}Dt.publish("addFonts",{fonts:Ft,dictionary:It})}.call(y,dt),At="F1",ve(s,r),Dt.publish("initialized"),y}I.prototype.lsbFirstWord=function(t){return String.fromCharCode(255&t,t>>8&255,t>>16&255,t>>24&255)},I.prototype.toHexString=function(t){return t.split("").map(function(t){return("0"+(255&t.charCodeAt(0)).toString(16)).slice(-2)}).join("")},I.prototype.hexToBytes=function(t){for(var e=[],n=0;n<t.length;n+=2)e.push(String.fromCharCode(parseInt(t.substr(n,2),16)));return e.join("")},I.prototype.processOwnerPassword=function(t,e){return k(S(e).substr(0,5),t)},I.prototype.encryptor=function(t,e){var n=S(this.encryptionKey+String.fromCharCode(255&t,t>>8&255,t>>16&255,255&e,e>>8&255)).substr(0,10);return function(t){return k(n,t)}},O.prototype.equals=function(e){var n,r="id,objectNumber,equals";if(!e||(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e)!==(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(this))return!1;var i=0;for(n in this)if(!(r.indexOf(n)>=0)){if(this.hasOwnProperty(n)&&!e.hasOwnProperty(n))return!1;if(this[n]!==e[n])return!1;i++}for(n in e)e.hasOwnProperty(n)&&r.indexOf(n)<0&&i--;return 0===i},E.API={events:[]},E.version="3.0.2";var R=E.API,D=1,T=function(t){return t.replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)")},z=function(t){return t.replace(/\\\\/g,"\\").replace(/\\\(/g,"(").replace(/\\\)/g,")")},U=function(t){return t.toFixed(2)},H=function(t){return t.toFixed(5)};R.__acroform__={};var W=function(t,e){t.prototype=Object.create(e.prototype),t.prototype.constructor=t},V=function(t){return t*D},G=function(t){var e=new ct,n=xt.internal.getHeight(t)||0,r=xt.internal.getWidth(t)||0;return e.BBox=[0,0,Number(U(r)),Number(U(n))],e},Y=R.__acroform__.setBit=function(t,e){if(t=t||0,e=e||0,isNaN(t)||isNaN(e))throw new Error("Invalid arguments passed to jsPDF.API.__acroform__.setBit");return t|1<<e},J=R.__acroform__.clearBit=function(t,e){if(t=t||0,e=e||0,isNaN(t)||isNaN(e))throw new Error("Invalid arguments passed to jsPDF.API.__acroform__.clearBit");return t&~(1<<e)},X=R.__acroform__.getBit=function(t,e){if(isNaN(t)||isNaN(e))throw new Error("Invalid arguments passed to jsPDF.API.__acroform__.getBit");return t&1<<e?1:0},K=R.__acroform__.getBitForPdf=function(t,e){if(isNaN(t)||isNaN(e))throw new Error("Invalid arguments passed to jsPDF.API.__acroform__.getBitForPdf");return X(t,e-1)},Z=R.__acroform__.setBitForPdf=function(t,e){if(isNaN(t)||isNaN(e))throw new Error("Invalid arguments passed to jsPDF.API.__acroform__.setBitForPdf");return Y(t,e-1)},$=R.__acroform__.clearBitForPdf=function(t,e){if(isNaN(t)||isNaN(e))throw new Error("Invalid arguments passed to jsPDF.API.__acroform__.clearBitForPdf");return J(t,e-1)},Q=R.__acroform__.calculateCoordinates=function(t,e){var n=e.internal.getHorizontalCoordinate,r=e.internal.getVerticalCoordinate,i=t[0],a=t[1],o=t[2],s=t[3],u={};return u.lowerLeft_X=n(i)||0,u.lowerLeft_Y=r(a+s)||0,u.upperRight_X=n(i+o)||0,u.upperRight_Y=r(a)||0,[Number(U(u.lowerLeft_X)),Number(U(u.lowerLeft_Y)),Number(U(u.upperRight_X)),Number(U(u.upperRight_Y))]},tt=function(t){if(t.appearanceStreamContent)return t.appearanceStreamContent;if(t.V||t.DV){var e=[],n=t._V||t.DV,r=et(t,n),i=t.scope.internal.getFont(t.fontName,t.fontStyle).id;e.push("/Tx BMC"),e.push("q"),e.push("BT"),e.push(t.scope.__private__.encodeColorString(t.color)),e.push("/"+i+" "+U(r.fontSize)+" Tf"),e.push("1 0 0 1 0 0 Tm"),e.push(r.text),e.push("ET"),e.push("Q"),e.push("EMC");var a=G(t);return a.scope=t.scope,a.stream=e.join("\n"),a}},et=function(t,e){var n=0===t.fontSize?t.maxFontSize:t.fontSize,r={text:"",fontSize:""},i=(e=")"==(e="("==e.substr(0,1)?e.substr(1):e).substr(e.length-1)?e.substr(0,e.length-1):e).split(" ");i=t.multiline?i.map(function(t){return t.split("\n")}):i.map(function(t){return[t]});var a=n,o=xt.internal.getHeight(t)||0;o=o<0?-o:o;var s=xt.internal.getWidth(t)||0;s=s<0?-s:s;var u=function(e,n,r){if(e+1<i.length){var a=n+" "+i[e+1][0];return nt(a,t,r).width<=s-4}return!1};a++;t:for(;a>0;){e="",a--;var c,l,h=nt("3",t,a).height,f=t.multiline?o-a:(o-h)/2,d=f+=2,p=0,g=0,m=0;if(a<=0){e="(...) Tj\n",e+="% Width of Text: "+nt(e,t,a=12).width+", FieldWidth:"+s+"\n";break}for(var v="",b=0,y=0;y<i.length;y++)if(i.hasOwnProperty(y)){var w=!1;if(1!==i[y].length&&m!==i[y].length-1){if((h+2)*(b+2)+2>o)continue t;v+=i[y][m],w=!0,g=y,y--}else{v=" "==(v+=i[y][m]+" ").substr(v.length-1)?v.substr(0,v.length-1):v;var N=parseInt(y),L=u(N,v,a),x=y>=i.length-1;if(L&&!x){v+=" ",m=0;continue}if(L||x){if(x)g=N;else if(t.multiline&&(h+2)*(b+2)+2>o)continue t}else{if(!t.multiline)continue t;if((h+2)*(b+2)+2>o)continue t;g=N}}for(var A="",S=p;S<=g;S++){var _=i[S];if(t.multiline){if(S===g){A+=_[m]+" ",m=(m+1)%_.length;continue}if(S===p){A+=_[_.length-1]+" ";continue}}A+=_[0]+" "}switch(A=" "==A.substr(A.length-1)?A.substr(0,A.length-1):A,l=nt(A,t,a).width,t.textAlign){case"right":c=s-l-2;break;case"center":c=(s-l)/2;break;default:c=2}e+=U(c)+" "+U(d)+" Td\n",e+="("+T(A)+") Tj\n",e+=-U(c)+" 0 Td\n",d=-(a+2),l=0,p=w?g:g+1,b++,v=""}break}return r.text=e,r.fontSize=a,r},nt=function(t,e,n){var r=e.scope.internal.getFont(e.fontName,e.fontStyle),i=e.scope.getStringUnitWidth(t,{font:r,fontSize:parseFloat(n),charSpace:0})*parseFloat(n);return{height:e.scope.getStringUnitWidth("3",{font:r,fontSize:parseFloat(n),charSpace:0})*parseFloat(n)*1.5,width:i}},rt={fields:[],xForms:[],acroFormDictionaryRoot:null,printedOut:!1,internal:null,isInitialized:!1},it=function(t,e){var n={type:"reference",object:t};void 0===e.internal.getPageInfo(t.page).pageContext.annotations.find(function(t){return t.type===n.type&&t.object===n.object})&&e.internal.getPageInfo(t.page).pageContext.annotations.push(n)},at=function(e,n){if(n.scope=e,void 0!==e.internal&&(void 0===e.internal.acroformPlugin||!1===e.internal.acroformPlugin.isInitialized)){if(ht.FieldNum=0,e.internal.acroformPlugin=JSON.parse(JSON.stringify(rt)),e.internal.acroformPlugin.acroFormDictionaryRoot)throw new Error("Exception while creating AcroformDictionary");D=e.internal.scaleFactor,e.internal.acroformPlugin.acroFormDictionaryRoot=new lt,e.internal.acroformPlugin.acroFormDictionaryRoot.scope=e,e.internal.acroformPlugin.acroFormDictionaryRoot._eventID=e.internal.events.subscribe("postPutResources",function(){!function(t){t.internal.events.unsubscribe(t.internal.acroformPlugin.acroFormDictionaryRoot._eventID),delete t.internal.acroformPlugin.acroFormDictionaryRoot._eventID,t.internal.acroformPlugin.printedOut=!0}(e)}),e.internal.events.subscribe("buildDocument",function(){!function(t){t.internal.acroformPlugin.acroFormDictionaryRoot.objId=void 0;var e=t.internal.acroformPlugin.acroFormDictionaryRoot.Fields;for(var n in e)if(e.hasOwnProperty(n)){var r=e[n];r.objId=void 0,r.hasAnnotation&&it(r,t)}}(e)}),e.internal.events.subscribe("putCatalog",function(){!function(t){if(void 0===t.internal.acroformPlugin.acroFormDictionaryRoot)throw new Error("putCatalogCallback: Root missing.");t.internal.write("/AcroForm "+t.internal.acroformPlugin.acroFormDictionaryRoot.objId+" 0 R")}(e)}),e.internal.events.subscribe("postPutPages",function(n){!function(e,n){var r=!e;for(var i in e||(n.internal.newObjectDeferredBegin(n.internal.acroformPlugin.acroFormDictionaryRoot.objId,!0),n.internal.acroformPlugin.acroFormDictionaryRoot.putStream()),e=e||n.internal.acroformPlugin.acroFormDictionaryRoot.Kids)if(e.hasOwnProperty(i)){var a=e[i],o=[],s=a.Rect;if(a.Rect&&(a.Rect=Q(a.Rect,n)),n.internal.newObjectDeferredBegin(a.objId,!0),a.DA=xt.createDefaultAppearanceStream(a),"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(a)&&"function"==typeof a.getKeyValueListForStream&&(o=a.getKeyValueListForStream()),a.Rect=s,a.hasAppearanceStream&&!a.appearanceStreamContent){var u=tt(a);o.push({key:"AP",value:"<</N "+u+">>"}),n.internal.acroformPlugin.xForms.push(u)}if(a.appearanceStreamContent){var c="";for(var l in a.appearanceStreamContent)if(a.appearanceStreamContent.hasOwnProperty(l)){var h=a.appearanceStreamContent[l];if(c+="/"+l+" ",c+="<<",Object.keys(h).length>=1||Array.isArray(h)){for(var i in h)if(h.hasOwnProperty(i)){var f=h[i];"function"==typeof f&&(f=f.call(n,a)),c+="/"+i+" "+f+" ",n.internal.acroformPlugin.xForms.indexOf(f)>=0||n.internal.acroformPlugin.xForms.push(f)}}else"function"==typeof(f=h)&&(f=f.call(n,a)),c+="/"+i+" "+f,n.internal.acroformPlugin.xForms.indexOf(f)>=0||n.internal.acroformPlugin.xForms.push(f);c+=">>"}o.push({key:"AP",value:"<<\n"+c+">>"})}n.internal.putStream({additionalKeyValues:o,objectId:a.objId}),n.internal.out("endobj")}r&&function(e,n){for(var r in e)if(e.hasOwnProperty(r)){var i=r,a=e[r];n.internal.newObjectDeferredBegin(a.objId,!0),"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(a)&&"function"==typeof a.putStream&&a.putStream(),delete e[i]}}(n.internal.acroformPlugin.xForms,n)}(n,e)}),e.internal.acroformPlugin.isInitialized=!0}},ot=R.__acroform__.arrayToPdfArray=function(e,n,r){var i=function(t){return t};if(Array.isArray(e)){for(var a="[",o=0;o<e.length;o++)switch(0!==o&&(a+=" "),(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e[o])){case"boolean":case"number":case"object":a+=e[o].toString();break;case"string":"/"!==e[o].substr(0,1)?(void 0!==n&&r&&(i=r.internal.getEncryptor(n)),a+="("+T(i(e[o].toString()))+")"):a+=e[o].toString()}return a+"]"}throw new Error("Invalid argument passed to jsPDF.__acroform__.arrayToPdfArray")},st=function(t,e,n){var r=function(t){return t};return void 0!==e&&n&&(r=n.internal.getEncryptor(e)),(t=t||"").toString(),"("+T(r(t))+")"},ut=function(){this._objId=void 0,this._scope=void 0,Object.defineProperty(this,"objId",{get:function(){if(void 0===this._objId){if(void 0===this.scope)return;this._objId=this.scope.internal.newObjectDeferred()}return this._objId},set:function(t){this._objId=t}}),Object.defineProperty(this,"scope",{value:this._scope,writable:!0})};ut.prototype.toString=function(){return this.objId+" 0 R"},ut.prototype.putStream=function(){var t=this.getKeyValueListForStream();this.scope.internal.putStream({data:this.stream,additionalKeyValues:t,objectId:this.objId}),this.scope.internal.out("endobj")},ut.prototype.getKeyValueListForStream=function(){var t=[],e=Object.getOwnPropertyNames(this).filter(function(t){return"content"!=t&&"appearanceStreamContent"!=t&&"scope"!=t&&"objId"!=t&&"_"!=t.substring(0,1)});for(var n in e)if(!1===Object.getOwnPropertyDescriptor(this,e[n]).configurable){var r=e[n],i=this[r];i&&(Array.isArray(i)?t.push({key:r,value:ot(i,this.objId,this.scope)}):i instanceof ut?(i.scope=this.scope,t.push({key:r,value:i.objId+" 0 R"})):"function"!=typeof i&&t.push({key:r,value:i}))}return t};var ct=function(){ut.call(this),Object.defineProperty(this,"Type",{value:"/XObject",configurable:!1,writable:!0}),Object.defineProperty(this,"Subtype",{value:"/Form",configurable:!1,writable:!0}),Object.defineProperty(this,"FormType",{value:1,configurable:!1,writable:!0});var t,e=[];Object.defineProperty(this,"BBox",{configurable:!1,get:function(){return e},set:function(t){e=t}}),Object.defineProperty(this,"Resources",{value:"2 0 R",configurable:!1,writable:!0}),Object.defineProperty(this,"stream",{enumerable:!1,configurable:!0,set:function(e){t=e.trim()},get:function(){return t||null}})};W(ct,ut);var lt=function(){ut.call(this);var t,e=[];Object.defineProperty(this,"Kids",{enumerable:!1,configurable:!0,get:function(){return e.length>0?e:void 0}}),Object.defineProperty(this,"Fields",{enumerable:!1,configurable:!1,get:function(){return e}}),Object.defineProperty(this,"DA",{enumerable:!1,configurable:!1,get:function(){if(t){var e=function(t){return t};return this.scope&&(e=this.scope.internal.getEncryptor(this.objId)),"("+T(e(t))+")"}},set:function(e){t=e}})};W(lt,ut);var ht=function t(){ut.call(this);var e=4;Object.defineProperty(this,"F",{enumerable:!1,configurable:!1,get:function(){return e},set:function(t){if(isNaN(t))throw new Error('Invalid value "'+t+'" for attribute F supplied.');e=t}}),Object.defineProperty(this,"showWhenPrinted",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(e,3))},set:function(t){!0===Boolean(t)?this.F=Z(e,3):this.F=$(e,3)}});var n=0;Object.defineProperty(this,"Ff",{enumerable:!1,configurable:!1,get:function(){return n},set:function(t){if(isNaN(t))throw new Error('Invalid value "'+t+'" for attribute Ff supplied.');n=t}});var r=[];Object.defineProperty(this,"Rect",{enumerable:!1,configurable:!1,get:function(){if(0!==r.length)return r},set:function(t){r=void 0!==t?t:[]}}),Object.defineProperty(this,"x",{enumerable:!0,configurable:!0,get:function(){return!r||isNaN(r[0])?0:r[0]},set:function(t){r[0]=t}}),Object.defineProperty(this,"y",{enumerable:!0,configurable:!0,get:function(){return!r||isNaN(r[1])?0:r[1]},set:function(t){r[1]=t}}),Object.defineProperty(this,"width",{enumerable:!0,configurable:!0,get:function(){return!r||isNaN(r[2])?0:r[2]},set:function(t){r[2]=t}}),Object.defineProperty(this,"height",{enumerable:!0,configurable:!0,get:function(){return!r||isNaN(r[3])?0:r[3]},set:function(t){r[3]=t}});var i="";Object.defineProperty(this,"FT",{enumerable:!0,configurable:!1,get:function(){return i},set:function(t){switch(t){case"/Btn":case"/Tx":case"/Ch":case"/Sig":i=t;break;default:throw new Error('Invalid value "'+t+'" for attribute FT supplied.')}}});var a=null;Object.defineProperty(this,"T",{enumerable:!0,configurable:!1,get:function(){if(!a||a.length<1){if(this instanceof yt)return;a="FieldObject"+t.FieldNum++}var e=function(t){return t};return this.scope&&(e=this.scope.internal.getEncryptor(this.objId)),"("+T(e(a))+")"},set:function(t){a=t.toString()}}),Object.defineProperty(this,"fieldName",{configurable:!0,enumerable:!0,get:function(){return a},set:function(t){a=t}});var o="helvetica";Object.defineProperty(this,"fontName",{enumerable:!0,configurable:!0,get:function(){return o},set:function(t){o=t}});var s="normal";Object.defineProperty(this,"fontStyle",{enumerable:!0,configurable:!0,get:function(){return s},set:function(t){s=t}});var u=0;Object.defineProperty(this,"fontSize",{enumerable:!0,configurable:!0,get:function(){return u},set:function(t){u=t}});var c=void 0;Object.defineProperty(this,"maxFontSize",{enumerable:!0,configurable:!0,get:function(){return void 0===c?50/D:c},set:function(t){c=t}});var l="black";Object.defineProperty(this,"color",{enumerable:!0,configurable:!0,get:function(){return l},set:function(t){l=t}});var h="/F1 0 Tf 0 g";Object.defineProperty(this,"DA",{enumerable:!0,configurable:!1,get:function(){if(!(!h||this instanceof yt||this instanceof Nt))return st(h,this.objId,this.scope)},set:function(t){t=t.toString(),h=t}});var f=null;Object.defineProperty(this,"DV",{enumerable:!1,configurable:!1,get:function(){if(f)return this instanceof mt==0?st(f,this.objId,this.scope):f},set:function(t){t=t.toString(),f=this instanceof mt==0?"("===t.substr(0,1)?z(t.substr(1,t.length-2)):z(t):t}}),Object.defineProperty(this,"defaultValue",{enumerable:!0,configurable:!0,get:function(){return this instanceof mt==1?z(f.substr(1,f.length-1)):f},set:function(t){t=t.toString(),f=this instanceof mt==1?"/"+t:t}});var d=null;Object.defineProperty(this,"_V",{enumerable:!1,configurable:!1,get:function(){if(d)return d},set:function(t){this.V=t}}),Object.defineProperty(this,"V",{enumerable:!1,configurable:!1,get:function(){if(d)return this instanceof mt==0?st(d,this.objId,this.scope):d},set:function(t){t=t.toString(),d=this instanceof mt==0?"("===t.substr(0,1)?z(t.substr(1,t.length-2)):z(t):t}}),Object.defineProperty(this,"value",{enumerable:!0,configurable:!0,get:function(){return this instanceof mt==1?z(d.substr(1,d.length-1)):d},set:function(t){t=t.toString(),d=this instanceof mt==1?"/"+t:t}}),Object.defineProperty(this,"hasAnnotation",{enumerable:!0,configurable:!0,get:function(){return this.Rect}}),Object.defineProperty(this,"Type",{enumerable:!0,configurable:!1,get:function(){return this.hasAnnotation?"/Annot":null}}),Object.defineProperty(this,"Subtype",{enumerable:!0,configurable:!1,get:function(){return this.hasAnnotation?"/Widget":null}});var p,g=!1;Object.defineProperty(this,"hasAppearanceStream",{enumerable:!0,configurable:!0,get:function(){return g},set:function(t){t=Boolean(t),g=t}}),Object.defineProperty(this,"page",{enumerable:!0,configurable:!0,get:function(){if(p)return p},set:function(t){p=t}}),Object.defineProperty(this,"readOnly",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,1))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,1):this.Ff=$(this.Ff,1)}}),Object.defineProperty(this,"required",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,2))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,2):this.Ff=$(this.Ff,2)}}),Object.defineProperty(this,"noExport",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,3))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,3):this.Ff=$(this.Ff,3)}});var m=null;Object.defineProperty(this,"Q",{enumerable:!0,configurable:!1,get:function(){if(null!==m)return m},set:function(t){if(-1===[0,1,2].indexOf(t))throw new Error('Invalid value "'+t+'" for attribute Q supplied.');m=t}}),Object.defineProperty(this,"textAlign",{get:function(){var t;switch(m){case 0:default:t="left";break;case 1:t="center";break;case 2:t="right"}return t},configurable:!0,enumerable:!0,set:function(t){switch(t){case"right":case 2:m=2;break;case"center":case 1:m=1;break;default:m=0}}})};W(ht,ut);var ft=function(){ht.call(this),this.FT="/Ch",this.V="()",this.fontName="zapfdingbats";var t=0;Object.defineProperty(this,"TI",{enumerable:!0,configurable:!1,get:function(){return t},set:function(e){t=e}}),Object.defineProperty(this,"topIndex",{enumerable:!0,configurable:!0,get:function(){return t},set:function(e){t=e}});var e=[];Object.defineProperty(this,"Opt",{enumerable:!0,configurable:!1,get:function(){return ot(e,this.objId,this.scope)},set:function(t){var n,r;r=[],"string"==typeof(n=t)&&(r=function(t,e,n){n||(n=1);for(var r,i=[];r=e.exec(t);)i.push(r[n]);return i}(n,/\((.*?)\)/g)),e=r}}),this.getOptions=function(){return e},this.setOptions=function(t){e=t,this.sort&&e.sort()},this.addOption=function(t){t=(t=t||"").toString(),e.push(t),this.sort&&e.sort()},this.removeOption=function(t,n){for(n=n||!1,t=(t=t||"").toString();-1!==e.indexOf(t)&&(e.splice(e.indexOf(t),1),!1!==n););},Object.defineProperty(this,"combo",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,18))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,18):this.Ff=$(this.Ff,18)}}),Object.defineProperty(this,"edit",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,19))},set:function(t){!0===this.combo&&(!0===Boolean(t)?this.Ff=Z(this.Ff,19):this.Ff=$(this.Ff,19))}}),Object.defineProperty(this,"sort",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,20))},set:function(t){!0===Boolean(t)?(this.Ff=Z(this.Ff,20),e.sort()):this.Ff=$(this.Ff,20)}}),Object.defineProperty(this,"multiSelect",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,22))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,22):this.Ff=$(this.Ff,22)}}),Object.defineProperty(this,"doNotSpellCheck",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,23))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,23):this.Ff=$(this.Ff,23)}}),Object.defineProperty(this,"commitOnSelChange",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,27))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,27):this.Ff=$(this.Ff,27)}}),this.hasAppearanceStream=!1};W(ft,ht);var dt=function(){ft.call(this),this.fontName="helvetica",this.combo=!1};W(dt,ft);var pt=function(){dt.call(this),this.combo=!0};W(pt,dt);var gt=function(){pt.call(this),this.edit=!0};W(gt,pt);var mt=function(){ht.call(this),this.FT="/Btn",Object.defineProperty(this,"noToggleToOff",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,15))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,15):this.Ff=$(this.Ff,15)}}),Object.defineProperty(this,"radio",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,16))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,16):this.Ff=$(this.Ff,16)}}),Object.defineProperty(this,"pushButton",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,17))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,17):this.Ff=$(this.Ff,17)}}),Object.defineProperty(this,"radioIsUnison",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,26))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,26):this.Ff=$(this.Ff,26)}});var e,n={};Object.defineProperty(this,"MK",{enumerable:!1,configurable:!1,get:function(){var t=function(t){return t};if(this.scope&&(t=this.scope.internal.getEncryptor(this.objId)),0!==Object.keys(n).length){var e,r=[];for(e in r.push("<<"),n)r.push("/"+e+" ("+T(t(n[e]))+")");return r.push(">>"),r.join("\n")}},set:function(e){"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e)&&(n=e)}}),Object.defineProperty(this,"caption",{enumerable:!0,configurable:!0,get:function(){return n.CA||""},set:function(t){"string"==typeof t&&(n.CA=t)}}),Object.defineProperty(this,"AS",{enumerable:!1,configurable:!1,get:function(){return e},set:function(t){e=t}}),Object.defineProperty(this,"appearanceState",{enumerable:!0,configurable:!0,get:function(){return e.substr(1,e.length-1)},set:function(t){e="/"+t}})};W(mt,ht);var vt=function(){mt.call(this),this.pushButton=!0};W(vt,mt);var bt=function(){mt.call(this),this.radio=!0,this.pushButton=!1;var t=[];Object.defineProperty(this,"Kids",{enumerable:!0,configurable:!1,get:function(){return t},set:function(e){t=void 0!==e?e:[]}})};W(bt,mt);var yt=function(){var e,n;ht.call(this),Object.defineProperty(this,"Parent",{enumerable:!1,configurable:!1,get:function(){return e},set:function(t){e=t}}),Object.defineProperty(this,"optionName",{enumerable:!1,configurable:!0,get:function(){return n},set:function(t){n=t}});var r,i={};Object.defineProperty(this,"MK",{enumerable:!1,configurable:!1,get:function(){var t=function(t){return t};this.scope&&(t=this.scope.internal.getEncryptor(this.objId));var e,n=[];for(e in n.push("<<"),i)n.push("/"+e+" ("+T(t(i[e]))+")");return n.push(">>"),n.join("\n")},set:function(e){"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e)&&(i=e)}}),Object.defineProperty(this,"caption",{enumerable:!0,configurable:!0,get:function(){return i.CA||""},set:function(t){"string"==typeof t&&(i.CA=t)}}),Object.defineProperty(this,"AS",{enumerable:!1,configurable:!1,get:function(){return r},set:function(t){r=t}}),Object.defineProperty(this,"appearanceState",{enumerable:!0,configurable:!0,get:function(){return r.substr(1,r.length-1)},set:function(t){r="/"+t}}),this.caption="l",this.appearanceState="Off",this._AppearanceType=xt.RadioButton.Circle,this.appearanceStreamContent=this._AppearanceType.createAppearanceStream(this.optionName)};W(yt,ht),bt.prototype.setAppearance=function(t){if(!("createAppearanceStream"in t)||!("getCA"in t))throw new Error("Couldn't assign Appearance to RadioButton. Appearance was Invalid!");for(var e in this.Kids)if(this.Kids.hasOwnProperty(e)){var n=this.Kids[e];n.appearanceStreamContent=t.createAppearanceStream(n.optionName),n.caption=t.getCA()}},bt.prototype.createOption=function(t){var e=new yt;return e.Parent=this,e.optionName=t,this.Kids.push(e),At.call(this.scope,e),e};var wt=function(){mt.call(this),this.fontName="zapfdingbats",this.caption="3",this.appearanceState="On",this.value="On",this.textAlign="center",this.appearanceStreamContent=xt.CheckBox.createAppearanceStream()};W(wt,mt);var Nt=function(){ht.call(this),this.FT="/Tx",Object.defineProperty(this,"multiline",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,13))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,13):this.Ff=$(this.Ff,13)}}),Object.defineProperty(this,"fileSelect",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,21))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,21):this.Ff=$(this.Ff,21)}}),Object.defineProperty(this,"doNotSpellCheck",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,23))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,23):this.Ff=$(this.Ff,23)}}),Object.defineProperty(this,"doNotScroll",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,24))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,24):this.Ff=$(this.Ff,24)}}),Object.defineProperty(this,"comb",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,25))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,25):this.Ff=$(this.Ff,25)}}),Object.defineProperty(this,"richText",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,26))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,26):this.Ff=$(this.Ff,26)}});var t=null;Object.defineProperty(this,"MaxLen",{enumerable:!0,configurable:!1,get:function(){return t},set:function(e){t=e}}),Object.defineProperty(this,"maxLength",{enumerable:!0,configurable:!0,get:function(){return t},set:function(e){Number.isInteger(e)&&(t=e)}}),Object.defineProperty(this,"hasAppearanceStream",{enumerable:!0,configurable:!0,get:function(){return this.V||this.DV}})};W(Nt,ht);var Lt=function(){Nt.call(this),Object.defineProperty(this,"password",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,14))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,14):this.Ff=$(this.Ff,14)}}),this.password=!0};W(Lt,Nt);var xt={CheckBox:{createAppearanceStream:function(){return{N:{On:xt.CheckBox.YesNormal},D:{On:xt.CheckBox.YesPushDown,Off:xt.CheckBox.OffPushDown}}},YesPushDown:function(t){var e=G(t);e.scope=t.scope;var n=[],r=t.scope.internal.getFont(t.fontName,t.fontStyle).id,i=t.scope.__private__.encodeColorString(t.color),a=et(t,t.caption);return n.push("0.749023 g"),n.push("0 0 "+U(xt.internal.getWidth(t))+" "+U(xt.internal.getHeight(t))+" re"),n.push("f"),n.push("BMC"),n.push("q"),n.push("0 0 1 rg"),n.push("/"+r+" "+U(a.fontSize)+" Tf "+i),n.push("BT"),n.push(a.text),n.push("ET"),n.push("Q"),n.push("EMC"),e.stream=n.join("\n"),e},YesNormal:function(t){var e=G(t);e.scope=t.scope;var n=t.scope.internal.getFont(t.fontName,t.fontStyle).id,r=t.scope.__private__.encodeColorString(t.color),i=[],a=xt.internal.getHeight(t),o=xt.internal.getWidth(t),s=et(t,t.caption);return i.push("1 g"),i.push("0 0 "+U(o)+" "+U(a)+" re"),i.push("f"),i.push("q"),i.push("0 0 1 rg"),i.push("0 0 "+U(o-1)+" "+U(a-1)+" re"),i.push("W"),i.push("n"),i.push("0 g"),i.push("BT"),i.push("/"+n+" "+U(s.fontSize)+" Tf "+r),i.push(s.text),i.push("ET"),i.push("Q"),e.stream=i.join("\n"),e},OffPushDown:function(t){var e=G(t);e.scope=t.scope;var n=[];return n.push("0.749023 g"),n.push("0 0 "+U(xt.internal.getWidth(t))+" "+U(xt.internal.getHeight(t))+" re"),n.push("f"),e.stream=n.join("\n"),e}},RadioButton:{Circle:{createAppearanceStream:function(t){var e={D:{Off:xt.RadioButton.Circle.OffPushDown},N:{}};return e.N[t]=xt.RadioButton.Circle.YesNormal,e.D[t]=xt.RadioButton.Circle.YesPushDown,e},getCA:function(){return"l"},YesNormal:function(t){var e=G(t);e.scope=t.scope;var n=[],r=xt.internal.getWidth(t)<=xt.internal.getHeight(t)?xt.internal.getWidth(t)/4:xt.internal.getHeight(t)/4;r=Number((.9*r).toFixed(5));var i=xt.internal.Bezier_C,a=Number((r*i).toFixed(5));return n.push("q"),n.push("1 0 0 1 "+H(xt.internal.getWidth(t)/2)+" "+H(xt.internal.getHeight(t)/2)+" cm"),n.push(r+" 0 m"),n.push(r+" "+a+" "+a+" "+r+" 0 "+r+" c"),n.push("-"+a+" "+r+" -"+r+" "+a+" -"+r+" 0 c"),n.push("-"+r+" -"+a+" -"+a+" -"+r+" 0 -"+r+" c"),n.push(a+" -"+r+" "+r+" -"+a+" "+r+" 0 c"),n.push("f"),n.push("Q"),e.stream=n.join("\n"),e},YesPushDown:function(t){var e=G(t);e.scope=t.scope;var n=[],r=xt.internal.getWidth(t)<=xt.internal.getHeight(t)?xt.internal.getWidth(t)/4:xt.internal.getHeight(t)/4;r=Number((.9*r).toFixed(5));var i=Number((2*r).toFixed(5)),a=Number((i*xt.internal.Bezier_C).toFixed(5)),o=Number((r*xt.internal.Bezier_C).toFixed(5));return n.push("0.749023 g"),n.push("q"),n.push("1 0 0 1 "+H(xt.internal.getWidth(t)/2)+" "+H(xt.internal.getHeight(t)/2)+" cm"),n.push(i+" 0 m"),n.push(i+" "+a+" "+a+" "+i+" 0 "+i+" c"),n.push("-"+a+" "+i+" -"+i+" "+a+" -"+i+" 0 c"),n.push("-"+i+" -"+a+" -"+a+" -"+i+" 0 -"+i+" c"),n.push(a+" -"+i+" "+i+" -"+a+" "+i+" 0 c"),n.push("f"),n.push("Q"),n.push("0 g"),n.push("q"),n.push("1 0 0 1 "+H(xt.internal.getWidth(t)/2)+" "+H(xt.internal.getHeight(t)/2)+" cm"),n.push(r+" 0 m"),n.push(r+" "+o+" "+o+" "+r+" 0 "+r+" c"),n.push("-"+o+" "+r+" -"+r+" "+o+" -"+r+" 0 c"),n.push("-"+r+" -"+o+" -"+o+" -"+r+" 0 -"+r+" c"),n.push(o+" -"+r+" "+r+" -"+o+" "+r+" 0 c"),n.push("f"),n.push("Q"),e.stream=n.join("\n"),e},OffPushDown:function(t){var e=G(t);e.scope=t.scope;var n=[],r=xt.internal.getWidth(t)<=xt.internal.getHeight(t)?xt.internal.getWidth(t)/4:xt.internal.getHeight(t)/4;r=Number((.9*r).toFixed(5));var i=Number((2*r).toFixed(5)),a=Number((i*xt.internal.Bezier_C).toFixed(5));return n.push("0.749023 g"),n.push("q"),n.push("1 0 0 1 "+H(xt.internal.getWidth(t)/2)+" "+H(xt.internal.getHeight(t)/2)+" cm"),n.push(i+" 0 m"),n.push(i+" "+a+" "+a+" "+i+" 0 "+i+" c"),n.push("-"+a+" "+i+" -"+i+" "+a+" -"+i+" 0 c"),n.push("-"+i+" -"+a+" -"+a+" -"+i+" 0 -"+i+" c"),n.push(a+" -"+i+" "+i+" -"+a+" "+i+" 0 c"),n.push("f"),n.push("Q"),e.stream=n.join("\n"),e}},Cross:{createAppearanceStream:function(t){var e={D:{Off:xt.RadioButton.Cross.OffPushDown},N:{}};return e.N[t]=xt.RadioButton.Cross.YesNormal,e.D[t]=xt.RadioButton.Cross.YesPushDown,e},getCA:function(){return"8"},YesNormal:function(t){var e=G(t);e.scope=t.scope;var n=[],r=xt.internal.calculateCross(t);return n.push("q"),n.push("1 1 "+U(xt.internal.getWidth(t)-2)+" "+U(xt.internal.getHeight(t)-2)+" re"),n.push("W"),n.push("n"),n.push(U(r.x1.x)+" "+U(r.x1.y)+" m"),n.push(U(r.x2.x)+" "+U(r.x2.y)+" l"),n.push(U(r.x4.x)+" "+U(r.x4.y)+" m"),n.push(U(r.x3.x)+" "+U(r.x3.y)+" l"),n.push("s"),n.push("Q"),e.stream=n.join("\n"),e},YesPushDown:function(t){var e=G(t);e.scope=t.scope;var n=xt.internal.calculateCross(t),r=[];return r.push("0.749023 g"),r.push("0 0 "+U(xt.internal.getWidth(t))+" "+U(xt.internal.getHeight(t))+" re"),r.push("f"),r.push("q"),r.push("1 1 "+U(xt.internal.getWidth(t)-2)+" "+U(xt.internal.getHeight(t)-2)+" re"),r.push("W"),r.push("n"),r.push(U(n.x1.x)+" "+U(n.x1.y)+" m"),r.push(U(n.x2.x)+" "+U(n.x2.y)+" l"),r.push(U(n.x4.x)+" "+U(n.x4.y)+" m"),r.push(U(n.x3.x)+" "+U(n.x3.y)+" l"),r.push("s"),r.push("Q"),e.stream=r.join("\n"),e},OffPushDown:function(t){var e=G(t);e.scope=t.scope;var n=[];return n.push("0.749023 g"),n.push("0 0 "+U(xt.internal.getWidth(t))+" "+U(xt.internal.getHeight(t))+" re"),n.push("f"),e.stream=n.join("\n"),e}}},createDefaultAppearanceStream:function(t){var e=t.scope.internal.getFont(t.fontName,t.fontStyle).id,n=t.scope.__private__.encodeColorString(t.color);return"/"+e+" "+t.fontSize+" Tf "+n}};xt.internal={Bezier_C:.551915024494,calculateCross:function(t){var e=xt.internal.getWidth(t),n=xt.internal.getHeight(t),r=Math.min(e,n);return{x1:{x:(e-r)/2,y:(n-r)/2+r},x2:{x:(e-r)/2+r,y:(n-r)/2},x3:{x:(e-r)/2,y:(n-r)/2},x4:{x:(e-r)/2+r,y:(n-r)/2+r}}}},xt.internal.getWidth=function(e){var n=0;return"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e)&&(n=V(e.Rect[2])),n},xt.internal.getHeight=function(e){var n=0;return"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e)&&(n=V(e.Rect[3])),n};var At=R.addField=function(t){if(at(this,t),!(t instanceof ht))throw new Error("Invalid argument passed to jsPDF.addField.");var e;return(e=t).scope.internal.acroformPlugin.printedOut&&(e.scope.internal.acroformPlugin.printedOut=!1,e.scope.internal.acroformPlugin.acroFormDictionaryRoot=null),e.scope.internal.acroformPlugin.acroFormDictionaryRoot.Fields.push(e),t.page=t.scope.internal.getCurrentPageInfo().pageNumber,this};R.AcroFormChoiceField=ft,R.AcroFormListBox=dt,R.AcroFormComboBox=pt,R.AcroFormEditBox=gt,R.AcroFormButton=mt,R.AcroFormPushButton=vt,R.AcroFormRadioButton=bt,R.AcroFormCheckBox=wt,R.AcroFormTextField=Nt,R.AcroFormPasswordField=Lt,R.AcroFormAppearance=xt,R.AcroForm={ChoiceField:ft,ListBox:dt,ComboBox:pt,EditBox:gt,Button:mt,PushButton:vt,RadioButton:bt,CheckBox:wt,TextField:Nt,PasswordField:Lt,Appearance:xt},E.AcroForm={ChoiceField:ft,ListBox:dt,ComboBox:pt,EditBox:gt,Button:mt,PushButton:vt,RadioButton:bt,CheckBox:wt,TextField:Nt,PasswordField:Lt,Appearance:xt};var St=E.AcroForm;function _t(t){return t.reduce(function(t,e,n){return t[e]=n,t},{})}!function(e){var n="addImage_";e.__addimage__={};var r="UNKNOWN",i={PNG:[[137,80,78,71]],TIFF:[[77,77,0,42],[73,73,42,0]],JPEG:[[255,216,255,224,void 0,void 0,74,70,73,70,0],[255,216,255,225,void 0,void 0,69,120,105,102,0,0],[255,216,255,219],[255,216,255,238]],JPEG2000:[[0,0,0,12,106,80,32,32]],GIF87a:[[71,73,70,56,55,97]],GIF89a:[[71,73,70,56,57,97]],WEBP:[[82,73,70,70,void 0,void 0,void 0,void 0,87,69,66,80]],BMP:[[66,77],[66,65],[67,73],[67,80],[73,67],[80,84]]},a=e.__addimage__.getImageFileTypeByImageData=function(t,e){var n,a,o,s,u,c=r;if("RGBA"===(e=e||r)||void 0!==t.data&&t.data instanceof Uint8ClampedArray&&"height"in t&&"width"in t)return"RGBA";if(A(t))for(u in i)for(o=i[u],n=0;n<o.length;n+=1){for(s=!0,a=0;a<o[n].length;a+=1)if(void 0!==o[n][a]&&o[n][a]!==t[a]){s=!1;break}if(!0===s){c=u;break}}else for(u in i)for(o=i[u],n=0;n<o.length;n+=1){for(s=!0,a=0;a<o[n].length;a+=1)if(void 0!==o[n][a]&&o[n][a]!==t.charCodeAt(a)){s=!1;break}if(!0===s){c=u;break}}return c===r&&e!==r&&(c=e),c},o=function t(e){for(var n=this.internal.write,r=this.internal.putStream,i=(0,this.internal.getFilters)();-1!==i.indexOf("FlateEncode");)i.splice(i.indexOf("FlateEncode"),1);e.objectId=this.internal.newObject();var a=[];if(a.push({key:"Type",value:"/XObject"}),a.push({key:"Subtype",value:"/Image"}),a.push({key:"Width",value:e.width}),a.push({key:"Height",value:e.height}),e.colorSpace===y.INDEXED?a.push({key:"ColorSpace",value:"[/Indexed /DeviceRGB "+(e.palette.length/3-1)+" "+("sMask"in e&&void 0!==e.sMask?e.objectId+2:e.objectId+1)+" 0 R]"}):(a.push({key:"ColorSpace",value:"/"+e.colorSpace}),e.colorSpace===y.DEVICE_CMYK&&a.push({key:"Decode",value:"[1 0 1 0 1 0 1 0]"})),a.push({key:"BitsPerComponent",value:e.bitsPerComponent}),"decodeParameters"in e&&void 0!==e.decodeParameters&&a.push({key:"DecodeParms",value:"<<"+e.decodeParameters+">>"}),"transparency"in e&&Array.isArray(e.transparency)){for(var o="",s=0,u=e.transparency.length;s<u;s++)o+=e.transparency[s]+" "+e.transparency[s]+" ";a.push({key:"Mask",value:"["+o+"]"})}void 0!==e.sMask&&a.push({key:"SMask",value:e.objectId+1+" 0 R"});var c=void 0!==e.filter?["/"+e.filter]:void 0;if(r({data:e.data,additionalKeyValues:a,alreadyAppliedFilters:c,objectId:e.objectId}),n("endobj"),"sMask"in e&&void 0!==e.sMask){var l=(null!=e.predictor?"/Predictor "+e.predictor:"")+" /Colors 1 /BitsPerComponent 8 /Columns "+e.width,h={width:e.width,height:e.height,colorSpace:"DeviceGray",bitsPerComponent:e.bitsPerComponent,decodeParameters:l,data:e.sMask};"filter"in e&&(h.filter=e.filter),t.call(this,h)}if(e.colorSpace===y.INDEXED){var f=this.internal.newObject();r({data:_(new Uint8Array(e.palette)),objectId:f}),n("endobj")}},s=function(){var t=this.internal.collections[n+"images"];for(var e in t)o.call(this,t[e])},u=function(){var t,e=this.internal.collections[n+"images"],r=this.internal.write;for(var i in e)r("/I"+(t=e[i]).index,t.objectId,"0","R")},c=function(){this.internal.collections[n+"images"]||(this.internal.collections[n+"images"]={},this.internal.events.subscribe("putResources",s),this.internal.events.subscribe("putXobjectDict",u))},l=function(){var t=this.internal.collections[n+"images"];return c.call(this),t},h=function(){return Object.keys(this.internal.collections[n+"images"]).length},d=function(t){return"function"==typeof e["process"+t.toUpperCase()]},p=function(e){return"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e)&&1===e.nodeType},g=function(t,n){if("IMG"===t.nodeName&&t.hasAttribute("src")){var r=""+t.getAttribute("src");if(0===r.indexOf("data:image/"))return f(unescape(r).split("base64,").pop());var i=e.loadFile(r,!0);if(void 0!==i)return i}if("CANVAS"===t.nodeName){if(0===t.width||0===t.height)throw new Error("Given canvas must have data. Canvas width: "+t.width+", height: "+t.height);var a;switch(n){case"PNG":a="image/png";break;case"WEBP":a="image/webp";break;default:a="image/jpeg"}return f(t.toDataURL(a,1).split("base64,").pop())}},m=function(t){var e=this.internal.collections[n+"images"];if(e)for(var r in e)if(t===e[r].alias)return e[r]},v=function(t,e,n){return t||e||(t=-96,e=-96),t<0&&(t=-1*n.width*72/t/this.internal.scaleFactor),e<0&&(e=-1*n.height*72/e/this.internal.scaleFactor),0===t&&(t=e*n.width/n.height),0===e&&(e=t*n.height/n.width),[t,e]},b=function(t,e,n,r,i,a){var o=v.call(this,n,r,i),s=this.internal.getCoordinateString,u=this.internal.getVerticalCoordinateString,c=l.call(this);if(n=o[0],r=o[1],c[i.index]=i,a){a*=Math.PI/180;var h=Math.cos(a),f=Math.sin(a),d=function(t){return t.toFixed(4)},p=[d(h),d(f),d(-1*f),d(h),0,0,"cm"]}this.internal.write("q"),a?(this.internal.write([1,"0","0",1,s(t),u(e+r),"cm"].join(" ")),this.internal.write(p.join(" ")),this.internal.write([s(n),"0","0",s(r),"0","0","cm"].join(" "))):this.internal.write([s(n),"0","0",s(r),s(t),u(e+r),"cm"].join(" ")),this.isAdvancedAPI()&&this.internal.write([1,0,0,-1,0,0,"cm"].join(" ")),this.internal.write("/I"+i.index+" Do"),this.internal.write("Q")},y=e.color_spaces={DEVICE_RGB:"DeviceRGB",DEVICE_GRAY:"DeviceGray",DEVICE_CMYK:"DeviceCMYK",CAL_GREY:"CalGray",CAL_RGB:"CalRGB",LAB:"Lab",ICC_BASED:"ICCBased",INDEXED:"Indexed",PATTERN:"Pattern",SEPARATION:"Separation",DEVICE_N:"DeviceN"};e.decode={DCT_DECODE:"DCTDecode",FLATE_DECODE:"FlateDecode",LZW_DECODE:"LZWDecode",JPX_DECODE:"JPXDecode",JBIG2_DECODE:"JBIG2Decode",ASCII85_DECODE:"ASCII85Decode",ASCII_HEX_DECODE:"ASCIIHexDecode",RUN_LENGTH_DECODE:"RunLengthDecode",CCITT_FAX_DECODE:"CCITTFaxDecode"};var w=e.image_compression={NONE:"NONE",FAST:"FAST",MEDIUM:"MEDIUM",SLOW:"SLOW"},N=e.__addimage__.sHashCode=function(t){var e,n,r=0;if("string"==typeof t)for(n=t.length,e=0;e<n;e++)r=(r<<5)-r+t.charCodeAt(e),r|=0;else if(A(t))for(n=t.byteLength/2,e=0;e<n;e++)r=(r<<5)-r+t[e],r|=0;return r},L=e.__addimage__.validateStringAsBase64=function(t){(t=t||"").toString().trim();var e=!0;return 0===t.length&&(e=!1),t.length%4!=0&&(e=!1),!1===/^[A-Za-z0-9+/]+$/.test(t.substr(0,t.length-2))&&(e=!1),!1===/^[A-Za-z0-9/][A-Za-z0-9+/]|[A-Za-z0-9+/]=|==$/.test(t.substr(-2))&&(e=!1),e},x=e.__addimage__.extractImageFromDataUrl=function(t){if(null==t)return null;if(!(t=t.trim()).startsWith("data:"))return null;var e=t.indexOf(",");return e<0?null:t.substring(0,e).trim().endsWith("base64")?t.substring(e+1):null};e.__addimage__.isArrayBuffer=function(t){return t instanceof ArrayBuffer};var A=e.__addimage__.isArrayBufferView=function(t){return t instanceof Int8Array||t instanceof Uint8Array||t instanceof Uint8ClampedArray||t instanceof Int16Array||t instanceof Uint16Array||t instanceof Int32Array||t instanceof Uint32Array||t instanceof Float32Array||t instanceof Float64Array},S=e.__addimage__.binaryStringToUint8Array=function(t){for(var e=t.length,n=new Uint8Array(e),r=0;r<e;r++)n[r]=t.charCodeAt(r);return n},_=e.__addimage__.arrayBufferToBinaryString=function(t){for(var e="",n=A(t)?t:new Uint8Array(t),r=0;r<n.length;r+=8192)e+=String.fromCharCode.apply(null,n.subarray(r,r+8192));return e};e.addImage=function(){var e,n,i,a,o,s,u,l,h;if("number"==typeof arguments[1]?(n=r,i=arguments[1],a=arguments[2],o=arguments[3],s=arguments[4],u=arguments[5],l=arguments[6],h=arguments[7]):(n=arguments[1],i=arguments[2],a=arguments[3],o=arguments[4],s=arguments[5],u=arguments[6],l=arguments[7],h=arguments[8]),"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e=arguments[0])&&!p(e)&&"imageData"in e){var f=e;e=f.imageData,n=f.format||n||r,i=f.x||i||0,a=f.y||a||0,o=f.w||f.width||o,s=f.h||f.height||s,u=f.alias||u,l=f.compression||l,h=f.rotation||f.angle||h}var d=this.internal.getFilters();if(void 0===l&&-1!==d.indexOf("FlateEncode")&&(l="SLOW"),isNaN(i)||isNaN(a))throw new Error("Invalid coordinates passed to jsPDF.addImage");c.call(this);var g=P.call(this,e,n,u,l);return b.call(this,i,a,o,s,g,h),this};var P=function(t,n,i,o){var s,u,c;if("string"==typeof t&&a(t)===r){t=unescape(t);var l=k(t,!1);(""!==l||void 0!==(l=e.loadFile(t,!0)))&&(t=l)}if(p(t)&&(t=g(t,n)),n=a(t,n),!d(n))throw new Error("addImage does not support files of type '"+n+"', please ensure that a plugin for '"+n+"' support is added.");if((null==(c=i)||0===c.length)&&(i=function(t){return"string"==typeof t||A(t)?N(t):A(t.data)?N(t.data):null}(t)),(s=m.call(this,i))||(t instanceof Uint8Array||"RGBA"===n||(u=t,t=S(t)),s=this["process"+n.toUpperCase()](t,h.call(this),i,function(t){return t&&"string"==typeof t&&(t=t.toUpperCase()),t in e.image_compression?t:w.NONE}(o),u)),!s)throw new Error("An unknown error occurred whilst processing the image.");return s},k=e.__addimage__.convertBase64ToBinaryString=function(t,e){e="boolean"!=typeof e||e;var n,r="";if("string"==typeof t){var i;n=null!==(i=x(t))&&void 0!==i?i:t;try{r=f(n)}catch(a){if(e)throw L(n)?new Error("atob-Error in jsPDF.convertBase64ToBinaryString "+a.message):new Error("Supplied Data is not a valid base64-String jsPDF.convertBase64ToBinaryString ")}}return r};e.getImageProperties=function(t){var n,i,o="";if(p(t)&&(t=g(t)),"string"==typeof t&&a(t)===r&&(""===(o=k(t,!1))&&(o=e.loadFile(t)||""),t=o),i=a(t),!d(i))throw new Error("addImage does not support files of type '"+i+"', please ensure that a plugin for '"+i+"' support is added.");if(t instanceof Uint8Array||(t=S(t)),!(n=this["process"+i.toUpperCase()](t)))throw new Error("An unknown error occurred whilst processing the image");return n.fileType=i,n}}(E.API),
+ */var F={print:4,modify:8,copy:16,"annot-forms":32};function I(t,e,n,r){this.v=1,this.r=2;var i=192;t.forEach(function(t){if(void 0!==F.perm)throw new Error("Invalid permission: "+t);i+=F[t]}),this.padding="(¿N^NuAd\0NVÿú\b..\0¶Ðh>/\f©þdSiz";var a=(e+this.padding).substr(0,32),o=(n+this.padding).substr(0,32);this.O=this.processOwnerPassword(a,o),this.P=-(1+(255^i)),this.encryptionKey=S(a+this.O+this.lsbFirstWord(this.P)+this.hexToBytes(r)).substr(0,5),this.U=k(this.encryptionKey,this.padding)}function j(t){if(/[^\u0000-\u00ff]/.test(t))throw new Error("Invalid PDF Name Object: "+t+", Only accept ASCII characters.");for(var e="",n=t.length,r=0;r<n;r++){var i=t.charCodeAt(r);e+=i<33||35===i||37===i||40===i||41===i||47===i||60===i||62===i||91===i||93===i||123===i||125===i||i>126?"#"+("0"+i.toString(16)).slice(-2):t[r]}return e}function C(e){if("object"!==(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e))throw new Error("Invalid Context passed to initialize PubSub (jsPDF-module)");var n={};this.subscribe=function(t,e,r){if(r=r||!1,"string"!=typeof t||"function"!=typeof e||"boolean"!=typeof r)throw new Error("Invalid arguments passed to PubSub.subscribe (jsPDF-module)");n.hasOwnProperty(t)||(n[t]={});var i=Math.random().toString(35);return n[t][i]=[e,!!r],i},this.unsubscribe=function(t){for(var e in n)if(n[e][t])return delete n[e][t],0===Object.keys(n[e]).length&&delete n[e],!0;return!1},this.publish=function(t){if(n.hasOwnProperty(t)){var r=Array.prototype.slice.call(arguments,1),a=[];for(var s in n[t]){var u=n[t][s];try{u[0].apply(e,r)}catch(c){i.console&&o.error("jsPDF PubSub Error",c.message,c)}u[1]&&a.push(s)}a.length&&a.forEach(this.unsubscribe)}},this.getTopics=function(){return n}}function O(t){if(!(this instanceof O))return new O(t);var e="opacity,stroke-opacity".split(",");for(var n in t)t.hasOwnProperty(n)&&e.indexOf(n)>=0&&(this[n]=t[n]);this.id="",this.objectNumber=-1}function B(t,e){this.gState=t,this.matrix=e,this.id="",this.objectNumber=-1}function M(t,e,n,r,i){if(!(this instanceof M))return new M(t,e,n,r,i);this.type="axial"===t?2:3,this.coords=e,this.colors=n,B.call(this,r,i)}function q(t,e,n,r,i){if(!(this instanceof q))return new q(t,e,n,r,i);this.boundingBox=t,this.xStep=e,this.yStep=n,this.stream="",this.cloneIndex=0,B.call(this,r,i)}function E(e){var n,r="string"==typeof arguments[0]?arguments[0]:"p",a=arguments[1],s=arguments[2],u=arguments[3],c=[],f=1,p=16,g="S",m=null;"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e=e||{})&&(r=e.orientation,a=e.unit||a,s=e.format||s,u=e.compress||e.compressPdf||u,null!==(m=e.encryption||null)&&(m.userPassword=m.userPassword||"",m.ownerPassword=m.ownerPassword||"",m.userPermissions=m.userPermissions||[]),f="number"==typeof e.userUnit?Math.abs(e.userUnit):1,void 0!==e.precision&&(n=e.precision),void 0!==e.floatPrecision&&(p=e.floatPrecision),g=e.defaultPathOperation||"S"),c=e.filters||(!0===u?["FlateEncode"]:c),a=a||"mm",r=(""+(r||"P")).toLowerCase();var v=e.putOnlyUsedFonts||!1,b={},y={internal:{},__private__:{}};y.__private__.PubSub=C;var w="1.3",N=y.__private__.getPdfVersion=function(){return w};y.__private__.setPdfVersion=function(t){w=t};var L={a0:[2383.94,3370.39],a1:[1683.78,2383.94],a2:[1190.55,1683.78],a3:[841.89,1190.55],a4:[595.28,841.89],a5:[419.53,595.28],a6:[297.64,419.53],a7:[209.76,297.64],a8:[147.4,209.76],a9:[104.88,147.4],a10:[73.7,104.88],b0:[2834.65,4008.19],b1:[2004.09,2834.65],b2:[1417.32,2004.09],b3:[1000.63,1417.32],b4:[708.66,1000.63],b5:[498.9,708.66],b6:[354.33,498.9],b7:[249.45,354.33],b8:[175.75,249.45],b9:[124.72,175.75],b10:[87.87,124.72],c0:[2599.37,3676.54],c1:[1836.85,2599.37],c2:[1298.27,1836.85],c3:[918.43,1298.27],c4:[649.13,918.43],c5:[459.21,649.13],c6:[323.15,459.21],c7:[229.61,323.15],c8:[161.57,229.61],c9:[113.39,161.57],c10:[79.37,113.39],dl:[311.81,623.62],letter:[612,792],"government-letter":[576,756],legal:[612,1008],"junior-legal":[576,360],ledger:[1224,792],tabloid:[792,1224],"credit-card":[153,243]};y.__private__.getPageFormats=function(){return L};var x=y.__private__.getPageFormat=function(t){return L[t]};s=s||"a4";var A="compat",S="advanced",_=A;function P(){this.saveGraphicsState(),lt(new Wt(St,0,0,-St,0,_n()*St).toString()+" cm"),this.setFontSize(this.getFontSize()/St),g="n",_=S}function k(){this.restoreGraphicsState(),g="S",_=A}var F=y.__private__.combineFontStyleAndFontWeight=function(t,e){if("bold"==t&&"normal"==e||"bold"==t&&400==e||"normal"==t&&"italic"==e||"bold"==t&&"italic"==e)throw new Error("Invalid Combination of fontweight and fontstyle");return e&&(t=400==e||"normal"===e?"italic"===t?"italic":"normal":700!=e&&"bold"!==e||"normal"!==t?(700==e?"bold":e)+""+t:"bold"),t};y.advancedAPI=function(t){var e=_===A;return e&&P.call(this),"function"!=typeof t||(t(this),e&&k.call(this)),this},y.compatAPI=function(t){var e=_===S;return e&&k.call(this),"function"!=typeof t||(t(this),e&&P.call(this)),this},y.isAdvancedAPI=function(){return _===S};var B,R=function(t){if(_!==S)throw new Error(t+" is only available in 'advanced' API mode. You need to call advancedAPI() first.")},D=y.roundToPrecision=y.__private__.roundToPrecision=function(t,e){var r=n||e;if(isNaN(t)||isNaN(r))throw new Error("Invalid argument passed to jsPDF.roundToPrecision");return t.toFixed(r).replace(/0+$/,"")};B=y.hpf=y.__private__.hpf="number"==typeof p?function(t){if(isNaN(t))throw new Error("Invalid argument passed to jsPDF.hpf");return D(t,p)}:"smart"===p?function(t){if(isNaN(t))throw new Error("Invalid argument passed to jsPDF.hpf");return D(t,t>-1&&t<1?16:5)}:function(t){if(isNaN(t))throw new Error("Invalid argument passed to jsPDF.hpf");return D(t,16)};var T=y.f2=y.__private__.f2=function(t){if(isNaN(t))throw new Error("Invalid argument passed to jsPDF.f2");return D(t,2)},z=y.__private__.f3=function(t){if(isNaN(t))throw new Error("Invalid argument passed to jsPDF.f3");return D(t,3)},U=y.scale=y.__private__.scale=function(t){if(isNaN(t))throw new Error("Invalid argument passed to jsPDF.scale");return _===A?t*St:_===S?t:void 0},H=function(t){return U(function(t){return _===A?_n()-t:_===S?t:void 0}(t))};y.__private__.setPrecision=y.setPrecision=function(t){"number"==typeof parseInt(t,10)&&(n=parseInt(t,10))};var W,V="00000000000000000000000000000000",G=y.__private__.getFileId=function(){return V},Y=y.__private__.setFileId=function(t){return V=void 0!==t&&/^[a-fA-F0-9]{32}$/.test(t)?t.toUpperCase():V.split("").map(function(){return"ABCDEF0123456789".charAt(Math.floor(16*Math.random()))}).join(""),null!==m&&(je=new I(m.userPermissions,m.userPassword,m.ownerPassword,V)),V};y.setFileId=function(t){return Y(t),this},y.getFileId=function(){return G()};var J=y.__private__.convertDateToPDFDate=function(t){var e=t.getTimezoneOffset(),n=e<0?"+":"-",r=Math.floor(Math.abs(e/60)),i=Math.abs(e%60),a=[n,Q(r),"'",Q(i),"'"].join("");return["D:",t.getFullYear(),Q(t.getMonth()+1),Q(t.getDate()),Q(t.getHours()),Q(t.getMinutes()),Q(t.getSeconds()),a].join("")},X=y.__private__.convertPDFDateToDate=function(t){var e=parseInt(t.substr(2,4),10),n=parseInt(t.substr(6,2),10)-1,r=parseInt(t.substr(8,2),10),i=parseInt(t.substr(10,2),10),a=parseInt(t.substr(12,2),10),o=parseInt(t.substr(14,2),10);return new Date(e,n,r,i,a,o,0)},K=y.__private__.setCreationDate=function(t){var e;if(void 0===t&&(t=new Date),t instanceof Date)e=J(t);else{if(!/^D:(20[0-2][0-9]|203[0-7]|19[7-9][0-9])(0[0-9]|1[0-2])([0-2][0-9]|3[0-1])(0[0-9]|1[0-9]|2[0-3])(0[0-9]|[1-5][0-9])(0[0-9]|[1-5][0-9])(\+0[0-9]|\+1[0-4]|-0[0-9]|-1[0-1])'(0[0-9]|[1-5][0-9])'?$/.test(t))throw new Error("Invalid argument passed to jsPDF.setCreationDate");e=t}return W=e},Z=y.__private__.getCreationDate=function(t){var e=W;return"jsDate"===t&&(e=X(W)),e};y.setCreationDate=function(t){return K(t),this},y.getCreationDate=function(t){return Z(t)};var $,Q=y.__private__.padd2=function(t){return("0"+parseInt(t)).slice(-2)},tt=y.__private__.padd2Hex=function(t){return("00"+(t=t.toString())).substr(t.length)},et=0,nt=[],rt=[],it=0,at=[],ot=[],st=!1,ut=rt;y.__private__.setCustomOutputDestination=function(t){st=!0,ut=t};var ct=function(t){st||(ut=t)};y.__private__.resetCustomOutputDestination=function(){st=!1,ut=rt};var lt=y.__private__.out=function(t){return t=t.toString(),it+=t.length+1,ut.push(t),ut},ht=y.__private__.write=function(t){return lt(1===arguments.length?t.toString():Array.prototype.join.call(arguments," "))},ft=y.__private__.getArrayBuffer=function(t){for(var e=t.length,n=new ArrayBuffer(e),r=new Uint8Array(n);e--;)r[e]=t.charCodeAt(e);return n},dt=[["Helvetica","helvetica","normal","WinAnsiEncoding"],["Helvetica-Bold","helvetica","bold","WinAnsiEncoding"],["Helvetica-Oblique","helvetica","italic","WinAnsiEncoding"],["Helvetica-BoldOblique","helvetica","bolditalic","WinAnsiEncoding"],["Courier","courier","normal","WinAnsiEncoding"],["Courier-Bold","courier","bold","WinAnsiEncoding"],["Courier-Oblique","courier","italic","WinAnsiEncoding"],["Courier-BoldOblique","courier","bolditalic","WinAnsiEncoding"],["Times-Roman","times","normal","WinAnsiEncoding"],["Times-Bold","times","bold","WinAnsiEncoding"],["Times-Italic","times","italic","WinAnsiEncoding"],["Times-BoldItalic","times","bolditalic","WinAnsiEncoding"],["ZapfDingbats","zapfdingbats","normal",null],["Symbol","symbol","normal",null]];y.__private__.getStandardFonts=function(){return dt};var pt=e.fontSize||16;y.__private__.setFontSize=y.setFontSize=function(t){return pt=_===S?t/St:t,this};var gt,mt=y.__private__.getFontSize=y.getFontSize=function(){return _===A?pt:pt*St},vt=e.R2L||!1;y.__private__.setR2L=y.setR2L=function(t){return vt=t,this},y.__private__.getR2L=y.getR2L=function(){return vt};var bt,yt=y.__private__.setZoomMode=function(t){if(/^(?:\d+\.\d*|\d*\.\d+|\d+)%$/.test(t))gt=t;else if(isNaN(t)){if(-1===[void 0,null,"fullwidth","fullheight","fullpage","original"].indexOf(t))throw new Error('zoom must be Integer (e.g. 2), a percentage Value (e.g. 300%) or fullwidth, fullheight, fullpage, original. "'+t+'" is not recognized.');gt=t}else gt=parseInt(t,10)};y.__private__.getZoomMode=function(){return gt};var wt,Nt=y.__private__.setPageMode=function(t){if(-1==[void 0,null,"UseNone","UseOutlines","UseThumbs","FullScreen"].indexOf(t))throw new Error('Page mode must be one of UseNone, UseOutlines, UseThumbs, or FullScreen. "'+t+'" is not recognized.');bt=t};y.__private__.getPageMode=function(){return bt};var Lt=y.__private__.setLayoutMode=function(t){if(-1==[void 0,null,"continuous","single","twoleft","tworight","two"].indexOf(t))throw new Error('Layout mode must be one of continuous, single, twoleft, tworight. "'+t+'" is not recognized.');wt=t};y.__private__.getLayoutMode=function(){return wt},y.__private__.setDisplayMode=y.setDisplayMode=function(t,e,n){return yt(t),Lt(e),Nt(n),this};var xt={title:"",subject:"",author:"",keywords:"",creator:""};y.__private__.getDocumentProperty=function(t){if(-1===Object.keys(xt).indexOf(t))throw new Error("Invalid argument passed to jsPDF.getDocumentProperty");return xt[t]},y.__private__.getDocumentProperties=function(){return xt},y.__private__.setDocumentProperties=y.setProperties=y.setDocumentProperties=function(t){for(var e in xt)xt.hasOwnProperty(e)&&t[e]&&(xt[e]=t[e]);return this},y.__private__.setDocumentProperty=function(t,e){if(-1===Object.keys(xt).indexOf(t))throw new Error("Invalid arguments passed to jsPDF.setDocumentProperty");return xt[t]=e};var At,St,_t,Pt,kt,Ft={},It={},jt=[],Ct={},Ot={},Bt={},Mt={},qt=null,Et=0,Rt=[],Dt=new C(y),Tt=e.hotfixes||[],zt={},Ut={},Ht=[],Wt=function t(e,n,r,i,a,o){if(!(this instanceof t))return new t(e,n,r,i,a,o);isNaN(e)&&(e=1),isNaN(n)&&(n=0),isNaN(r)&&(r=0),isNaN(i)&&(i=1),isNaN(a)&&(a=0),isNaN(o)&&(o=0),this._matrix=[e,n,r,i,a,o]};Object.defineProperty(Wt.prototype,"sx",{get:function(){return this._matrix[0]},set:function(t){this._matrix[0]=t}}),Object.defineProperty(Wt.prototype,"shy",{get:function(){return this._matrix[1]},set:function(t){this._matrix[1]=t}}),Object.defineProperty(Wt.prototype,"shx",{get:function(){return this._matrix[2]},set:function(t){this._matrix[2]=t}}),Object.defineProperty(Wt.prototype,"sy",{get:function(){return this._matrix[3]},set:function(t){this._matrix[3]=t}}),Object.defineProperty(Wt.prototype,"tx",{get:function(){return this._matrix[4]},set:function(t){this._matrix[4]=t}}),Object.defineProperty(Wt.prototype,"ty",{get:function(){return this._matrix[5]},set:function(t){this._matrix[5]=t}}),Object.defineProperty(Wt.prototype,"a",{get:function(){return this._matrix[0]},set:function(t){this._matrix[0]=t}}),Object.defineProperty(Wt.prototype,"b",{get:function(){return this._matrix[1]},set:function(t){this._matrix[1]=t}}),Object.defineProperty(Wt.prototype,"c",{get:function(){return this._matrix[2]},set:function(t){this._matrix[2]=t}}),Object.defineProperty(Wt.prototype,"d",{get:function(){return this._matrix[3]},set:function(t){this._matrix[3]=t}}),Object.defineProperty(Wt.prototype,"e",{get:function(){return this._matrix[4]},set:function(t){this._matrix[4]=t}}),Object.defineProperty(Wt.prototype,"f",{get:function(){return this._matrix[5]},set:function(t){this._matrix[5]=t}}),Object.defineProperty(Wt.prototype,"rotation",{get:function(){return Math.atan2(this.shx,this.sx)}}),Object.defineProperty(Wt.prototype,"scaleX",{get:function(){return this.decompose().scale.sx}}),Object.defineProperty(Wt.prototype,"scaleY",{get:function(){return this.decompose().scale.sy}}),Object.defineProperty(Wt.prototype,"isIdentity",{get:function(){return 1===this.sx&&0===this.shy&&0===this.shx&&1===this.sy&&0===this.tx&&0===this.ty}}),Wt.prototype.join=function(t){return[this.sx,this.shy,this.shx,this.sy,this.tx,this.ty].map(B).join(t)},Wt.prototype.multiply=function(t){var e=t.sx*this.sx+t.shy*this.shx,n=t.sx*this.shy+t.shy*this.sy,r=t.shx*this.sx+t.sy*this.shx,i=t.shx*this.shy+t.sy*this.sy,a=t.tx*this.sx+t.ty*this.shx+this.tx,o=t.tx*this.shy+t.ty*this.sy+this.ty;return new Wt(e,n,r,i,a,o)},Wt.prototype.decompose=function(){var t=this.sx,e=this.shy,n=this.shx,r=this.sy,i=this.tx,a=this.ty,o=Math.sqrt(t*t+e*e),s=(t/=o)*n+(e/=o)*r;n-=t*s,r-=e*s;var u=Math.sqrt(n*n+r*r);return s/=u,t*(r/=u)<e*(n/=u)&&(t=-t,e=-e,s=-s,o=-o),{scale:new Wt(o,0,0,u,0,0),translate:new Wt(1,0,0,1,i,a),rotate:new Wt(t,e,-e,t,0,0),skew:new Wt(1,0,s,1,0,0)}},Wt.prototype.toString=function(t){return this.join(" ")},Wt.prototype.inversed=function(){var t=this.sx,e=this.shy,n=this.shx,r=this.sy,i=this.tx,a=this.ty,o=1/(t*r-e*n),s=r*o,u=-e*o,c=-n*o,l=t*o;return new Wt(s,u,c,l,-s*i-c*a,-u*i-l*a)},Wt.prototype.applyToPoint=function(t){var e=t.x*this.sx+t.y*this.shx+this.tx,n=t.x*this.shy+t.y*this.sy+this.ty;return new gn(e,n)},Wt.prototype.applyToRectangle=function(t){var e=this.applyToPoint(t),n=this.applyToPoint(new gn(t.x+t.w,t.y+t.h));return new mn(e.x,e.y,n.x-e.x,n.y-e.y)},Wt.prototype.clone=function(){var t=this.sx,e=this.shy,n=this.shx,r=this.sy,i=this.tx,a=this.ty;return new Wt(t,e,n,r,i,a)},y.Matrix=Wt;var Vt=y.matrixMult=function(t,e){return e.multiply(t)},Gt=new Wt(1,0,0,1,0,0);y.unitMatrix=y.identityMatrix=Gt;var Yt=function(t,e){if(!Ot[t]){var n=(e instanceof M?"Sh":"P")+(Object.keys(Ct).length+1).toString(10);e.id=n,Ot[t]=n,Ct[n]=e,Dt.publish("addPattern",e)}};y.ShadingPattern=M,y.TilingPattern=q,y.addShadingPattern=function(t,e){return R("addShadingPattern()"),Yt(t,e),this},y.beginTilingPattern=function(t){R("beginTilingPattern()"),bn(t.boundingBox[0],t.boundingBox[1],t.boundingBox[2]-t.boundingBox[0],t.boundingBox[3]-t.boundingBox[1],t.matrix)},y.endTilingPattern=function(t,e){R("endTilingPattern()"),e.stream=ot[$].join("\n"),Yt(t,e),Dt.publish("endTilingPattern",e),Ht.pop().restore()};var Jt,Xt=y.__private__.newObject=function(){var t=Kt();return Zt(t,!0),t},Kt=y.__private__.newObjectDeferred=function(){return et++,nt[et]=function(){return it},et},Zt=function(t,e){return e="boolean"==typeof e&&e,nt[t]=it,e&&lt(t+" 0 obj"),t},$t=y.__private__.newAdditionalObject=function(){var t={objId:Kt(),content:""};return at.push(t),t},Qt=Kt(),te=Kt(),ee=y.__private__.decodeColorString=function(t){var e=t.split(" ");if(2!==e.length||"g"!==e[1]&&"G"!==e[1])5!==e.length||"k"!==e[4]&&"K"!==e[4]||(e=[(1-e[0])*(1-e[3]),(1-e[1])*(1-e[3]),(1-e[2])*(1-e[3]),"r"]);else{var n=parseFloat(e[0]);e=[n,n,n,"r"]}for(var r="#",i=0;i<3;i++)r+=("0"+Math.floor(255*parseFloat(e[i])).toString(16)).slice(-2);return r},ne=y.__private__.encodeColorString=function(e){var n;"string"==typeof e&&(e={ch1:e});var r=e.ch1,i=e.ch2,a=e.ch3,o=e.ch4,s="draw"===e.pdfColorType?["G","RG","K"]:["g","rg","k"];if("string"==typeof r&&"#"!==r.charAt(0)){var u=new h(r);if(u.ok)r=u.toHex();else if(!/^\d*\.?\d*$/.test(r))throw new Error('Invalid color "'+r+'" passed to jsPDF.encodeColorString.')}if("string"==typeof r&&/^#[0-9A-Fa-f]{3}$/.test(r)&&(r="#"+r[1]+r[1]+r[2]+r[2]+r[3]+r[3]),"string"==typeof r&&/^#[0-9A-Fa-f]{6}$/.test(r)){var c=parseInt(r.substr(1),16);r=c>>16&255,i=c>>8&255,a=255&c}if(void 0===i||void 0===o&&r===i&&i===a)n="string"==typeof r?r+" "+s[0]:2===e.precision?T(r/255)+" "+s[0]:z(r/255)+" "+s[0];else if(void 0===o||"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(o)){if(o&&!isNaN(o.a)&&0===o.a)return["1.","1.","1.",s[1]].join(" ");n="string"==typeof r?[r,i,a,s[1]].join(" "):2===e.precision?[T(r/255),T(i/255),T(a/255),s[1]].join(" "):[z(r/255),z(i/255),z(a/255),s[1]].join(" ")}else n="string"==typeof r?[r,i,a,o,s[2]].join(" "):2===e.precision?[T(r),T(i),T(a),T(o),s[2]].join(" "):[z(r),z(i),z(a),z(o),s[2]].join(" ");return n},re=y.__private__.getFilters=function(){return c},ie=y.__private__.putStream=function(t){var e=(t=t||{}).data||"",n=t.filters||re(),r=t.alreadyAppliedFilters||[],i=t.addLength1||!1,a=e.length,o=t.objectId,s=function(t){return t};if(null!==m&&void 0===o)throw new Error("ObjectId must be passed to putStream for file encryption");null!==m&&(s=je.encryptor(o,0));var u={};!0===n&&(n=["FlateEncode"]);var c=t.additionalKeyValues||[],l=(u=void 0!==E.API.processDataByFilters?E.API.processDataByFilters(e,n):{data:e,reverseChain:[]}).reverseChain+(Array.isArray(r)?r.join(" "):r.toString());if(0!==u.data.length&&(c.push({key:"Length",value:u.data.length}),!0===i&&c.push({key:"Length1",value:a})),0!=l.length)if(l.split("/").length-1==1)c.push({key:"Filter",value:l});else{c.push({key:"Filter",value:"["+l+"]"});for(var h=0;h<c.length;h+=1)if("DecodeParms"===c[h].key){for(var f=[],d=0;d<u.reverseChain.split("/").length-1;d+=1)f.push("null");f.push(c[h].value),c[h].value="["+f.join(" ")+"]"}}lt("<<");for(var p=0;p<c.length;p++)lt("/"+c[p].key+" "+c[p].value);lt(">>"),0!==u.data.length&&(lt("stream"),lt(s(u.data)),lt("endstream"))},ae=y.__private__.putPage=function(t){var e=t.number,n=t.data,r=t.objId,i=t.contentsObjId;Zt(r,!0),lt("<</Type /Page"),lt("/Parent "+t.rootDictionaryObjId+" 0 R"),lt("/Resources "+t.resourceDictionaryObjId+" 0 R"),lt("/MediaBox ["+parseFloat(B(t.mediaBox.bottomLeftX))+" "+parseFloat(B(t.mediaBox.bottomLeftY))+" "+B(t.mediaBox.topRightX)+" "+B(t.mediaBox.topRightY)+"]"),null!==t.cropBox&&lt("/CropBox ["+B(t.cropBox.bottomLeftX)+" "+B(t.cropBox.bottomLeftY)+" "+B(t.cropBox.topRightX)+" "+B(t.cropBox.topRightY)+"]"),null!==t.bleedBox&&lt("/BleedBox ["+B(t.bleedBox.bottomLeftX)+" "+B(t.bleedBox.bottomLeftY)+" "+B(t.bleedBox.topRightX)+" "+B(t.bleedBox.topRightY)+"]"),null!==t.trimBox&&lt("/TrimBox ["+B(t.trimBox.bottomLeftX)+" "+B(t.trimBox.bottomLeftY)+" "+B(t.trimBox.topRightX)+" "+B(t.trimBox.topRightY)+"]"),null!==t.artBox&&lt("/ArtBox ["+B(t.artBox.bottomLeftX)+" "+B(t.artBox.bottomLeftY)+" "+B(t.artBox.topRightX)+" "+B(t.artBox.topRightY)+"]"),"number"==typeof t.userUnit&&1!==t.userUnit&&lt("/UserUnit "+t.userUnit),Dt.publish("putPage",{objId:r,pageContext:Rt[e],pageNumber:e,page:n}),lt("/Contents "+i+" 0 R"),lt(">>"),lt("endobj");var a=n.join("\n");return _===S&&(a+="\nQ"),Zt(i,!0),ie({data:a,filters:re(),objectId:i}),lt("endobj"),r},oe=y.__private__.putPages=function(){var t,e,n=[];for(t=1;t<=Et;t++)Rt[t].objId=Kt(),Rt[t].contentsObjId=Kt();for(t=1;t<=Et;t++)n.push(ae({number:t,data:ot[t],objId:Rt[t].objId,contentsObjId:Rt[t].contentsObjId,mediaBox:Rt[t].mediaBox,cropBox:Rt[t].cropBox,bleedBox:Rt[t].bleedBox,trimBox:Rt[t].trimBox,artBox:Rt[t].artBox,userUnit:Rt[t].userUnit,rootDictionaryObjId:Qt,resourceDictionaryObjId:te}));Zt(Qt,!0),lt("<</Type /Pages");var r="/Kids [";for(e=0;e<Et;e++)r+=n[e]+" 0 R ";lt(r+"]"),lt("/Count "+Et),lt(">>"),lt("endobj"),Dt.publish("postPutPages")},se=function(t){Dt.publish("putFont",{font:t,out:lt,newObject:Xt,putStream:ie}),!0!==t.isAlreadyPutted&&(t.objectNumber=Xt(),lt("<<"),lt("/Type /Font"),lt("/BaseFont /"+j(t.postScriptName)),lt("/Subtype /Type1"),"string"==typeof t.encoding&&lt("/Encoding /"+t.encoding),lt("/FirstChar 32"),lt("/LastChar 255"),lt(">>"),lt("endobj"))},ue=function(t){t.objectNumber=Xt();var e=[];e.push({key:"Type",value:"/XObject"}),e.push({key:"Subtype",value:"/Form"}),e.push({key:"BBox",value:"["+[B(t.x),B(t.y),B(t.x+t.width),B(t.y+t.height)].join(" ")+"]"}),e.push({key:"Matrix",value:"["+t.matrix.toString()+"]"});var n=t.pages[1].join("\n");ie({data:n,additionalKeyValues:e,objectId:t.objectNumber}),lt("endobj")},ce=function(t,e){e||(e=21);var n=Xt(),r=function(t,e){var n,r=[],i=1/(e-1);for(n=0;n<1;n+=i)r.push(n);if(r.push(1),0!=t[0].offset){var a={offset:0,color:t[0].color};t.unshift(a)}if(1!=t[t.length-1].offset){var o={offset:1,color:t[t.length-1].color};t.push(o)}for(var s="",u=0,c=0;c<r.length;c++){for(n=r[c];n>t[u+1].offset;)u++;var l=t[u].offset,h=(n-l)/(t[u+1].offset-l),f=t[u].color,d=t[u+1].color;s+=tt(Math.round((1-h)*f[0]+h*d[0]).toString(16))+tt(Math.round((1-h)*f[1]+h*d[1]).toString(16))+tt(Math.round((1-h)*f[2]+h*d[2]).toString(16))}return s.trim()}(t.colors,e),i=[];i.push({key:"FunctionType",value:"0"}),i.push({key:"Domain",value:"[0.0 1.0]"}),i.push({key:"Size",value:"["+e+"]"}),i.push({key:"BitsPerSample",value:"8"}),i.push({key:"Range",value:"[0.0 1.0 0.0 1.0 0.0 1.0]"}),i.push({key:"Decode",value:"[0.0 1.0 0.0 1.0 0.0 1.0]"}),ie({data:r,additionalKeyValues:i,alreadyAppliedFilters:["/ASCIIHexDecode"],objectId:n}),lt("endobj"),t.objectNumber=Xt(),lt("<< /ShadingType "+t.type),lt("/ColorSpace /DeviceRGB");var a="/Coords ["+B(parseFloat(t.coords[0]))+" "+B(parseFloat(t.coords[1]))+" ";2===t.type?a+=B(parseFloat(t.coords[2]))+" "+B(parseFloat(t.coords[3])):a+=B(parseFloat(t.coords[2]))+" "+B(parseFloat(t.coords[3]))+" "+B(parseFloat(t.coords[4]))+" "+B(parseFloat(t.coords[5])),lt(a+="]"),t.matrix&&lt("/Matrix ["+t.matrix.toString()+"]"),lt("/Function "+n+" 0 R"),lt("/Extend [true true]"),lt(">>"),lt("endobj")},le=function(t,e){var n=Kt(),r=Xt();e.push({resourcesOid:n,objectOid:r}),t.objectNumber=r;var i=[];i.push({key:"Type",value:"/Pattern"}),i.push({key:"PatternType",value:"1"}),i.push({key:"PaintType",value:"1"}),i.push({key:"TilingType",value:"1"}),i.push({key:"BBox",value:"["+t.boundingBox.map(B).join(" ")+"]"}),i.push({key:"XStep",value:B(t.xStep)}),i.push({key:"YStep",value:B(t.yStep)}),i.push({key:"Resources",value:n+" 0 R"}),t.matrix&&i.push({key:"Matrix",value:"["+t.matrix.toString()+"]"}),ie({data:t.stream,additionalKeyValues:i,objectId:t.objectNumber}),lt("endobj")},he=function(t){for(var e in t.objectNumber=Xt(),lt("<<"),t)switch(e){case"opacity":lt("/ca "+T(t[e]));break;case"stroke-opacity":lt("/CA "+T(t[e]))}lt(">>"),lt("endobj")},fe=function(t){Zt(t.resourcesOid,!0),lt("<<"),lt("/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]"),function(){for(var t in lt("/Font <<"),Ft)Ft.hasOwnProperty(t)&&(!1===v||!0===v&&b.hasOwnProperty(t))&&lt("/"+t+" "+Ft[t].objectNumber+" 0 R");lt(">>")}(),function(){if(Object.keys(Ct).length>0){for(var t in lt("/Shading <<"),Ct)Ct.hasOwnProperty(t)&&Ct[t]instanceof M&&Ct[t].objectNumber>=0&&lt("/"+t+" "+Ct[t].objectNumber+" 0 R");Dt.publish("putShadingPatternDict"),lt(">>")}}(),function(t){if(Object.keys(Ct).length>0){for(var e in lt("/Pattern <<"),Ct)Ct.hasOwnProperty(e)&&Ct[e]instanceof y.TilingPattern&&Ct[e].objectNumber>=0&&Ct[e].objectNumber<t&&lt("/"+e+" "+Ct[e].objectNumber+" 0 R");Dt.publish("putTilingPatternDict"),lt(">>")}}(t.objectOid),function(){if(Object.keys(Bt).length>0){var t;for(t in lt("/ExtGState <<"),Bt)Bt.hasOwnProperty(t)&&Bt[t].objectNumber>=0&&lt("/"+t+" "+Bt[t].objectNumber+" 0 R");Dt.publish("putGStateDict"),lt(">>")}}(),function(){for(var t in lt("/XObject <<"),zt)zt.hasOwnProperty(t)&&zt[t].objectNumber>=0&&lt("/"+t+" "+zt[t].objectNumber+" 0 R");Dt.publish("putXobjectDict"),lt(">>")}(),lt(">>"),lt("endobj")},de=function(t){It[t.fontName]=It[t.fontName]||{},It[t.fontName][t.fontStyle]=t.id},pe=function(t,e,n,r,i){var a={id:"F"+(Object.keys(Ft).length+1).toString(10),postScriptName:t,fontName:e,fontStyle:n,encoding:r,isStandardFont:i||!1,metadata:{}};return Dt.publish("addFont",{font:a,instance:this}),Ft[a.id]=a,de(a),a.id},ge=y.__private__.pdfEscape=y.pdfEscape=function(t,e){return function(t,e){var n,r,i,a,o,s,u,c,l;if(i=(e=e||{}).sourceEncoding||"Unicode",o=e.outputEncoding,(e.autoencode||o)&&Ft[At].metadata&&Ft[At].metadata[i]&&Ft[At].metadata[i].encoding&&(a=Ft[At].metadata[i].encoding,!o&&Ft[At].encoding&&(o=Ft[At].encoding),!o&&a.codePages&&(o=a.codePages[0]),"string"==typeof o&&(o=a[o]),o)){for(u=!1,s=[],n=0,r=t.length;n<r;n++)(c=o[t.charCodeAt(n)])?s.push(String.fromCharCode(c)):s.push(t[n]),s[n].charCodeAt(0)>>8&&(u=!0);t=s.join("")}for(n=t.length;void 0===u&&0!==n;)t.charCodeAt(n-1)>>8&&(u=!0),n--;if(!u)return t;for(s=e.noBOM?[]:[254,255],n=0,r=t.length;n<r;n++){if((l=(c=t.charCodeAt(n))>>8)>>8)throw new Error("Character at position "+n+" of string '"+t+"' exceeds 16bits. Cannot be encoded into UCS-2 BE");s.push(l),s.push(c-(l<<8))}return String.fromCharCode.apply(void 0,s)}(t,e).replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)")},me=y.__private__.beginPage=function(t){ot[++Et]=[],Rt[Et]={objId:0,contentsObjId:0,userUnit:Number(f),artBox:null,bleedBox:null,cropBox:null,trimBox:null,mediaBox:{bottomLeftX:0,bottomLeftY:0,topRightX:Number(t[0]),topRightY:Number(t[1])}},ye(Et),ct(ot[$])},ve=function(t,e){var n,i,a;switch(r=e||r,"string"==typeof t&&(n=x(t.toLowerCase()),Array.isArray(n)&&(i=n[0],a=n[1])),Array.isArray(t)&&(i=t[0]*St,a=t[1]*St),isNaN(i)&&(i=s[0],a=s[1]),(i>14400||a>14400)&&(o.warn("A page in a PDF can not be wider or taller than 14400 userUnit. jsPDF limits the width/height to 14400"),i=Math.min(14400,i),a=Math.min(14400,a)),s=[i,a],r.substr(0,1)){case"l":a>i&&(s=[a,i]);break;case"p":i>a&&(s=[a,i])}me(s),Ze(Xe),lt(on),0!==fn&&lt(fn+" J"),0!==dn&&lt(dn+" j"),Dt.publish("addPage",{pageNumber:Et})},be=function(t){t>0&&t<=Et&&(ot.splice(t,1),Rt.splice(t,1),Et--,$>Et&&($=Et),this.setPage($))},ye=function(t){t>0&&t<=Et&&($=t)},we=y.__private__.getNumberOfPages=y.getNumberOfPages=function(){return ot.length-1},Ne=function(t,e,n){var r,i=void 0;return n=n||{},t=void 0!==t?t:Ft[At].fontName,e=void 0!==e?e:Ft[At].fontStyle,r=t.toLowerCase(),void 0!==It[r]&&void 0!==It[r][e]?i=It[r][e]:void 0!==It[t]&&void 0!==It[t][e]?i=It[t][e]:!1===n.disableWarning&&o.warn("Unable to look up font label for font '"+t+"', '"+e+"'. Refer to getFontList() for available fonts."),i||n.noFallback||null==(i=It.times[e])&&(i=It.times.normal),i},Le=y.__private__.putInfo=function(){var t=Xt(),e=function(t){return t};for(var n in null!==m&&(e=je.encryptor(t,0)),lt("<<"),lt("/Producer ("+ge(e("jsPDF "+E.version))+")"),xt)xt.hasOwnProperty(n)&&xt[n]&&lt("/"+n.substr(0,1).toUpperCase()+n.substr(1)+" ("+ge(e(xt[n]))+")");lt("/CreationDate ("+ge(e(W))+")"),lt(">>"),lt("endobj")},xe=y.__private__.putCatalog=function(t){var e=(t=t||{}).rootDictionaryObjId||Qt;switch(Xt(),lt("<<"),lt("/Type /Catalog"),lt("/Pages "+e+" 0 R"),gt||(gt="fullwidth"),gt){case"fullwidth":lt("/OpenAction [3 0 R /FitH null]");break;case"fullheight":lt("/OpenAction [3 0 R /FitV null]");break;case"fullpage":lt("/OpenAction [3 0 R /Fit]");break;case"original":lt("/OpenAction [3 0 R /XYZ null null 1]");break;default:var n=""+gt;"%"===n.substr(n.length-1)&&(gt=parseInt(gt)/100),"number"==typeof gt&&lt("/OpenAction [3 0 R /XYZ null null "+T(gt)+"]")}switch(wt||(wt="continuous"),wt){case"continuous":lt("/PageLayout /OneColumn");break;case"single":lt("/PageLayout /SinglePage");break;case"two":case"twoleft":lt("/PageLayout /TwoColumnLeft");break;case"tworight":lt("/PageLayout /TwoColumnRight")}bt&&lt("/PageMode /"+bt),Dt.publish("putCatalog"),lt(">>"),lt("endobj")},Ae=y.__private__.putTrailer=function(){lt("trailer"),lt("<<"),lt("/Size "+(et+1)),lt("/Root "+et+" 0 R"),lt("/Info "+(et-1)+" 0 R"),null!==m&&lt("/Encrypt "+je.oid+" 0 R"),lt("/ID [ <"+V+"> <"+V+"> ]"),lt(">>")},Se=y.__private__.putHeader=function(){lt("%PDF-"+w),lt("%ºß¬à")},_e=y.__private__.putXRef=function(){var t="0000000000";lt("xref"),lt("0 "+(et+1)),lt("0000000000 65535 f ");for(var e=1;e<=et;e++)"function"==typeof nt[e]?lt((t+nt[e]()).slice(-10)+" 00000 n "):void 0!==nt[e]?lt((t+nt[e]).slice(-10)+" 00000 n "):lt("0000000000 00000 n ")},Pe=y.__private__.buildDocument=function(){var t;et=0,it=0,rt=[],nt=[],at=[],Qt=Kt(),te=Kt(),ct(rt),Dt.publish("buildDocument"),Se(),oe(),function(){Dt.publish("putAdditionalObjects");for(var t=0;t<at.length;t++){var e=at[t];Zt(e.objId,!0),lt(e.content),lt("endobj")}Dt.publish("postPutAdditionalObjects")}(),t=[],function(){for(var t in Ft)Ft.hasOwnProperty(t)&&(!1===v||!0===v&&b.hasOwnProperty(t))&&se(Ft[t])}(),function(){var t;for(t in Bt)Bt.hasOwnProperty(t)&&he(Bt[t])}(),function(){for(var t in zt)zt.hasOwnProperty(t)&&ue(zt[t])}(),function(t){var e;for(e in Ct)Ct.hasOwnProperty(e)&&(Ct[e]instanceof M?ce(Ct[e]):Ct[e]instanceof q&&le(Ct[e],t))}(t),Dt.publish("putResources"),t.forEach(fe),fe({resourcesOid:te,objectOid:Number.MAX_SAFE_INTEGER}),Dt.publish("postPutResources"),null!==m&&(je.oid=Xt(),lt("<<"),lt("/Filter /Standard"),lt("/V "+je.v),lt("/R "+je.r),lt("/U <"+je.toHexString(je.U)+">"),lt("/O <"+je.toHexString(je.O)+">"),lt("/P "+je.P),lt(">>"),lt("endobj")),Le(),xe();var e=it;return _e(),Ae(),lt("startxref"),lt(""+e),lt("%%EOF"),ct(ot[$]),rt.join("\n")},ke=y.__private__.getBlob=function(t){return new Blob([ft(t)],{type:"application/pdf"})},Fe=y.output=y.__private__.output=(Jt=function(t,e){switch("string"==typeof(e=e||{})?e={filename:e}:e.filename=e.filename||"generated.pdf",t){case void 0:return Pe();case"save":y.save(e.filename);break;case"arraybuffer":return ft(Pe());case"blob":return ke(Pe());case"bloburi":case"bloburl":if(void 0!==i.URL&&"function"==typeof i.URL.createObjectURL)return i.URL&&i.URL.createObjectURL(ke(Pe()))||void 0;o.warn("bloburl is not supported by your system, because URL.createObjectURL is not supported by your browser.");break;case"datauristring":case"dataurlstring":var n="",r=Pe();try{n=d(r)}catch(m){n=d(unescape(encodeURIComponent(r)))}return"data:application/pdf;filename="+e.filename+";base64,"+n;case"pdfobjectnewwindow":if("[object Window]"===Object.prototype.toString.call(i)){var a="https://cdnjs.cloudflare.com/ajax/libs/pdfobject/2.1.1/pdfobject.min.js",s=' integrity="sha512-4ze/a9/4jqu+tX9dfOqJYSvyYd5M6qum/3HpCLr+/Jqf0whc37VUbkpNGHR7/8pSnCFw47T1fmIpwBV7UySh3g==" crossorigin="anonymous"';e.pdfObjectUrl&&(a=e.pdfObjectUrl,s="");var u='<html><style>html, body { padding: 0; margin: 0; } iframe { width: 100%; height: 100%; border: 0;}  </style><body><script src="'+a+'"'+s+'><\/script><script >PDFObject.embed("'+this.output("dataurlstring")+'", '+JSON.stringify(e)+");<\/script></body></html>",c=i.open();return null!==c&&c.document.write(u),c}throw new Error("The option pdfobjectnewwindow just works in a browser-environment.");case"pdfjsnewwindow":if("[object Window]"===Object.prototype.toString.call(i)){var l='<html><style>html, body { padding: 0; margin: 0; } iframe { width: 100%; height: 100%; border: 0;}  </style><body><iframe id="pdfViewer" src="'+(e.pdfJsUrl||"examples/PDF.js/web/viewer.html")+"?file=&downloadName="+e.filename+'" width="500px" height="400px" /></body></html>',h=i.open();if(null!==h){h.document.write(l);var f=this;h.document.documentElement.querySelector("#pdfViewer").onload=function(){h.document.title=e.filename,h.document.documentElement.querySelector("#pdfViewer").contentWindow.PDFViewerApplication.open(f.output("bloburl"))}}return h}throw new Error("The option pdfjsnewwindow just works in a browser-environment.");case"dataurlnewwindow":if("[object Window]"!==Object.prototype.toString.call(i))throw new Error("The option dataurlnewwindow just works in a browser-environment.");var p='<html><style>html, body { padding: 0; margin: 0; } iframe { width: 100%; height: 100%; border: 0;}  </style><body><iframe src="'+this.output("datauristring",e)+'"></iframe></body></html>',g=i.open();if(null!==g&&(g.document.write(p),g.document.title=e.filename),g||"undefined"==typeof safari)return g;break;case"datauri":case"dataurl":return i.document.location.href=this.output("datauristring",e);default:return null}},Jt.foo=function(){try{return Jt.apply(this,arguments)}catch(n){var t=n.stack||"";~t.indexOf(" at ")&&(t=t.split(" at ")[1]);var e="Error in function "+t.split("\n")[0].split("<")[0]+": "+n.message;if(!i.console)throw new Error(e);i.console.error(e,n),i.alert&&alert(e)}},Jt.foo.bar=Jt,Jt.foo),Ie=function(t){return!0===Array.isArray(Tt)&&Tt.indexOf(t)>-1};switch(a){case"pt":St=1;break;case"mm":St=72/25.4;break;case"cm":St=72/2.54;break;case"in":St=72;break;case"px":St=1==Ie("px_scaling")?.75:96/72;break;case"pc":case"em":St=12;break;case"ex":St=6;break;default:if("number"!=typeof a)throw new Error("Invalid unit: "+a);St=a}var je=null;K(),Y();var Ce=y.__private__.getPageInfo=y.getPageInfo=function(t){if(isNaN(t)||t%1!=0)throw new Error("Invalid argument passed to jsPDF.getPageInfo");return{objId:Rt[t].objId,pageNumber:t,pageContext:Rt[t]}},Oe=y.__private__.getPageInfoByObjId=function(t){if(isNaN(t)||t%1!=0)throw new Error("Invalid argument passed to jsPDF.getPageInfoByObjId");for(var e in Rt)if(Rt[e].objId===t)break;return Ce(e)},Be=y.__private__.getCurrentPageInfo=y.getCurrentPageInfo=function(){return{objId:Rt[$].objId,pageNumber:$,pageContext:Rt[$]}};y.addPage=function(){return ve.apply(this,arguments),this},y.setPage=function(){return ye.apply(this,arguments),ct.call(this,ot[$]),this},y.insertPage=function(t){return this.addPage(),this.movePage($,t),this},y.movePage=function(t,e){var n,r;if(t>e){n=ot[t],r=Rt[t];for(var i=t;i>e;i--)ot[i]=ot[i-1],Rt[i]=Rt[i-1];ot[e]=n,Rt[e]=r,this.setPage(e)}else if(t<e){n=ot[t],r=Rt[t];for(var a=t;a<e;a++)ot[a]=ot[a+1],Rt[a]=Rt[a+1];ot[e]=n,Rt[e]=r,this.setPage(e)}return this},y.deletePage=function(){return be.apply(this,arguments),this},y.__private__.text=y.text=function(e,n,r,i,a){var o,s,u,c,l,h,f,d,p,g=(i=i||{}).scope||this;if("number"==typeof e&&"number"==typeof n&&("string"==typeof r||Array.isArray(r))){var m=r;r=n,n=e,e=m}if(arguments[3]instanceof Wt==0?(u=arguments[4],c=arguments[5],"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(f=arguments[3])&&null!==f||("string"==typeof u&&(c=u,u=null),"string"==typeof f&&(c=f,f=null),"number"==typeof f&&(u=f,f=null),i={flags:f,angle:u,align:c})):(R("The transform parameter of text() with a Matrix value"),p=a),isNaN(n)||isNaN(r)||null==e)throw new Error("Invalid arguments passed to jsPDF.text");if(0===e.length)return g;var v,y="",w="number"==typeof i.lineHeightFactor?i.lineHeightFactor:Je,N=g.internal.scaleFactor;function L(t){return t=t.split("\t").join(Array(i.TabLen||9).join(" ")),ge(t,f)}function x(t){for(var e,n=t.concat(),r=[],i=n.length;i--;)"string"==typeof(e=n.shift())?r.push(e):Array.isArray(t)&&(1===e.length||void 0===e[1]&&void 0===e[2])?r.push(e[0]):r.push([e[0],e[1],e[2]]);return r}function A(t,e){var n;if("string"==typeof t)n=e(t)[0];else if(Array.isArray(t)){for(var r,i,a=t.concat(),o=[],s=a.length;s--;)"string"==typeof(r=a.shift())?o.push(e(r)[0]):Array.isArray(r)&&"string"==typeof r[0]&&(i=e(r[0],r[1],r[2]),o.push([i[0],i[1],i[2]]));n=o}return n}var P=!1,k=!0;if("string"==typeof e)P=!0;else if(Array.isArray(e)){var F=e.concat();s=[];for(var I,j=F.length;j--;)("string"!=typeof(I=F.shift())||Array.isArray(I)&&"string"!=typeof I[0])&&(k=!1);P=k}if(!1===P)throw new Error('Type of text must be string or Array. "'+e+'" is not recognized.');"string"==typeof e&&(e=e.match(/[\r?\n]/)?e.split(/\r\n|\r|\n/g):[e]);var C=pt/g.internal.scaleFactor,O=C*(w-1);switch(i.baseline){case"bottom":r-=O;break;case"top":r+=C-O;break;case"hanging":r+=C-2*O;break;case"middle":r+=C/2-O}if((h=i.maxWidth||0)>0&&("string"==typeof e?e=g.splitTextToSize(e,h):"[object Array]"===Object.prototype.toString.call(e)&&(e=e.reduce(function(t,e){return t.concat(g.splitTextToSize(e,h))},[]))),o={text:e,x:n,y:r,options:i,mutex:{pdfEscape:ge,activeFontKey:At,fonts:Ft,activeFontSize:pt}},Dt.publish("preProcessText",o),e=o.text,u=(i=o.options).angle,p instanceof Wt==0&&u&&"number"==typeof u){u*=Math.PI/180,0===i.rotationDirection&&(u=-u),_===S&&(u=-u);var M=Math.cos(u),q=Math.sin(u);p=new Wt(M,q,-q,M,0,0)}else u&&u instanceof Wt&&(p=u);_!==S||p||(p=Gt),void 0!==(l=i.charSpace||ln)&&(y+=B(U(l))+" Tc\n",this.setCharSpace(this.getCharSpace()||0)),void 0!==(d=i.horizontalScale)&&(y+=B(100*d)+" Tz\n"),i.lang;var E=-1,D=void 0!==i.renderingMode?i.renderingMode:i.stroke,T=g.internal.getCurrentPageInfo().pageContext;switch(D){case 0:case!1:case"fill":E=0;break;case 1:case!0:case"stroke":E=1;break;case 2:case"fillThenStroke":E=2;break;case 3:case"invisible":E=3;break;case 4:case"fillAndAddForClipping":E=4;break;case 5:case"strokeAndAddPathForClipping":E=5;break;case 6:case"fillThenStrokeAndAddToPathForClipping":E=6;break;case 7:case"addToPathForClipping":E=7}var z=void 0!==T.usedRenderingMode?T.usedRenderingMode:-1;-1!==E?y+=E+" Tr\n":-1!==z&&(y+="0 Tr\n"),-1!==E&&(T.usedRenderingMode=E),c=i.align||"left";var H,W=pt*w,V=g.internal.pageSize.getWidth(),G=Ft[At];l=i.charSpace||ln,h=i.maxWidth||0,f=Object.assign({autoencode:!0,noBOM:!0},i.flags);var Y=[],J=function(t){return g.getStringUnitWidth(t,{font:G,charSpace:l,fontSize:pt,doKerning:!1})*pt/N};if("[object Array]"===Object.prototype.toString.call(e)){var X;s=x(e),"left"!==c&&(H=s.map(J));var K,Z=0;if("right"===c){n-=H[0],e=[],j=s.length;for(var $=0;$<j;$++)0===$?(K=en(n),X=nn(r)):(K=U(Z-H[$]),X=-W),e.push([s[$],K,X]),Z=H[$]}else if("center"===c){n-=H[0]/2,e=[],j=s.length;for(var Q=0;Q<j;Q++)0===Q?(K=en(n),X=nn(r)):(K=U((Z-H[Q])/2),X=-W),e.push([s[Q],K,X]),Z=H[Q]}else if("left"===c){e=[],j=s.length;for(var tt=0;tt<j;tt++)e.push(s[tt])}else if("justify"===c&&"Identity-H"===G.encoding){e=[],j=s.length,h=0!==h?h:V;for(var et=0,nt=0;nt<j;nt++)if(X=0===nt?nn(r):-W,K=0===nt?en(n):et,nt<j-1){var rt=U((h-H[nt])/(s[nt].split(" ").length-1)),it=s[nt].split(" ");e.push([it[0]+" ",K,X]),et=0;for(var at=1;at<it.length;at++){var ot=(J(it[at-1]+" "+it[at])-J(it[at]))*N+rt;at==it.length-1?e.push([it[at],ot,0]):e.push([it[at]+" ",ot,0]),et-=ot}}else e.push([s[nt],K,X]);e.push(["",et,0])}else{if("justify"!==c)throw new Error('Unrecognized alignment option, use "left", "center", "right" or "justify".');for(e=[],j=s.length,h=0!==h?h:V,nt=0;nt<j;nt++){X=0===nt?nn(r):-W,K=0===nt?en(n):0;var st=s[nt].split(" ").length-1,ut=st>0?(h-H[nt])/st:0;nt<j-1?Y.push(B(U(ut))):Y.push(0),e.push([s[nt],K,X])}}}!0===("boolean"==typeof i.R2L?i.R2L:vt)&&(e=A(e,function(t,e,n){return[t.split("").reverse().join(""),e,n]})),o={text:e,x:n,y:r,options:i,mutex:{pdfEscape:ge,activeFontKey:At,fonts:Ft,activeFontSize:pt}},Dt.publish("postProcessText",o),e=o.text,v=o.mutex.isHex||!1;var ct=Ft[At].encoding;"WinAnsiEncoding"!==ct&&"StandardEncoding"!==ct||(e=A(e,function(t,e,n){return[L(t),e,n]})),s=x(e),e=[];for(var ht,ft,dt,gt=Array.isArray(s[0])?1:0,mt="",bt=function(t,e,n){var r="";return n instanceof Wt?(n="number"==typeof i.angle?Vt(n,new Wt(1,0,0,1,t,e)):Vt(new Wt(1,0,0,1,t,e),n),_===S&&(n=Vt(new Wt(1,0,0,-1,0,0),n)),r=n.join(" ")+" Tm\n"):r=B(t)+" "+B(e)+" Td\n",r},yt=0;yt<s.length;yt++){switch(mt="",gt){case 1:dt=(v?"<":"(")+s[yt][0]+(v?">":")"),ht=parseFloat(s[yt][1]),ft=parseFloat(s[yt][2]);break;case 0:dt=(v?"<":"(")+s[yt]+(v?">":")"),ht=en(n),ft=nn(r)}void 0!==Y&&void 0!==Y[yt]&&(mt=Y[yt]+" Tw\n"),0===yt?e.push(mt+bt(ht,ft,p)+dt):0===gt?e.push(mt+dt):1===gt&&e.push(mt+bt(ht,ft,p)+dt)}e=0===gt?e.join(" Tj\nT* "):e.join(" Tj\n"),e+=" Tj\n";var wt="BT\n/";return wt+=At+" "+pt+" Tf\n",wt+=B(pt*w)+" TL\n",wt+=un+"\n",wt+=y,wt+=e,lt(wt+="ET"),b[At]=!0,g};var Me=y.__private__.clip=y.clip=function(t){return lt("evenodd"===t?"W*":"W"),this};y.clipEvenOdd=function(){return Me("evenodd")},y.__private__.discardPath=y.discardPath=function(){return lt("n"),this};var qe=y.__private__.isValidStyle=function(t){var e=!1;return-1!==[void 0,null,"S","D","F","DF","FD","f","f*","B","B*","n"].indexOf(t)&&(e=!0),e};y.__private__.setDefaultPathOperation=y.setDefaultPathOperation=function(t){return qe(t)&&(g=t),this};var Ee=y.__private__.getStyle=y.getStyle=function(t){var e=g;switch(t){case"D":case"S":e="S";break;case"F":e="f";break;case"FD":case"DF":e="B";break;case"f":case"f*":case"B":case"B*":e=t}return e},Re=y.close=function(){return lt("h"),this};y.stroke=function(){return lt("S"),this},y.fill=function(t){return De("f",t),this},y.fillEvenOdd=function(t){return De("f*",t),this},y.fillStroke=function(t){return De("B",t),this},y.fillStrokeEvenOdd=function(t){return De("B*",t),this};var De=function(e,n){"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(n)?Ue(n,e):lt(e)},Te=function(t){null===t||_===S&&void 0===t||(t=Ee(t),lt(t))};function ze(t,e,n,r,i){var a=new q(e||this.boundingBox,n||this.xStep,r||this.yStep,this.gState,i||this.matrix);a.stream=this.stream;var o=t+"$$"+this.cloneIndex+++"$$";return Yt(o,a),a}var Ue=function(t,e){var n=Ot[t.key],r=Ct[n];if(r instanceof M)lt("q"),lt(He(e)),r.gState&&y.setGState(r.gState),lt(t.matrix.toString()+" cm"),lt("/"+n+" sh"),lt("Q");else if(r instanceof q){var i=new Wt(1,0,0,-1,0,_n());t.matrix&&(i=i.multiply(t.matrix||Gt),n=ze.call(r,t.key,t.boundingBox,t.xStep,t.yStep,i).id),lt("q"),lt("/Pattern cs"),lt("/"+n+" scn"),r.gState&&y.setGState(r.gState),lt(e),lt("Q")}},He=function(t){switch(t){case"f":case"F":case"n":return"W n";case"f*":return"W* n";case"B":case"S":return"W S";case"B*":return"W* S"}},We=y.moveTo=function(t,e){return lt(B(U(t))+" "+B(H(e))+" m"),this},Ve=y.lineTo=function(t,e){return lt(B(U(t))+" "+B(H(e))+" l"),this},Ge=y.curveTo=function(t,e,n,r,i,a){return lt([B(U(t)),B(H(e)),B(U(n)),B(H(r)),B(U(i)),B(H(a)),"c"].join(" ")),this};y.__private__.line=y.line=function(t,e,n,r,i){if(isNaN(t)||isNaN(e)||isNaN(n)||isNaN(r)||!qe(i))throw new Error("Invalid arguments passed to jsPDF.line");return _===A?this.lines([[n-t,r-e]],t,e,[1,1],i||"S"):this.lines([[n-t,r-e]],t,e,[1,1]).stroke()},y.__private__.lines=y.lines=function(t,e,n,r,i,a){var o,s,u,c,l,h,f,d,p,g,m,v;if("number"==typeof t&&(v=n,n=e,e=t,t=v),r=r||[1,1],a=a||!1,isNaN(e)||isNaN(n)||!Array.isArray(t)||!Array.isArray(r)||!qe(i)||"boolean"!=typeof a)throw new Error("Invalid arguments passed to jsPDF.lines");for(We(e,n),o=r[0],s=r[1],c=t.length,g=e,m=n,u=0;u<c;u++)2===(l=t[u]).length?(g=l[0]*o+g,m=l[1]*s+m,Ve(g,m)):(h=l[0]*o+g,f=l[1]*s+m,d=l[2]*o+g,p=l[3]*s+m,g=l[4]*o+g,m=l[5]*s+m,Ge(h,f,d,p,g,m));return a&&Re(),Te(i),this},y.path=function(t){for(var e=0;e<t.length;e++){var n=t[e],r=n.c;switch(n.op){case"m":We(r[0],r[1]);break;case"l":Ve(r[0],r[1]);break;case"c":Ge.apply(this,r);break;case"h":Re()}}return this},y.__private__.rect=y.rect=function(t,e,n,r,i){if(isNaN(t)||isNaN(e)||isNaN(n)||isNaN(r)||!qe(i))throw new Error("Invalid arguments passed to jsPDF.rect");return _===A&&(r=-r),lt([B(U(t)),B(H(e)),B(U(n)),B(U(r)),"re"].join(" ")),Te(i),this},y.__private__.triangle=y.triangle=function(t,e,n,r,i,a,o){if(isNaN(t)||isNaN(e)||isNaN(n)||isNaN(r)||isNaN(i)||isNaN(a)||!qe(o))throw new Error("Invalid arguments passed to jsPDF.triangle");return this.lines([[n-t,r-e],[i-n,a-r],[t-i,e-a]],t,e,[1,1],o,!0),this},y.__private__.roundedRect=y.roundedRect=function(t,e,n,r,i,a,o){if(isNaN(t)||isNaN(e)||isNaN(n)||isNaN(r)||isNaN(i)||isNaN(a)||!qe(o))throw new Error("Invalid arguments passed to jsPDF.roundedRect");var s=4/3*(Math.SQRT2-1);return i=Math.min(i,.5*n),a=Math.min(a,.5*r),this.lines([[n-2*i,0],[i*s,0,i,a-a*s,i,a],[0,r-2*a],[0,a*s,-i*s,a,-i,a],[2*i-n,0],[-i*s,0,-i,-a*s,-i,-a],[0,2*a-r],[0,-a*s,i*s,-a,i,-a]],t+i,e,[1,1],o,!0),this},y.__private__.ellipse=y.ellipse=function(t,e,n,r,i){if(isNaN(t)||isNaN(e)||isNaN(n)||isNaN(r)||!qe(i))throw new Error("Invalid arguments passed to jsPDF.ellipse");var a=4/3*(Math.SQRT2-1)*n,o=4/3*(Math.SQRT2-1)*r;return We(t+n,e),Ge(t+n,e-o,t+a,e-r,t,e-r),Ge(t-a,e-r,t-n,e-o,t-n,e),Ge(t-n,e+o,t-a,e+r,t,e+r),Ge(t+a,e+r,t+n,e+o,t+n,e),Te(i),this},y.__private__.circle=y.circle=function(t,e,n,r){if(isNaN(t)||isNaN(e)||isNaN(n)||!qe(r))throw new Error("Invalid arguments passed to jsPDF.circle");return this.ellipse(t,e,n,n,r)},y.setFont=function(t,e,n){return n&&(e=F(e,n)),At=Ne(t,e,{disableWarning:!1}),this};var Ye=y.__private__.getFont=y.getFont=function(){return Ft[Ne.apply(y,arguments)]};y.__private__.getFontList=y.getFontList=function(){var t,e,n={};for(t in It)if(It.hasOwnProperty(t))for(e in n[t]=[],It[t])It[t].hasOwnProperty(e)&&n[t].push(e);return n},y.addFont=function(t,e,n,r,i){var a=["StandardEncoding","MacRomanEncoding","Identity-H","WinAnsiEncoding"];return arguments[3]&&-1!==a.indexOf(arguments[3])?i=arguments[3]:arguments[3]&&-1==a.indexOf(arguments[3])&&(n=F(n,r)),pe.call(this,t,e,n,i=i||"Identity-H")};var Je,Xe=e.lineWidth||.200025,Ke=y.__private__.getLineWidth=y.getLineWidth=function(){return Xe},Ze=y.__private__.setLineWidth=y.setLineWidth=function(t){return Xe=t,lt(B(U(t))+" w"),this};y.__private__.setLineDash=E.API.setLineDash=E.API.setLineDashPattern=function(t,e){if(t=t||[],e=e||0,isNaN(e)||!Array.isArray(t))throw new Error("Invalid arguments passed to jsPDF.setLineDash");return t=t.map(function(t){return B(U(t))}).join(" "),e=B(U(e)),lt("["+t+"] "+e+" d"),this};var $e=y.__private__.getLineHeight=y.getLineHeight=function(){return pt*Je};y.__private__.getLineHeight=y.getLineHeight=function(){return pt*Je};var Qe=y.__private__.setLineHeightFactor=y.setLineHeightFactor=function(t){return"number"==typeof(t=t||1.15)&&(Je=t),this},tn=y.__private__.getLineHeightFactor=y.getLineHeightFactor=function(){return Je};Qe(e.lineHeight);var en=y.__private__.getHorizontalCoordinate=function(t){return U(t)},nn=y.__private__.getVerticalCoordinate=function(t){return _===S?t:Rt[$].mediaBox.topRightY-Rt[$].mediaBox.bottomLeftY-U(t)},rn=y.__private__.getHorizontalCoordinateString=y.getHorizontalCoordinateString=function(t){return B(en(t))},an=y.__private__.getVerticalCoordinateString=y.getVerticalCoordinateString=function(t){return B(nn(t))},on=e.strokeColor||"0 G";y.__private__.getStrokeColor=y.getDrawColor=function(){return ee(on)},y.__private__.setStrokeColor=y.setDrawColor=function(t,e,n,r){return on=ne({ch1:t,ch2:e,ch3:n,ch4:r,pdfColorType:"draw",precision:2}),lt(on),this};var sn=e.fillColor||"0 g";y.__private__.getFillColor=y.getFillColor=function(){return ee(sn)},y.__private__.setFillColor=y.setFillColor=function(t,e,n,r){return sn=ne({ch1:t,ch2:e,ch3:n,ch4:r,pdfColorType:"fill",precision:2}),lt(sn),this};var un=e.textColor||"0 g",cn=y.__private__.getTextColor=y.getTextColor=function(){return ee(un)};y.__private__.setTextColor=y.setTextColor=function(t,e,n,r){return un=ne({ch1:t,ch2:e,ch3:n,ch4:r,pdfColorType:"text",precision:3}),this};var ln=e.charSpace,hn=y.__private__.getCharSpace=y.getCharSpace=function(){return parseFloat(ln||0)};y.__private__.setCharSpace=y.setCharSpace=function(t){if(isNaN(t))throw new Error("Invalid argument passed to jsPDF.setCharSpace");return ln=t,this};var fn=0;y.CapJoinStyles={0:0,butt:0,but:0,miter:0,1:1,round:1,rounded:1,circle:1,2:2,projecting:2,project:2,square:2,bevel:2},y.__private__.setLineCap=y.setLineCap=function(t){var e=y.CapJoinStyles[t];if(void 0===e)throw new Error("Line cap style of '"+t+"' is not recognized. See or extend .CapJoinStyles property for valid styles");return fn=e,lt(e+" J"),this};var dn=0;y.__private__.setLineJoin=y.setLineJoin=function(t){var e=y.CapJoinStyles[t];if(void 0===e)throw new Error("Line join style of '"+t+"' is not recognized. See or extend .CapJoinStyles property for valid styles");return dn=e,lt(e+" j"),this},y.__private__.setLineMiterLimit=y.__private__.setMiterLimit=y.setLineMiterLimit=y.setMiterLimit=function(t){if(t=t||0,isNaN(t))throw new Error("Invalid argument passed to jsPDF.setLineMiterLimit");return lt(B(U(t))+" M"),this},y.GState=O,y.setGState=function(t){(t="string"==typeof t?Bt[Mt[t]]:pn(null,t)).equals(qt)||(lt("/"+t.id+" gs"),qt=t)};var pn=function(t,e){if(!t||!Mt[t]){var n=!1;for(var r in Bt)if(Bt.hasOwnProperty(r)&&Bt[r].equals(e)){n=!0;break}if(n)e=Bt[r];else{var i="GS"+(Object.keys(Bt).length+1).toString(10);Bt[i]=e,e.id=i}return t&&(Mt[t]=e.id),Dt.publish("addGState",e),e}};y.addGState=function(t,e){return pn(t,e),this},y.saveGraphicsState=function(){return lt("q"),jt.push({key:At,size:pt,color:un}),this},y.restoreGraphicsState=function(){lt("Q");var t=jt.pop();return At=t.key,pt=t.size,un=t.color,qt=null,this},y.setCurrentTransformationMatrix=function(t){return lt(t.toString()+" cm"),this},y.comment=function(t){return lt("#"+t),this};var gn=function(t,e){var n=t||0;Object.defineProperty(this,"x",{enumerable:!0,get:function(){return n},set:function(t){isNaN(t)||(n=parseFloat(t))}});var r=e||0;Object.defineProperty(this,"y",{enumerable:!0,get:function(){return r},set:function(t){isNaN(t)||(r=parseFloat(t))}});var i="pt";return Object.defineProperty(this,"type",{enumerable:!0,get:function(){return i},set:function(t){i=t.toString()}}),this},mn=function(t,e,n,r){gn.call(this,t,e),this.type="rect";var i=n||0;Object.defineProperty(this,"w",{enumerable:!0,get:function(){return i},set:function(t){isNaN(t)||(i=parseFloat(t))}});var a=r||0;return Object.defineProperty(this,"h",{enumerable:!0,get:function(){return a},set:function(t){isNaN(t)||(a=parseFloat(t))}}),this},vn=function(){this.page=Et,this.currentPage=$,this.pages=ot.slice(0),this.pagesContext=Rt.slice(0),this.x=_t,this.y=Pt,this.matrix=kt,this.width=wn($),this.height=Ln($),this.outputDestination=ut,this.id="",this.objectNumber=-1};vn.prototype.restore=function(){Et=this.page,$=this.currentPage,Rt=this.pagesContext,ot=this.pages,_t=this.x,Pt=this.y,kt=this.matrix,Nn($,this.width),xn($,this.height),ut=this.outputDestination};var bn=function(t,e,n,r,i){Ht.push(new vn),Et=$=0,ot=[],_t=t,Pt=e,kt=i,me([n,r])};for(var yn in y.beginFormObject=function(t,e,n,r,i){return bn(t,e,n,r,i),this},y.endFormObject=function(t){return function(t){if(Ut[t])Ht.pop().restore();else{var e=new vn,n="Xo"+(Object.keys(zt).length+1).toString(10);e.id=n,Ut[t]=n,zt[n]=e,Dt.publish("addFormObject",e),Ht.pop().restore()}}(t),this},y.doFormObject=function(t,e){var n=zt[Ut[t]];return lt("q"),lt(e.toString()+" cm"),lt("/"+n.id+" Do"),lt("Q"),this},y.getFormObject=function(t){var e=zt[Ut[t]];return{x:e.x,y:e.y,width:e.width,height:e.height,matrix:e.matrix}},y.save=function(t,e){return t=t||"generated.pdf",(e=e||{}).returnPromise=e.returnPromise||!1,!1===e.returnPromise?(l(ke(Pe()),t),"function"==typeof l.unload&&i.setTimeout&&setTimeout(l.unload,911),this):new Promise(function(e,n){try{var r=l(ke(Pe()),t);"function"==typeof l.unload&&i.setTimeout&&setTimeout(l.unload,911),e(r)}catch(a){n(a.message)}})},E.API)E.API.hasOwnProperty(yn)&&("events"===yn&&E.API.events.length?function(t,e){var n,r,i;for(i=e.length-1;-1!==i;i--)n=e[i][0],r=e[i][1],t.subscribe.apply(t,[n].concat("function"==typeof r?[r]:r))}(Dt,E.API.events):y[yn]=E.API[yn]);function wn(t){return Rt[t].mediaBox.topRightX-Rt[t].mediaBox.bottomLeftX}function Nn(t,e){Rt[t].mediaBox.topRightX=e+Rt[t].mediaBox.bottomLeftX}function Ln(t){return Rt[t].mediaBox.topRightY-Rt[t].mediaBox.bottomLeftY}function xn(t,e){Rt[t].mediaBox.topRightY=e+Rt[t].mediaBox.bottomLeftY}var An=y.getPageWidth=function(t){return wn(t=t||$)/St},Sn=y.setPageWidth=function(t,e){Nn(t,e*St)},_n=y.getPageHeight=function(t){return Ln(t=t||$)/St},Pn=y.setPageHeight=function(t,e){xn(t,e*St)};return y.internal={pdfEscape:ge,getStyle:Ee,getFont:Ye,getFontSize:mt,getCharSpace:hn,getTextColor:cn,getLineHeight:$e,getLineHeightFactor:tn,getLineWidth:Ke,write:ht,getHorizontalCoordinate:en,getVerticalCoordinate:nn,getCoordinateString:rn,getVerticalCoordinateString:an,collections:{},newObject:Xt,newAdditionalObject:$t,newObjectDeferred:Kt,newObjectDeferredBegin:Zt,getFilters:re,putStream:ie,events:Dt,scaleFactor:St,pageSize:{getWidth:function(){return An($)},setWidth:function(t){Sn($,t)},getHeight:function(){return _n($)},setHeight:function(t){Pn($,t)}},encryptionOptions:m,encryption:je,getEncryptor:function(t){return null!==m?je.encryptor(t,0):function(t){return t}},output:Fe,getNumberOfPages:we,pages:ot,out:lt,f2:T,f3:z,getPageInfo:Ce,getPageInfoByObjId:Oe,getCurrentPageInfo:Be,getPDFVersion:N,Point:gn,Rectangle:mn,Matrix:Wt,hasHotfix:Ie},Object.defineProperty(y.internal.pageSize,"width",{get:function(){return An($)},set:function(t){Sn($,t)},enumerable:!0,configurable:!0}),Object.defineProperty(y.internal.pageSize,"height",{get:function(){return _n($)},set:function(t){Pn($,t)},enumerable:!0,configurable:!0}),function(t){for(var e=0,n=dt.length;e<n;e++){var r=pe.call(this,t[e][0],t[e][1],t[e][2],dt[e][3],!0);!1===v&&(b[r]=!0);var i=t[e][0].split("-");de({id:r,fontName:i[0],fontStyle:i[1]||""})}Dt.publish("addFonts",{fonts:Ft,dictionary:It})}.call(y,dt),At="F1",ve(s,r),Dt.publish("initialized"),y}I.prototype.lsbFirstWord=function(t){return String.fromCharCode(255&t,t>>8&255,t>>16&255,t>>24&255)},I.prototype.toHexString=function(t){return t.split("").map(function(t){return("0"+(255&t.charCodeAt(0)).toString(16)).slice(-2)}).join("")},I.prototype.hexToBytes=function(t){for(var e=[],n=0;n<t.length;n+=2)e.push(String.fromCharCode(parseInt(t.substr(n,2),16)));return e.join("")},I.prototype.processOwnerPassword=function(t,e){return k(S(e).substr(0,5),t)},I.prototype.encryptor=function(t,e){var n=S(this.encryptionKey+String.fromCharCode(255&t,t>>8&255,t>>16&255,255&e,e>>8&255)).substr(0,10);return function(t){return k(n,t)}},O.prototype.equals=function(e){var n,r="id,objectNumber,equals";if(!e||(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e)!==(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(this))return!1;var i=0;for(n in this)if(!(r.indexOf(n)>=0)){if(this.hasOwnProperty(n)&&!e.hasOwnProperty(n))return!1;if(this[n]!==e[n])return!1;i++}for(n in e)e.hasOwnProperty(n)&&r.indexOf(n)<0&&i--;return 0===i},E.API={events:[]},E.version="3.0.3";var R=E.API,D=1,T=function(t){return t.replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)")},z=function(t){return t.replace(/\\\\/g,"\\").replace(/\\\(/g,"(").replace(/\\\)/g,")")},U=function(t){return t.toFixed(2)},H=function(t){return t.toFixed(5)};R.__acroform__={};var W=function(t,e){t.prototype=Object.create(e.prototype),t.prototype.constructor=t},V=function(t){return t*D},G=function(t){var e=new ct,n=xt.internal.getHeight(t)||0,r=xt.internal.getWidth(t)||0;return e.BBox=[0,0,Number(U(r)),Number(U(n))],e},Y=R.__acroform__.setBit=function(t,e){if(t=t||0,e=e||0,isNaN(t)||isNaN(e))throw new Error("Invalid arguments passed to jsPDF.API.__acroform__.setBit");return t|1<<e},J=R.__acroform__.clearBit=function(t,e){if(t=t||0,e=e||0,isNaN(t)||isNaN(e))throw new Error("Invalid arguments passed to jsPDF.API.__acroform__.clearBit");return t&~(1<<e)},X=R.__acroform__.getBit=function(t,e){if(isNaN(t)||isNaN(e))throw new Error("Invalid arguments passed to jsPDF.API.__acroform__.getBit");return t&1<<e?1:0},K=R.__acroform__.getBitForPdf=function(t,e){if(isNaN(t)||isNaN(e))throw new Error("Invalid arguments passed to jsPDF.API.__acroform__.getBitForPdf");return X(t,e-1)},Z=R.__acroform__.setBitForPdf=function(t,e){if(isNaN(t)||isNaN(e))throw new Error("Invalid arguments passed to jsPDF.API.__acroform__.setBitForPdf");return Y(t,e-1)},$=R.__acroform__.clearBitForPdf=function(t,e){if(isNaN(t)||isNaN(e))throw new Error("Invalid arguments passed to jsPDF.API.__acroform__.clearBitForPdf");return J(t,e-1)},Q=R.__acroform__.calculateCoordinates=function(t,e){var n=e.internal.getHorizontalCoordinate,r=e.internal.getVerticalCoordinate,i=t[0],a=t[1],o=t[2],s=t[3],u={};return u.lowerLeft_X=n(i)||0,u.lowerLeft_Y=r(a+s)||0,u.upperRight_X=n(i+o)||0,u.upperRight_Y=r(a)||0,[Number(U(u.lowerLeft_X)),Number(U(u.lowerLeft_Y)),Number(U(u.upperRight_X)),Number(U(u.upperRight_Y))]},tt=function(t){if(t.appearanceStreamContent)return t.appearanceStreamContent;if(t.V||t.DV){var e=[],n=t._V||t.DV,r=et(t,n),i=t.scope.internal.getFont(t.fontName,t.fontStyle).id;e.push("/Tx BMC"),e.push("q"),e.push("BT"),e.push(t.scope.__private__.encodeColorString(t.color)),e.push("/"+i+" "+U(r.fontSize)+" Tf"),e.push("1 0 0 1 0 0 Tm"),e.push(r.text),e.push("ET"),e.push("Q"),e.push("EMC");var a=G(t);return a.scope=t.scope,a.stream=e.join("\n"),a}},et=function(t,e){var n=0===t.fontSize?t.maxFontSize:t.fontSize,r={text:"",fontSize:""},i=(e=")"==(e="("==e.substr(0,1)?e.substr(1):e).substr(e.length-1)?e.substr(0,e.length-1):e).split(" ");i=t.multiline?i.map(function(t){return t.split("\n")}):i.map(function(t){return[t]});var a=n,o=xt.internal.getHeight(t)||0;o=o<0?-o:o;var s=xt.internal.getWidth(t)||0;s=s<0?-s:s;var u=function(e,n,r){if(e+1<i.length){var a=n+" "+i[e+1][0];return nt(a,t,r).width<=s-4}return!1};a++;t:for(;a>0;){e="",a--;var c,l,h=nt("3",t,a).height,f=t.multiline?o-a:(o-h)/2,d=f+=2,p=0,g=0,m=0;if(a<=0){e="(...) Tj\n",e+="% Width of Text: "+nt(e,t,a=12).width+", FieldWidth:"+s+"\n";break}for(var v="",b=0,y=0;y<i.length;y++)if(i.hasOwnProperty(y)){var w=!1;if(1!==i[y].length&&m!==i[y].length-1){if((h+2)*(b+2)+2>o)continue t;v+=i[y][m],w=!0,g=y,y--}else{v=" "==(v+=i[y][m]+" ").substr(v.length-1)?v.substr(0,v.length-1):v;var N=parseInt(y),L=u(N,v,a),x=y>=i.length-1;if(L&&!x){v+=" ",m=0;continue}if(L||x){if(x)g=N;else if(t.multiline&&(h+2)*(b+2)+2>o)continue t}else{if(!t.multiline)continue t;if((h+2)*(b+2)+2>o)continue t;g=N}}for(var A="",S=p;S<=g;S++){var _=i[S];if(t.multiline){if(S===g){A+=_[m]+" ",m=(m+1)%_.length;continue}if(S===p){A+=_[_.length-1]+" ";continue}}A+=_[0]+" "}switch(A=" "==A.substr(A.length-1)?A.substr(0,A.length-1):A,l=nt(A,t,a).width,t.textAlign){case"right":c=s-l-2;break;case"center":c=(s-l)/2;break;default:c=2}e+=U(c)+" "+U(d)+" Td\n",e+="("+T(A)+") Tj\n",e+=-U(c)+" 0 Td\n",d=-(a+2),l=0,p=w?g:g+1,b++,v=""}break}return r.text=e,r.fontSize=a,r},nt=function(t,e,n){var r=e.scope.internal.getFont(e.fontName,e.fontStyle),i=e.scope.getStringUnitWidth(t,{font:r,fontSize:parseFloat(n),charSpace:0})*parseFloat(n);return{height:e.scope.getStringUnitWidth("3",{font:r,fontSize:parseFloat(n),charSpace:0})*parseFloat(n)*1.5,width:i}},rt={fields:[],xForms:[],acroFormDictionaryRoot:null,printedOut:!1,internal:null,isInitialized:!1},it=function(t,e){var n={type:"reference",object:t};void 0===e.internal.getPageInfo(t.page).pageContext.annotations.find(function(t){return t.type===n.type&&t.object===n.object})&&e.internal.getPageInfo(t.page).pageContext.annotations.push(n)},at=function(e,n){if(n.scope=e,void 0!==e.internal&&(void 0===e.internal.acroformPlugin||!1===e.internal.acroformPlugin.isInitialized)){if(ht.FieldNum=0,e.internal.acroformPlugin=JSON.parse(JSON.stringify(rt)),e.internal.acroformPlugin.acroFormDictionaryRoot)throw new Error("Exception while creating AcroformDictionary");D=e.internal.scaleFactor,e.internal.acroformPlugin.acroFormDictionaryRoot=new lt,e.internal.acroformPlugin.acroFormDictionaryRoot.scope=e,e.internal.acroformPlugin.acroFormDictionaryRoot._eventID=e.internal.events.subscribe("postPutResources",function(){!function(t){t.internal.events.unsubscribe(t.internal.acroformPlugin.acroFormDictionaryRoot._eventID),delete t.internal.acroformPlugin.acroFormDictionaryRoot._eventID,t.internal.acroformPlugin.printedOut=!0}(e)}),e.internal.events.subscribe("buildDocument",function(){!function(t){t.internal.acroformPlugin.acroFormDictionaryRoot.objId=void 0;var e=t.internal.acroformPlugin.acroFormDictionaryRoot.Fields;for(var n in e)if(e.hasOwnProperty(n)){var r=e[n];r.objId=void 0,r.hasAnnotation&&it(r,t)}}(e)}),e.internal.events.subscribe("putCatalog",function(){!function(t){if(void 0===t.internal.acroformPlugin.acroFormDictionaryRoot)throw new Error("putCatalogCallback: Root missing.");t.internal.write("/AcroForm "+t.internal.acroformPlugin.acroFormDictionaryRoot.objId+" 0 R")}(e)}),e.internal.events.subscribe("postPutPages",function(n){!function(e,n){var r=!e;for(var i in e||(n.internal.newObjectDeferredBegin(n.internal.acroformPlugin.acroFormDictionaryRoot.objId,!0),n.internal.acroformPlugin.acroFormDictionaryRoot.putStream()),e=e||n.internal.acroformPlugin.acroFormDictionaryRoot.Kids)if(e.hasOwnProperty(i)){var a=e[i],o=[],s=a.Rect;if(a.Rect&&(a.Rect=Q(a.Rect,n)),n.internal.newObjectDeferredBegin(a.objId,!0),a.DA=xt.createDefaultAppearanceStream(a),"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(a)&&"function"==typeof a.getKeyValueListForStream&&(o=a.getKeyValueListForStream()),a.Rect=s,a.hasAppearanceStream&&!a.appearanceStreamContent){var u=tt(a);o.push({key:"AP",value:"<</N "+u+">>"}),n.internal.acroformPlugin.xForms.push(u)}if(a.appearanceStreamContent){var c="";for(var l in a.appearanceStreamContent)if(a.appearanceStreamContent.hasOwnProperty(l)){var h=a.appearanceStreamContent[l];if(c+="/"+l+" ",c+="<<",Object.keys(h).length>=1||Array.isArray(h)){for(var i in h)if(h.hasOwnProperty(i)){var f=h[i];"function"==typeof f&&(f=f.call(n,a)),c+="/"+i+" "+f+" ",n.internal.acroformPlugin.xForms.indexOf(f)>=0||n.internal.acroformPlugin.xForms.push(f)}}else"function"==typeof(f=h)&&(f=f.call(n,a)),c+="/"+i+" "+f,n.internal.acroformPlugin.xForms.indexOf(f)>=0||n.internal.acroformPlugin.xForms.push(f);c+=">>"}o.push({key:"AP",value:"<<\n"+c+">>"})}n.internal.putStream({additionalKeyValues:o,objectId:a.objId}),n.internal.out("endobj")}r&&function(e,n){for(var r in e)if(e.hasOwnProperty(r)){var i=r,a=e[r];n.internal.newObjectDeferredBegin(a.objId,!0),"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(a)&&"function"==typeof a.putStream&&a.putStream(),delete e[i]}}(n.internal.acroformPlugin.xForms,n)}(n,e)}),e.internal.acroformPlugin.isInitialized=!0}},ot=R.__acroform__.arrayToPdfArray=function(e,n,r){var i=function(t){return t};if(Array.isArray(e)){for(var a="[",o=0;o<e.length;o++)switch(0!==o&&(a+=" "),(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e[o])){case"boolean":case"number":case"object":a+=e[o].toString();break;case"string":"/"!==e[o].substr(0,1)?(void 0!==n&&r&&(i=r.internal.getEncryptor(n)),a+="("+T(i(e[o].toString()))+")"):a+=e[o].toString()}return a+"]"}throw new Error("Invalid argument passed to jsPDF.__acroform__.arrayToPdfArray")},st=function(t,e,n){var r=function(t){return t};return void 0!==e&&n&&(r=n.internal.getEncryptor(e)),(t=t||"").toString(),"("+T(r(t))+")"},ut=function(){this._objId=void 0,this._scope=void 0,Object.defineProperty(this,"objId",{get:function(){if(void 0===this._objId){if(void 0===this.scope)return;this._objId=this.scope.internal.newObjectDeferred()}return this._objId},set:function(t){this._objId=t}}),Object.defineProperty(this,"scope",{value:this._scope,writable:!0})};ut.prototype.toString=function(){return this.objId+" 0 R"},ut.prototype.putStream=function(){var t=this.getKeyValueListForStream();this.scope.internal.putStream({data:this.stream,additionalKeyValues:t,objectId:this.objId}),this.scope.internal.out("endobj")},ut.prototype.getKeyValueListForStream=function(){var t=[],e=Object.getOwnPropertyNames(this).filter(function(t){return"content"!=t&&"appearanceStreamContent"!=t&&"scope"!=t&&"objId"!=t&&"_"!=t.substring(0,1)});for(var n in e)if(!1===Object.getOwnPropertyDescriptor(this,e[n]).configurable){var r=e[n],i=this[r];i&&(Array.isArray(i)?t.push({key:r,value:ot(i,this.objId,this.scope)}):i instanceof ut?(i.scope=this.scope,t.push({key:r,value:i.objId+" 0 R"})):"function"!=typeof i&&t.push({key:r,value:i}))}return t};var ct=function(){ut.call(this),Object.defineProperty(this,"Type",{value:"/XObject",configurable:!1,writable:!0}),Object.defineProperty(this,"Subtype",{value:"/Form",configurable:!1,writable:!0}),Object.defineProperty(this,"FormType",{value:1,configurable:!1,writable:!0});var t,e=[];Object.defineProperty(this,"BBox",{configurable:!1,get:function(){return e},set:function(t){e=t}}),Object.defineProperty(this,"Resources",{value:"2 0 R",configurable:!1,writable:!0}),Object.defineProperty(this,"stream",{enumerable:!1,configurable:!0,set:function(e){t=e.trim()},get:function(){return t||null}})};W(ct,ut);var lt=function(){ut.call(this);var t,e=[];Object.defineProperty(this,"Kids",{enumerable:!1,configurable:!0,get:function(){return e.length>0?e:void 0}}),Object.defineProperty(this,"Fields",{enumerable:!1,configurable:!1,get:function(){return e}}),Object.defineProperty(this,"DA",{enumerable:!1,configurable:!1,get:function(){if(t){var e=function(t){return t};return this.scope&&(e=this.scope.internal.getEncryptor(this.objId)),"("+T(e(t))+")"}},set:function(e){t=e}})};W(lt,ut);var ht=function t(){ut.call(this);var e=4;Object.defineProperty(this,"F",{enumerable:!1,configurable:!1,get:function(){return e},set:function(t){if(isNaN(t))throw new Error('Invalid value "'+t+'" for attribute F supplied.');e=t}}),Object.defineProperty(this,"showWhenPrinted",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(e,3))},set:function(t){!0===Boolean(t)?this.F=Z(e,3):this.F=$(e,3)}});var n=0;Object.defineProperty(this,"Ff",{enumerable:!1,configurable:!1,get:function(){return n},set:function(t){if(isNaN(t))throw new Error('Invalid value "'+t+'" for attribute Ff supplied.');n=t}});var r=[];Object.defineProperty(this,"Rect",{enumerable:!1,configurable:!1,get:function(){if(0!==r.length)return r},set:function(t){r=void 0!==t?t:[]}}),Object.defineProperty(this,"x",{enumerable:!0,configurable:!0,get:function(){return!r||isNaN(r[0])?0:r[0]},set:function(t){r[0]=t}}),Object.defineProperty(this,"y",{enumerable:!0,configurable:!0,get:function(){return!r||isNaN(r[1])?0:r[1]},set:function(t){r[1]=t}}),Object.defineProperty(this,"width",{enumerable:!0,configurable:!0,get:function(){return!r||isNaN(r[2])?0:r[2]},set:function(t){r[2]=t}}),Object.defineProperty(this,"height",{enumerable:!0,configurable:!0,get:function(){return!r||isNaN(r[3])?0:r[3]},set:function(t){r[3]=t}});var i="";Object.defineProperty(this,"FT",{enumerable:!0,configurable:!1,get:function(){return i},set:function(t){switch(t){case"/Btn":case"/Tx":case"/Ch":case"/Sig":i=t;break;default:throw new Error('Invalid value "'+t+'" for attribute FT supplied.')}}});var a=null;Object.defineProperty(this,"T",{enumerable:!0,configurable:!1,get:function(){if(!a||a.length<1){if(this instanceof yt)return;a="FieldObject"+t.FieldNum++}var e=function(t){return t};return this.scope&&(e=this.scope.internal.getEncryptor(this.objId)),"("+T(e(a))+")"},set:function(t){a=t.toString()}}),Object.defineProperty(this,"fieldName",{configurable:!0,enumerable:!0,get:function(){return a},set:function(t){a=t}});var o="helvetica";Object.defineProperty(this,"fontName",{enumerable:!0,configurable:!0,get:function(){return o},set:function(t){o=t}});var s="normal";Object.defineProperty(this,"fontStyle",{enumerable:!0,configurable:!0,get:function(){return s},set:function(t){s=t}});var u=0;Object.defineProperty(this,"fontSize",{enumerable:!0,configurable:!0,get:function(){return u},set:function(t){u=t}});var c=void 0;Object.defineProperty(this,"maxFontSize",{enumerable:!0,configurable:!0,get:function(){return void 0===c?50/D:c},set:function(t){c=t}});var l="black";Object.defineProperty(this,"color",{enumerable:!0,configurable:!0,get:function(){return l},set:function(t){l=t}});var h="/F1 0 Tf 0 g";Object.defineProperty(this,"DA",{enumerable:!0,configurable:!1,get:function(){if(!(!h||this instanceof yt||this instanceof Nt))return st(h,this.objId,this.scope)},set:function(t){t=t.toString(),h=t}});var f=null;Object.defineProperty(this,"DV",{enumerable:!1,configurable:!1,get:function(){if(f)return this instanceof mt==0?st(f,this.objId,this.scope):f},set:function(t){t=t.toString(),f=this instanceof mt==0?"("===t.substr(0,1)?z(t.substr(1,t.length-2)):z(t):t}}),Object.defineProperty(this,"defaultValue",{enumerable:!0,configurable:!0,get:function(){return this instanceof mt==1?z(f.substr(1,f.length-1)):f},set:function(t){t=t.toString(),f=this instanceof mt==1?"/"+t:t}});var d=null;Object.defineProperty(this,"_V",{enumerable:!1,configurable:!1,get:function(){if(d)return d},set:function(t){this.V=t}}),Object.defineProperty(this,"V",{enumerable:!1,configurable:!1,get:function(){if(d)return this instanceof mt==0?st(d,this.objId,this.scope):d},set:function(t){t=t.toString(),d=this instanceof mt==0?"("===t.substr(0,1)?z(t.substr(1,t.length-2)):z(t):t}}),Object.defineProperty(this,"value",{enumerable:!0,configurable:!0,get:function(){return this instanceof mt==1?z(d.substr(1,d.length-1)):d},set:function(t){t=t.toString(),d=this instanceof mt==1?"/"+t:t}}),Object.defineProperty(this,"hasAnnotation",{enumerable:!0,configurable:!0,get:function(){return this.Rect}}),Object.defineProperty(this,"Type",{enumerable:!0,configurable:!1,get:function(){return this.hasAnnotation?"/Annot":null}}),Object.defineProperty(this,"Subtype",{enumerable:!0,configurable:!1,get:function(){return this.hasAnnotation?"/Widget":null}});var p,g=!1;Object.defineProperty(this,"hasAppearanceStream",{enumerable:!0,configurable:!0,get:function(){return g},set:function(t){t=Boolean(t),g=t}}),Object.defineProperty(this,"page",{enumerable:!0,configurable:!0,get:function(){if(p)return p},set:function(t){p=t}}),Object.defineProperty(this,"readOnly",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,1))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,1):this.Ff=$(this.Ff,1)}}),Object.defineProperty(this,"required",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,2))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,2):this.Ff=$(this.Ff,2)}}),Object.defineProperty(this,"noExport",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,3))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,3):this.Ff=$(this.Ff,3)}});var m=null;Object.defineProperty(this,"Q",{enumerable:!0,configurable:!1,get:function(){if(null!==m)return m},set:function(t){if(-1===[0,1,2].indexOf(t))throw new Error('Invalid value "'+t+'" for attribute Q supplied.');m=t}}),Object.defineProperty(this,"textAlign",{get:function(){var t;switch(m){case 0:default:t="left";break;case 1:t="center";break;case 2:t="right"}return t},configurable:!0,enumerable:!0,set:function(t){switch(t){case"right":case 2:m=2;break;case"center":case 1:m=1;break;default:m=0}}})};W(ht,ut);var ft=function(){ht.call(this),this.FT="/Ch",this.V="()",this.fontName="zapfdingbats";var t=0;Object.defineProperty(this,"TI",{enumerable:!0,configurable:!1,get:function(){return t},set:function(e){t=e}}),Object.defineProperty(this,"topIndex",{enumerable:!0,configurable:!0,get:function(){return t},set:function(e){t=e}});var e=[];Object.defineProperty(this,"Opt",{enumerable:!0,configurable:!1,get:function(){return ot(e,this.objId,this.scope)},set:function(t){var n,r;r=[],"string"==typeof(n=t)&&(r=function(t,e,n){n||(n=1);for(var r,i=[];r=e.exec(t);)i.push(r[n]);return i}(n,/\((.*?)\)/g)),e=r}}),this.getOptions=function(){return e},this.setOptions=function(t){e=t,this.sort&&e.sort()},this.addOption=function(t){t=(t=t||"").toString(),e.push(t),this.sort&&e.sort()},this.removeOption=function(t,n){for(n=n||!1,t=(t=t||"").toString();-1!==e.indexOf(t)&&(e.splice(e.indexOf(t),1),!1!==n););},Object.defineProperty(this,"combo",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,18))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,18):this.Ff=$(this.Ff,18)}}),Object.defineProperty(this,"edit",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,19))},set:function(t){!0===this.combo&&(!0===Boolean(t)?this.Ff=Z(this.Ff,19):this.Ff=$(this.Ff,19))}}),Object.defineProperty(this,"sort",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,20))},set:function(t){!0===Boolean(t)?(this.Ff=Z(this.Ff,20),e.sort()):this.Ff=$(this.Ff,20)}}),Object.defineProperty(this,"multiSelect",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,22))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,22):this.Ff=$(this.Ff,22)}}),Object.defineProperty(this,"doNotSpellCheck",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,23))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,23):this.Ff=$(this.Ff,23)}}),Object.defineProperty(this,"commitOnSelChange",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,27))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,27):this.Ff=$(this.Ff,27)}}),this.hasAppearanceStream=!1};W(ft,ht);var dt=function(){ft.call(this),this.fontName="helvetica",this.combo=!1};W(dt,ft);var pt=function(){dt.call(this),this.combo=!0};W(pt,dt);var gt=function(){pt.call(this),this.edit=!0};W(gt,pt);var mt=function(){ht.call(this),this.FT="/Btn",Object.defineProperty(this,"noToggleToOff",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,15))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,15):this.Ff=$(this.Ff,15)}}),Object.defineProperty(this,"radio",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,16))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,16):this.Ff=$(this.Ff,16)}}),Object.defineProperty(this,"pushButton",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,17))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,17):this.Ff=$(this.Ff,17)}}),Object.defineProperty(this,"radioIsUnison",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,26))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,26):this.Ff=$(this.Ff,26)}});var e,n={};Object.defineProperty(this,"MK",{enumerable:!1,configurable:!1,get:function(){var t=function(t){return t};if(this.scope&&(t=this.scope.internal.getEncryptor(this.objId)),0!==Object.keys(n).length){var e,r=[];for(e in r.push("<<"),n)r.push("/"+e+" ("+T(t(n[e]))+")");return r.push(">>"),r.join("\n")}},set:function(e){"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e)&&(n=e)}}),Object.defineProperty(this,"caption",{enumerable:!0,configurable:!0,get:function(){return n.CA||""},set:function(t){"string"==typeof t&&(n.CA=t)}}),Object.defineProperty(this,"AS",{enumerable:!1,configurable:!1,get:function(){return e},set:function(t){e=t}}),Object.defineProperty(this,"appearanceState",{enumerable:!0,configurable:!0,get:function(){return e.substr(1,e.length-1)},set:function(t){e="/"+t}})};W(mt,ht);var vt=function(){mt.call(this),this.pushButton=!0};W(vt,mt);var bt=function(){mt.call(this),this.radio=!0,this.pushButton=!1;var t=[];Object.defineProperty(this,"Kids",{enumerable:!0,configurable:!1,get:function(){return t},set:function(e){t=void 0!==e?e:[]}})};W(bt,mt);var yt=function(){var e,n;ht.call(this),Object.defineProperty(this,"Parent",{enumerable:!1,configurable:!1,get:function(){return e},set:function(t){e=t}}),Object.defineProperty(this,"optionName",{enumerable:!1,configurable:!0,get:function(){return n},set:function(t){n=t}});var r,i={};Object.defineProperty(this,"MK",{enumerable:!1,configurable:!1,get:function(){var t=function(t){return t};this.scope&&(t=this.scope.internal.getEncryptor(this.objId));var e,n=[];for(e in n.push("<<"),i)n.push("/"+e+" ("+T(t(i[e]))+")");return n.push(">>"),n.join("\n")},set:function(e){"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e)&&(i=e)}}),Object.defineProperty(this,"caption",{enumerable:!0,configurable:!0,get:function(){return i.CA||""},set:function(t){"string"==typeof t&&(i.CA=t)}}),Object.defineProperty(this,"AS",{enumerable:!1,configurable:!1,get:function(){return r},set:function(t){r=t}}),Object.defineProperty(this,"appearanceState",{enumerable:!0,configurable:!0,get:function(){return r.substr(1,r.length-1)},set:function(t){r="/"+t}}),this.caption="l",this.appearanceState="Off",this._AppearanceType=xt.RadioButton.Circle,this.appearanceStreamContent=this._AppearanceType.createAppearanceStream(this.optionName)};W(yt,ht),bt.prototype.setAppearance=function(t){if(!("createAppearanceStream"in t)||!("getCA"in t))throw new Error("Couldn't assign Appearance to RadioButton. Appearance was Invalid!");for(var e in this.Kids)if(this.Kids.hasOwnProperty(e)){var n=this.Kids[e];n.appearanceStreamContent=t.createAppearanceStream(n.optionName),n.caption=t.getCA()}},bt.prototype.createOption=function(t){var e=new yt;return e.Parent=this,e.optionName=t,this.Kids.push(e),At.call(this.scope,e),e};var wt=function(){mt.call(this),this.fontName="zapfdingbats",this.caption="3",this.appearanceState="On",this.value="On",this.textAlign="center",this.appearanceStreamContent=xt.CheckBox.createAppearanceStream()};W(wt,mt);var Nt=function(){ht.call(this),this.FT="/Tx",Object.defineProperty(this,"multiline",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,13))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,13):this.Ff=$(this.Ff,13)}}),Object.defineProperty(this,"fileSelect",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,21))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,21):this.Ff=$(this.Ff,21)}}),Object.defineProperty(this,"doNotSpellCheck",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,23))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,23):this.Ff=$(this.Ff,23)}}),Object.defineProperty(this,"doNotScroll",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,24))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,24):this.Ff=$(this.Ff,24)}}),Object.defineProperty(this,"comb",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,25))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,25):this.Ff=$(this.Ff,25)}}),Object.defineProperty(this,"richText",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,26))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,26):this.Ff=$(this.Ff,26)}});var t=null;Object.defineProperty(this,"MaxLen",{enumerable:!0,configurable:!1,get:function(){return t},set:function(e){t=e}}),Object.defineProperty(this,"maxLength",{enumerable:!0,configurable:!0,get:function(){return t},set:function(e){Number.isInteger(e)&&(t=e)}}),Object.defineProperty(this,"hasAppearanceStream",{enumerable:!0,configurable:!0,get:function(){return this.V||this.DV}})};W(Nt,ht);var Lt=function(){Nt.call(this),Object.defineProperty(this,"password",{enumerable:!0,configurable:!0,get:function(){return Boolean(K(this.Ff,14))},set:function(t){!0===Boolean(t)?this.Ff=Z(this.Ff,14):this.Ff=$(this.Ff,14)}}),this.password=!0};W(Lt,Nt);var xt={CheckBox:{createAppearanceStream:function(){return{N:{On:xt.CheckBox.YesNormal},D:{On:xt.CheckBox.YesPushDown,Off:xt.CheckBox.OffPushDown}}},YesPushDown:function(t){var e=G(t);e.scope=t.scope;var n=[],r=t.scope.internal.getFont(t.fontName,t.fontStyle).id,i=t.scope.__private__.encodeColorString(t.color),a=et(t,t.caption);return n.push("0.749023 g"),n.push("0 0 "+U(xt.internal.getWidth(t))+" "+U(xt.internal.getHeight(t))+" re"),n.push("f"),n.push("BMC"),n.push("q"),n.push("0 0 1 rg"),n.push("/"+r+" "+U(a.fontSize)+" Tf "+i),n.push("BT"),n.push(a.text),n.push("ET"),n.push("Q"),n.push("EMC"),e.stream=n.join("\n"),e},YesNormal:function(t){var e=G(t);e.scope=t.scope;var n=t.scope.internal.getFont(t.fontName,t.fontStyle).id,r=t.scope.__private__.encodeColorString(t.color),i=[],a=xt.internal.getHeight(t),o=xt.internal.getWidth(t),s=et(t,t.caption);return i.push("1 g"),i.push("0 0 "+U(o)+" "+U(a)+" re"),i.push("f"),i.push("q"),i.push("0 0 1 rg"),i.push("0 0 "+U(o-1)+" "+U(a-1)+" re"),i.push("W"),i.push("n"),i.push("0 g"),i.push("BT"),i.push("/"+n+" "+U(s.fontSize)+" Tf "+r),i.push(s.text),i.push("ET"),i.push("Q"),e.stream=i.join("\n"),e},OffPushDown:function(t){var e=G(t);e.scope=t.scope;var n=[];return n.push("0.749023 g"),n.push("0 0 "+U(xt.internal.getWidth(t))+" "+U(xt.internal.getHeight(t))+" re"),n.push("f"),e.stream=n.join("\n"),e}},RadioButton:{Circle:{createAppearanceStream:function(t){var e={D:{Off:xt.RadioButton.Circle.OffPushDown},N:{}};return e.N[t]=xt.RadioButton.Circle.YesNormal,e.D[t]=xt.RadioButton.Circle.YesPushDown,e},getCA:function(){return"l"},YesNormal:function(t){var e=G(t);e.scope=t.scope;var n=[],r=xt.internal.getWidth(t)<=xt.internal.getHeight(t)?xt.internal.getWidth(t)/4:xt.internal.getHeight(t)/4;r=Number((.9*r).toFixed(5));var i=xt.internal.Bezier_C,a=Number((r*i).toFixed(5));return n.push("q"),n.push("1 0 0 1 "+H(xt.internal.getWidth(t)/2)+" "+H(xt.internal.getHeight(t)/2)+" cm"),n.push(r+" 0 m"),n.push(r+" "+a+" "+a+" "+r+" 0 "+r+" c"),n.push("-"+a+" "+r+" -"+r+" "+a+" -"+r+" 0 c"),n.push("-"+r+" -"+a+" -"+a+" -"+r+" 0 -"+r+" c"),n.push(a+" -"+r+" "+r+" -"+a+" "+r+" 0 c"),n.push("f"),n.push("Q"),e.stream=n.join("\n"),e},YesPushDown:function(t){var e=G(t);e.scope=t.scope;var n=[],r=xt.internal.getWidth(t)<=xt.internal.getHeight(t)?xt.internal.getWidth(t)/4:xt.internal.getHeight(t)/4;r=Number((.9*r).toFixed(5));var i=Number((2*r).toFixed(5)),a=Number((i*xt.internal.Bezier_C).toFixed(5)),o=Number((r*xt.internal.Bezier_C).toFixed(5));return n.push("0.749023 g"),n.push("q"),n.push("1 0 0 1 "+H(xt.internal.getWidth(t)/2)+" "+H(xt.internal.getHeight(t)/2)+" cm"),n.push(i+" 0 m"),n.push(i+" "+a+" "+a+" "+i+" 0 "+i+" c"),n.push("-"+a+" "+i+" -"+i+" "+a+" -"+i+" 0 c"),n.push("-"+i+" -"+a+" -"+a+" -"+i+" 0 -"+i+" c"),n.push(a+" -"+i+" "+i+" -"+a+" "+i+" 0 c"),n.push("f"),n.push("Q"),n.push("0 g"),n.push("q"),n.push("1 0 0 1 "+H(xt.internal.getWidth(t)/2)+" "+H(xt.internal.getHeight(t)/2)+" cm"),n.push(r+" 0 m"),n.push(r+" "+o+" "+o+" "+r+" 0 "+r+" c"),n.push("-"+o+" "+r+" -"+r+" "+o+" -"+r+" 0 c"),n.push("-"+r+" -"+o+" -"+o+" -"+r+" 0 -"+r+" c"),n.push(o+" -"+r+" "+r+" -"+o+" "+r+" 0 c"),n.push("f"),n.push("Q"),e.stream=n.join("\n"),e},OffPushDown:function(t){var e=G(t);e.scope=t.scope;var n=[],r=xt.internal.getWidth(t)<=xt.internal.getHeight(t)?xt.internal.getWidth(t)/4:xt.internal.getHeight(t)/4;r=Number((.9*r).toFixed(5));var i=Number((2*r).toFixed(5)),a=Number((i*xt.internal.Bezier_C).toFixed(5));return n.push("0.749023 g"),n.push("q"),n.push("1 0 0 1 "+H(xt.internal.getWidth(t)/2)+" "+H(xt.internal.getHeight(t)/2)+" cm"),n.push(i+" 0 m"),n.push(i+" "+a+" "+a+" "+i+" 0 "+i+" c"),n.push("-"+a+" "+i+" -"+i+" "+a+" -"+i+" 0 c"),n.push("-"+i+" -"+a+" -"+a+" -"+i+" 0 -"+i+" c"),n.push(a+" -"+i+" "+i+" -"+a+" "+i+" 0 c"),n.push("f"),n.push("Q"),e.stream=n.join("\n"),e}},Cross:{createAppearanceStream:function(t){var e={D:{Off:xt.RadioButton.Cross.OffPushDown},N:{}};return e.N[t]=xt.RadioButton.Cross.YesNormal,e.D[t]=xt.RadioButton.Cross.YesPushDown,e},getCA:function(){return"8"},YesNormal:function(t){var e=G(t);e.scope=t.scope;var n=[],r=xt.internal.calculateCross(t);return n.push("q"),n.push("1 1 "+U(xt.internal.getWidth(t)-2)+" "+U(xt.internal.getHeight(t)-2)+" re"),n.push("W"),n.push("n"),n.push(U(r.x1.x)+" "+U(r.x1.y)+" m"),n.push(U(r.x2.x)+" "+U(r.x2.y)+" l"),n.push(U(r.x4.x)+" "+U(r.x4.y)+" m"),n.push(U(r.x3.x)+" "+U(r.x3.y)+" l"),n.push("s"),n.push("Q"),e.stream=n.join("\n"),e},YesPushDown:function(t){var e=G(t);e.scope=t.scope;var n=xt.internal.calculateCross(t),r=[];return r.push("0.749023 g"),r.push("0 0 "+U(xt.internal.getWidth(t))+" "+U(xt.internal.getHeight(t))+" re"),r.push("f"),r.push("q"),r.push("1 1 "+U(xt.internal.getWidth(t)-2)+" "+U(xt.internal.getHeight(t)-2)+" re"),r.push("W"),r.push("n"),r.push(U(n.x1.x)+" "+U(n.x1.y)+" m"),r.push(U(n.x2.x)+" "+U(n.x2.y)+" l"),r.push(U(n.x4.x)+" "+U(n.x4.y)+" m"),r.push(U(n.x3.x)+" "+U(n.x3.y)+" l"),r.push("s"),r.push("Q"),e.stream=r.join("\n"),e},OffPushDown:function(t){var e=G(t);e.scope=t.scope;var n=[];return n.push("0.749023 g"),n.push("0 0 "+U(xt.internal.getWidth(t))+" "+U(xt.internal.getHeight(t))+" re"),n.push("f"),e.stream=n.join("\n"),e}}},createDefaultAppearanceStream:function(t){var e=t.scope.internal.getFont(t.fontName,t.fontStyle).id,n=t.scope.__private__.encodeColorString(t.color);return"/"+e+" "+t.fontSize+" Tf "+n}};xt.internal={Bezier_C:.551915024494,calculateCross:function(t){var e=xt.internal.getWidth(t),n=xt.internal.getHeight(t),r=Math.min(e,n);return{x1:{x:(e-r)/2,y:(n-r)/2+r},x2:{x:(e-r)/2+r,y:(n-r)/2},x3:{x:(e-r)/2,y:(n-r)/2},x4:{x:(e-r)/2+r,y:(n-r)/2+r}}}},xt.internal.getWidth=function(e){var n=0;return"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e)&&(n=V(e.Rect[2])),n},xt.internal.getHeight=function(e){var n=0;return"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e)&&(n=V(e.Rect[3])),n};var At=R.addField=function(t){if(at(this,t),!(t instanceof ht))throw new Error("Invalid argument passed to jsPDF.addField.");var e;return(e=t).scope.internal.acroformPlugin.printedOut&&(e.scope.internal.acroformPlugin.printedOut=!1,e.scope.internal.acroformPlugin.acroFormDictionaryRoot=null),e.scope.internal.acroformPlugin.acroFormDictionaryRoot.Fields.push(e),t.page=t.scope.internal.getCurrentPageInfo().pageNumber,this};R.AcroFormChoiceField=ft,R.AcroFormListBox=dt,R.AcroFormComboBox=pt,R.AcroFormEditBox=gt,R.AcroFormButton=mt,R.AcroFormPushButton=vt,R.AcroFormRadioButton=bt,R.AcroFormCheckBox=wt,R.AcroFormTextField=Nt,R.AcroFormPasswordField=Lt,R.AcroFormAppearance=xt,R.AcroForm={ChoiceField:ft,ListBox:dt,ComboBox:pt,EditBox:gt,Button:mt,PushButton:vt,RadioButton:bt,CheckBox:wt,TextField:Nt,PasswordField:Lt,Appearance:xt},E.AcroForm={ChoiceField:ft,ListBox:dt,ComboBox:pt,EditBox:gt,Button:mt,PushButton:vt,RadioButton:bt,CheckBox:wt,TextField:Nt,PasswordField:Lt,Appearance:xt};var St=E.AcroForm;function _t(t){return t.reduce(function(t,e,n){return t[e]=n,t},{})}!function(e){var n="addImage_";e.__addimage__={};var r="UNKNOWN",i={PNG:[[137,80,78,71]],TIFF:[[77,77,0,42],[73,73,42,0]],JPEG:[[255,216,255,224,void 0,void 0,74,70,73,70,0],[255,216,255,225,void 0,void 0,69,120,105,102,0,0],[255,216,255,219],[255,216,255,238]],JPEG2000:[[0,0,0,12,106,80,32,32]],GIF87a:[[71,73,70,56,55,97]],GIF89a:[[71,73,70,56,57,97]],WEBP:[[82,73,70,70,void 0,void 0,void 0,void 0,87,69,66,80]],BMP:[[66,77],[66,65],[67,73],[67,80],[73,67],[80,84]]},a=e.__addimage__.getImageFileTypeByImageData=function(t,e){var n,a,o,s,u,c=r;if("RGBA"===(e=e||r)||void 0!==t.data&&t.data instanceof Uint8ClampedArray&&"height"in t&&"width"in t)return"RGBA";if(A(t))for(u in i)for(o=i[u],n=0;n<o.length;n+=1){for(s=!0,a=0;a<o[n].length;a+=1)if(void 0!==o[n][a]&&o[n][a]!==t[a]){s=!1;break}if(!0===s){c=u;break}}else for(u in i)for(o=i[u],n=0;n<o.length;n+=1){for(s=!0,a=0;a<o[n].length;a+=1)if(void 0!==o[n][a]&&o[n][a]!==t.charCodeAt(a)){s=!1;break}if(!0===s){c=u;break}}return c===r&&e!==r&&(c=e),c},o=function t(e){for(var n=this.internal.write,r=this.internal.putStream,i=(0,this.internal.getFilters)();-1!==i.indexOf("FlateEncode");)i.splice(i.indexOf("FlateEncode"),1);e.objectId=this.internal.newObject();var a=[];if(a.push({key:"Type",value:"/XObject"}),a.push({key:"Subtype",value:"/Image"}),a.push({key:"Width",value:e.width}),a.push({key:"Height",value:e.height}),e.colorSpace===y.INDEXED?a.push({key:"ColorSpace",value:"[/Indexed /DeviceRGB "+(e.palette.length/3-1)+" "+("sMask"in e&&void 0!==e.sMask?e.objectId+2:e.objectId+1)+" 0 R]"}):(a.push({key:"ColorSpace",value:"/"+e.colorSpace}),e.colorSpace===y.DEVICE_CMYK&&a.push({key:"Decode",value:"[1 0 1 0 1 0 1 0]"})),a.push({key:"BitsPerComponent",value:e.bitsPerComponent}),"decodeParameters"in e&&void 0!==e.decodeParameters&&a.push({key:"DecodeParms",value:"<<"+e.decodeParameters+">>"}),"transparency"in e&&Array.isArray(e.transparency)&&e.transparency.length>0){for(var o="",s=0,u=e.transparency.length;s<u;s++)o+=e.transparency[s]+" "+e.transparency[s]+" ";a.push({key:"Mask",value:"["+o+"]"})}void 0!==e.sMask&&a.push({key:"SMask",value:e.objectId+1+" 0 R"});var c=void 0!==e.filter?["/"+e.filter]:void 0;if(r({data:e.data,additionalKeyValues:a,alreadyAppliedFilters:c,objectId:e.objectId}),n("endobj"),"sMask"in e&&void 0!==e.sMask){var l,h=null!==(l=e.sMaskBitsPerComponent)&&void 0!==l?l:e.bitsPerComponent,f={width:e.width,height:e.height,colorSpace:"DeviceGray",bitsPerComponent:h,data:e.sMask};"filter"in e&&(f.decodeParameters="/Predictor ".concat(e.predictor," /Colors 1 /BitsPerComponent ").concat(h," /Columns ").concat(e.width),f.filter=e.filter),t.call(this,f)}if(e.colorSpace===y.INDEXED){var d=this.internal.newObject();r({data:_(new Uint8Array(e.palette)),objectId:d}),n("endobj")}},s=function(){var t=this.internal.collections[n+"images"];for(var e in t)o.call(this,t[e])},u=function(){var t,e=this.internal.collections[n+"images"],r=this.internal.write;for(var i in e)r("/I"+(t=e[i]).index,t.objectId,"0","R")},c=function(){this.internal.collections[n+"images"]||(this.internal.collections[n+"images"]={},this.internal.events.subscribe("putResources",s),this.internal.events.subscribe("putXobjectDict",u))},l=function(){var t=this.internal.collections[n+"images"];return c.call(this),t},h=function(){return Object.keys(this.internal.collections[n+"images"]).length},d=function(t){return"function"==typeof e["process"+t.toUpperCase()]},p=function(e){return"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e)&&1===e.nodeType},g=function(t,n){if("IMG"===t.nodeName&&t.hasAttribute("src")){var r=""+t.getAttribute("src");if(0===r.indexOf("data:image/"))return f(unescape(r).split("base64,").pop());var i=e.loadFile(r,!0);if(void 0!==i)return i}if("CANVAS"===t.nodeName){if(0===t.width||0===t.height)throw new Error("Given canvas must have data. Canvas width: "+t.width+", height: "+t.height);var a;switch(n){case"PNG":a="image/png";break;case"WEBP":a="image/webp";break;default:a="image/jpeg"}return f(t.toDataURL(a,1).split("base64,").pop())}},m=function(t){var e=this.internal.collections[n+"images"];if(e)for(var r in e)if(t===e[r].alias)return e[r]},v=function(t,e,n){return t||e||(t=-96,e=-96),t<0&&(t=-1*n.width*72/t/this.internal.scaleFactor),e<0&&(e=-1*n.height*72/e/this.internal.scaleFactor),0===t&&(t=e*n.width/n.height),0===e&&(e=t*n.height/n.width),[t,e]},b=function(t,e,n,r,i,a){var o=v.call(this,n,r,i),s=this.internal.getCoordinateString,u=this.internal.getVerticalCoordinateString,c=l.call(this);if(n=o[0],r=o[1],c[i.index]=i,a){a*=Math.PI/180;var h=Math.cos(a),f=Math.sin(a),d=function(t){return t.toFixed(4)},p=[d(h),d(f),d(-1*f),d(h),0,0,"cm"]}this.internal.write("q"),a?(this.internal.write([1,"0","0",1,s(t),u(e+r),"cm"].join(" ")),this.internal.write(p.join(" ")),this.internal.write([s(n),"0","0",s(r),"0","0","cm"].join(" "))):this.internal.write([s(n),"0","0",s(r),s(t),u(e+r),"cm"].join(" ")),this.isAdvancedAPI()&&this.internal.write([1,0,0,-1,0,0,"cm"].join(" ")),this.internal.write("/I"+i.index+" Do"),this.internal.write("Q")},y=e.color_spaces={DEVICE_RGB:"DeviceRGB",DEVICE_GRAY:"DeviceGray",DEVICE_CMYK:"DeviceCMYK",CAL_GREY:"CalGray",CAL_RGB:"CalRGB",LAB:"Lab",ICC_BASED:"ICCBased",INDEXED:"Indexed",PATTERN:"Pattern",SEPARATION:"Separation",DEVICE_N:"DeviceN"};e.decode={DCT_DECODE:"DCTDecode",FLATE_DECODE:"FlateDecode",LZW_DECODE:"LZWDecode",JPX_DECODE:"JPXDecode",JBIG2_DECODE:"JBIG2Decode",ASCII85_DECODE:"ASCII85Decode",ASCII_HEX_DECODE:"ASCIIHexDecode",RUN_LENGTH_DECODE:"RunLengthDecode",CCITT_FAX_DECODE:"CCITTFaxDecode"};var w=e.image_compression={NONE:"NONE",FAST:"FAST",MEDIUM:"MEDIUM",SLOW:"SLOW"},N=e.__addimage__.sHashCode=function(t){var e,n,r=0;if("string"==typeof t)for(n=t.length,e=0;e<n;e++)r=(r<<5)-r+t.charCodeAt(e),r|=0;else if(A(t))for(n=t.byteLength/2,e=0;e<n;e++)r=(r<<5)-r+t[e],r|=0;return r},L=e.__addimage__.validateStringAsBase64=function(t){(t=t||"").toString().trim();var e=!0;return 0===t.length&&(e=!1),t.length%4!=0&&(e=!1),!1===/^[A-Za-z0-9+/]+$/.test(t.substr(0,t.length-2))&&(e=!1),!1===/^[A-Za-z0-9/][A-Za-z0-9+/]|[A-Za-z0-9+/]=|==$/.test(t.substr(-2))&&(e=!1),e},x=e.__addimage__.extractImageFromDataUrl=function(t){if(null==t)return null;if(!(t=t.trim()).startsWith("data:"))return null;var e=t.indexOf(",");return e<0?null:t.substring(0,e).trim().endsWith("base64")?t.substring(e+1):null};e.__addimage__.isArrayBuffer=function(t){return t instanceof ArrayBuffer};var A=e.__addimage__.isArrayBufferView=function(t){return t instanceof Int8Array||t instanceof Uint8Array||t instanceof Uint8ClampedArray||t instanceof Int16Array||t instanceof Uint16Array||t instanceof Int32Array||t instanceof Uint32Array||t instanceof Float32Array||t instanceof Float64Array},S=e.__addimage__.binaryStringToUint8Array=function(t){for(var e=t.length,n=new Uint8Array(e),r=0;r<e;r++)n[r]=t.charCodeAt(r);return n},_=e.__addimage__.arrayBufferToBinaryString=function(t){for(var e="",n=A(t)?t:new Uint8Array(t),r=0;r<n.length;r+=8192)e+=String.fromCharCode.apply(null,n.subarray(r,r+8192));return e};e.addImage=function(){var e,n,i,a,o,s,u,l,h;if("number"==typeof arguments[1]?(n=r,i=arguments[1],a=arguments[2],o=arguments[3],s=arguments[4],u=arguments[5],l=arguments[6],h=arguments[7]):(n=arguments[1],i=arguments[2],a=arguments[3],o=arguments[4],s=arguments[5],u=arguments[6],l=arguments[7],h=arguments[8]),"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(e=arguments[0])&&!p(e)&&"imageData"in e){var f=e;e=f.imageData,n=f.format||n||r,i=f.x||i||0,a=f.y||a||0,o=f.w||f.width||o,s=f.h||f.height||s,u=f.alias||u,l=f.compression||l,h=f.rotation||f.angle||h}var d=this.internal.getFilters();if(void 0===l&&-1!==d.indexOf("FlateEncode")&&(l="SLOW"),isNaN(i)||isNaN(a))throw new Error("Invalid coordinates passed to jsPDF.addImage");c.call(this);var g=P.call(this,e,n,u,l);return b.call(this,i,a,o,s,g,h),this};var P=function(t,n,i,o){var s,u,c;if("string"==typeof t&&a(t)===r){t=unescape(t);var l=k(t,!1);(""!==l||void 0!==(l=e.loadFile(t,!0)))&&(t=l)}if(p(t)&&(t=g(t,n)),n=a(t,n),!d(n))throw new Error("addImage does not support files of type '"+n+"', please ensure that a plugin for '"+n+"' support is added.");if((null==(c=i)||0===c.length)&&(i=function(t){return"string"==typeof t||A(t)?N(t):A(t.data)?N(t.data):null}(t)),(s=m.call(this,i))||(t instanceof Uint8Array||"RGBA"===n||(u=t,t=S(t)),s=this["process"+n.toUpperCase()](t,h.call(this),i,function(t){return t&&"string"==typeof t&&(t=t.toUpperCase()),t in e.image_compression?t:w.NONE}(o),u)),!s)throw new Error("An unknown error occurred whilst processing the image.");return s},k=e.__addimage__.convertBase64ToBinaryString=function(t,e){e="boolean"!=typeof e||e;var n,r="";if("string"==typeof t){var i;n=null!==(i=x(t))&&void 0!==i?i:t;try{r=f(n)}catch(a){if(e)throw L(n)?new Error("atob-Error in jsPDF.convertBase64ToBinaryString "+a.message):new Error("Supplied Data is not a valid base64-String jsPDF.convertBase64ToBinaryString ")}}return r};e.getImageProperties=function(t){var n,i,o="";if(p(t)&&(t=g(t)),"string"==typeof t&&a(t)===r&&(""===(o=k(t,!1))&&(o=e.loadFile(t)||""),t=o),i=a(t),!d(i))throw new Error("addImage does not support files of type '"+i+"', please ensure that a plugin for '"+i+"' support is added.");if(t instanceof Uint8Array||(t=S(t)),!(n=this["process"+i.toUpperCase()](t)))throw new Error("An unknown error occurred whilst processing the image");return n.fileType=i,n}}(E.API),
 /**
  * @license
  * Copyright (c) 2014 Steven Spungin (TwelveTone LLC)  steven@twelvetone.tv
@@ -30607,7 +39257,7 @@ function(t){var e={1569:[65152],1570:[65153,65154],1571:[65155,65156],1572:[6515
  * Licensed under the MIT License.
  * http://opensource.org/licenses/mit-license
  */
-function(t){var e=function(){var t=void 0;Object.defineProperty(this,"pdf",{get:function(){return t},set:function(e){t=e}});var e=150;Object.defineProperty(this,"width",{get:function(){return e},set:function(t){e=isNaN(t)||!1===Number.isInteger(t)||t<0?150:t,this.getContext("2d").pageWrapXEnabled&&(this.getContext("2d").pageWrapX=e+1)}});var n=300;Object.defineProperty(this,"height",{get:function(){return n},set:function(t){n=isNaN(t)||!1===Number.isInteger(t)||t<0?300:t,this.getContext("2d").pageWrapYEnabled&&(this.getContext("2d").pageWrapY=n+1)}});var r=[];Object.defineProperty(this,"childNodes",{get:function(){return r},set:function(t){r=t}});var i={};Object.defineProperty(this,"style",{get:function(){return i},set:function(t){i=t}}),Object.defineProperty(this,"parentNode",{})};e.prototype.getContext=function(t,e){var n;if("2d"!==(t=t||"2d"))return null;for(n in e)this.pdf.context2d.hasOwnProperty(n)&&(this.pdf.context2d[n]=e[n]);return this.pdf.context2d._canvas=this,this.pdf.context2d},e.prototype.toDataURL=function(){throw new Error("toDataURL is not implemented.")},t.events.push(["initialized",function(){this.canvas=new e,this.canvas.pdf=this}])}(E.API),function(e){var n={left:0,top:0,bottom:0,right:0},r=!1,i=function(){void 0===this.internal.__cell__&&(this.internal.__cell__={},this.internal.__cell__.padding=3,this.internal.__cell__.headerFunction=void 0,this.internal.__cell__.margins=Object.assign({},n),this.internal.__cell__.margins.width=this.getPageWidth(),a.call(this))},a=function(){this.internal.__cell__.lastCell=new o,this.internal.__cell__.pages=1},o=function(){var t=arguments[0];Object.defineProperty(this,"x",{enumerable:!0,get:function(){return t},set:function(e){t=e}});var e=arguments[1];Object.defineProperty(this,"y",{enumerable:!0,get:function(){return e},set:function(t){e=t}});var n=arguments[2];Object.defineProperty(this,"width",{enumerable:!0,get:function(){return n},set:function(t){n=t}});var r=arguments[3];Object.defineProperty(this,"height",{enumerable:!0,get:function(){return r},set:function(t){r=t}});var i=arguments[4];Object.defineProperty(this,"text",{enumerable:!0,get:function(){return i},set:function(t){i=t}});var a=arguments[5];Object.defineProperty(this,"lineNumber",{enumerable:!0,get:function(){return a},set:function(t){a=t}});var o=arguments[6];return Object.defineProperty(this,"align",{enumerable:!0,get:function(){return o},set:function(t){o=t}}),this};o.prototype.clone=function(){return new o(this.x,this.y,this.width,this.height,this.text,this.lineNumber,this.align)},o.prototype.toArray=function(){return[this.x,this.y,this.width,this.height,this.text,this.lineNumber,this.align]},e.setHeaderFunction=function(t){return i.call(this),this.internal.__cell__.headerFunction="function"==typeof t?t:void 0,this},e.getTextDimensions=function(t,e){i.call(this);var n=(e=e||{}).fontSize||this.getFontSize(),r=e.font||this.getFont(),a=e.scaleFactor||this.internal.scaleFactor,o=0,s=0,u=0,c=this;if(!Array.isArray(t)&&"string"!=typeof t){if("number"!=typeof t)throw new Error("getTextDimensions expects text-parameter to be of type String or type Number or an Array of Strings.");t=String(t)}var l=e.maxWidth;l>0?"string"==typeof t?t=this.splitTextToSize(t,l):"[object Array]"===Object.prototype.toString.call(t)&&(t=t.reduce(function(t,e){return t.concat(c.splitTextToSize(e,l))},[])):t=Array.isArray(t)?t:[t];for(var h=0;h<t.length;h++)o<(u=this.getStringUnitWidth(t[h],{font:r})*n)&&(o=u);return 0!==o&&(s=t.length),{w:o/=a,h:Math.max((s*n*this.getLineHeightFactor()-n*(this.getLineHeightFactor()-1))/a,0)}},e.cellAddPage=function(){i.call(this),this.addPage();var t=this.internal.__cell__.margins||n;return this.internal.__cell__.lastCell=new o(t.left,t.top,void 0,void 0),this.internal.__cell__.pages+=1,this};var s=e.cell=function(){var t;t=arguments[0]instanceof o?arguments[0]:new o(arguments[0],arguments[1],arguments[2],arguments[3],arguments[4],arguments[5]),i.call(this);var e=this.internal.__cell__.lastCell,a=this.internal.__cell__.padding,s=this.internal.__cell__.margins||n,u=this.internal.__cell__.tableHeaderRow,c=this.internal.__cell__.printHeaders;return void 0!==e.lineNumber&&(e.lineNumber===t.lineNumber?(t.x=(e.x||0)+(e.width||0),t.y=e.y||0):e.y+e.height+t.height+s.bottom>this.getPageHeight()?(this.cellAddPage(),t.y=s.top,c&&u&&(this.printHeaderRow(t.lineNumber,!0),t.y+=u[0].height)):t.y=e.y+e.height||t.y),void 0!==t.text[0]&&(this.rect(t.x,t.y,t.width,t.height,!0===r?"FD":void 0),"right"===t.align?this.text(t.text,t.x+t.width-a,t.y+a,{align:"right",baseline:"top"}):"center"===t.align?this.text(t.text,t.x+t.width/2,t.y+a,{align:"center",baseline:"top",maxWidth:t.width-a-a}):this.text(t.text,t.x+a,t.y+a,{align:"left",baseline:"top",maxWidth:t.width-a-a})),this.internal.__cell__.lastCell=t,this};e.table=function(e,r,c,l,h){if(i.call(this),!c)throw new Error("No data for PDF table.");var f,d,p,g,m=[],v=[],b=[],y={},w={},N=[],L=[],x=(h=h||{}).autoSize||!1,A=!1!==h.printHeaders,S=h.css&&void 0!==h.css["font-size"]?16*h.css["font-size"]:h.fontSize||12,_=h.margins||Object.assign({width:this.getPageWidth()},n),P="number"==typeof h.padding?h.padding:3,k=h.headerBackgroundColor||"#c8c8c8",F=h.headerTextColor||"#000";if(a.call(this),this.internal.__cell__.printHeaders=A,this.internal.__cell__.margins=_,this.internal.__cell__.table_font_size=S,this.internal.__cell__.padding=P,this.internal.__cell__.headerBackgroundColor=k,this.internal.__cell__.headerTextColor=F,this.setFontSize(S),null==l)v=m=Object.keys(c[0]),b=m.map(function(){return"left"});else if(Array.isArray(l)&&"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(l[0]))for(m=l.map(function(t){return t.name}),v=l.map(function(t){return t.prompt||t.name||""}),b=l.map(function(t){return t.align||"left"}),f=0;f<l.length;f+=1)w[l[f].name]=.7499990551181103*l[f].width;else Array.isArray(l)&&"string"==typeof l[0]&&(v=m=l,b=m.map(function(){return"left"}));if(x||Array.isArray(l)&&"string"==typeof l[0])for(f=0;f<m.length;f+=1){for(y[g=m[f]]=c.map(function(t){return t[g]}),this.setFont(void 0,"bold"),N.push(this.getTextDimensions(v[f],{fontSize:this.internal.__cell__.table_font_size,scaleFactor:this.internal.scaleFactor}).w),d=y[g],this.setFont(void 0,"normal"),p=0;p<d.length;p+=1)N.push(this.getTextDimensions(d[p],{fontSize:this.internal.__cell__.table_font_size,scaleFactor:this.internal.scaleFactor}).w);w[g]=Math.max.apply(null,N)+P+P,N=[]}if(A){var I={};for(f=0;f<m.length;f+=1)I[m[f]]={},I[m[f]].text=v[f],I[m[f]].align=b[f];var j=u.call(this,I,w);L=m.map(function(t){return new o(e,r,w[t],j,I[t].text,void 0,I[t].align)}),this.setTableHeaderRow(L),this.printHeaderRow(1,!1)}var C=l.reduce(function(t,e){return t[e.name]=e.align,t},{});for(f=0;f<c.length;f+=1){"rowStart"in h&&h.rowStart instanceof Function&&h.rowStart({row:f,data:c[f]},this);var O=u.call(this,c[f],w);for(p=0;p<m.length;p+=1){var B=c[f][m[p]];"cellStart"in h&&h.cellStart instanceof Function&&h.cellStart({row:f,col:p,data:B},this),s.call(this,new o(e,r,w[m[p]],O,B,f+2,C[m[p]]))}}return this.internal.__cell__.table_x=e,this.internal.__cell__.table_y=r,this};var u=function(t,e){var n=this.internal.__cell__.padding,r=this.internal.__cell__.table_font_size,i=this.internal.scaleFactor;return Object.keys(t).map(function(r){var i=t[r];return this.splitTextToSize(i.hasOwnProperty("text")?i.text:i,e[r]-n-n)},this).map(function(t){return this.getLineHeightFactor()*t.length*r/i+n+n},this).reduce(function(t,e){return Math.max(t,e)},0)};e.setTableHeaderRow=function(t){i.call(this),this.internal.__cell__.tableHeaderRow=t},e.printHeaderRow=function(t,e){if(i.call(this),!this.internal.__cell__.tableHeaderRow)throw new Error("Property tableHeaderRow does not exist.");var n;if(r=!0,"function"==typeof this.internal.__cell__.headerFunction){var a=this.internal.__cell__.headerFunction(this,this.internal.__cell__.pages);this.internal.__cell__.lastCell=new o(a[0],a[1],a[2],a[3],void 0,-1)}this.setFont(void 0,"bold");for(var u=[],c=0;c<this.internal.__cell__.tableHeaderRow.length;c+=1){n=this.internal.__cell__.tableHeaderRow[c].clone(),e&&(n.y=this.internal.__cell__.margins.top||0,u.push(n)),n.lineNumber=t;var l=this.getTextColor();this.setTextColor(this.internal.__cell__.headerTextColor),this.setFillColor(this.internal.__cell__.headerBackgroundColor),s.call(this,n),this.setTextColor(l)}u.length>0&&this.setTableHeaderRow(u),this.setFont(void 0,"normal"),r=!1}}(E.API);var Pt={italic:["italic","oblique","normal"],oblique:["oblique","italic","normal"],normal:["normal","oblique","italic"]},kt=["ultra-condensed","extra-condensed","condensed","semi-condensed","normal","semi-expanded","expanded","extra-expanded","ultra-expanded"],Ft=_t(kt),It=[100,200,300,400,500,600,700,800,900],jt=_t(It);function Ct(t){var e=t.family.replace(/"|'/g,"").toLowerCase(),n=function(t){return Pt[t=t||"normal"]?t:"normal"}(t.style),r=function(t){return t?"number"==typeof t?t>=100&&t<=900&&t%100==0?t:400:/^\d00$/.test(t)?parseInt(t):"bold"===t?700:400:400}(t.weight),i=function(t){return"number"==typeof Ft[t=t||"normal"]?t:"normal"}(t.stretch);return{family:e,style:n,weight:r,stretch:i,src:t.src||[],ref:t.ref||{name:e,style:[i,n,r].join(" ")}}}function Ot(t,e,n,r){var i;for(i=n;i>=0&&i<e.length;i+=r)if(t[e[i]])return t[e[i]];for(i=n;i>=0&&i<e.length;i-=r)if(t[e[i]])return t[e[i]]}var Bt={"sans-serif":"helvetica",fixed:"courier",monospace:"courier",terminal:"courier",cursive:"times",fantasy:"times",serif:"times"},Mt={caption:"times",icon:"times",menu:"times","message-box":"times","small-caption":"times","status-bar":"times"};function qt(t){return[t.stretch,t.style,t.weight,t.family].join(" ")}function Et(t){return t.trimLeft()}function Rt(t,e){for(var n=0;n<t.length;){if(t.charAt(n)===e)return[t.substring(0,n),t.substring(n+1)];n+=1}return null}function Dt(t){var e=t.match(/^(-[a-z_]|[a-z_])[a-z0-9_-]*/i);return null===e?null:[e[0],t.substring(e[0].length)]}var Tt,zt,Ut,Ht,Wt,Vt,Gt,Yt,Jt=["times"];function Xt(t,n,r,i){var a=4,o=$t;switch(i){case E.API.image_compression.FAST:a=1,o=Zt;break;case E.API.image_compression.MEDIUM:a=6,o=Qt;break;case E.API.image_compression.SLOW:a=9,o=te}t=function(t,e,n,r){for(var i,a=t.length/e,o=new Uint8Array(t.length+a),s=[Kt,Zt,$t,Qt,te],u=0;u<a;u+=1){var c=u*e,l=t.subarray(c,c+e);if(r)o.set(r(l,n,i),c+u);else{for(var h=s.length,f=[],d=0;d<h;d+=1)f[d]=s[d](l,n,i);var p=ne(f.concat());o.set(f[p],c+u)}i=l}return o}(t,n,r,o);var s=(0,fflate__WEBPACK_IMPORTED_MODULE_1__.zlibSync)(t,{level:a});return E.API.__addimage__.arrayBufferToBinaryString(s)}function Kt(t){var e=Array.apply([],t);return e.unshift(0),e}function Zt(t,e){var n=t.length,r=[];r[0]=1;for(var i=0;i<n;i+=1){var a=t[i-e]||0;r[i+1]=t[i]-a+256&255}return r}function $t(t,e,n){var r=t.length,i=[];i[0]=2;for(var a=0;a<r;a+=1){var o=n&&n[a]||0;i[a+1]=t[a]-o+256&255}return i}function Qt(t,e,n){var r=t.length,i=[];i[0]=3;for(var a=0;a<r;a+=1){var o=t[a-e]||0,s=n&&n[a]||0;i[a+1]=t[a]+256-(o+s>>>1)&255}return i}function te(t,e,n){var r=t.length,i=[];i[0]=4;for(var a=0;a<r;a+=1){var o=ee(t[a-e]||0,n&&n[a]||0,n&&n[a-e]||0);i[a+1]=t[a]-o+256&255}return i}function ee(t,e,n){if(t===e&&e===n)return t;var r=Math.abs(e-n),i=Math.abs(t-n),a=Math.abs(t+e-n-n);return r<=i&&r<=a?t:i<=a?e:n}function ne(t){var e=t.map(function(t){return t.reduce(function(t,e){return t+Math.abs(e)},0)});return e.indexOf(Math.min.apply(null,e))}function re(t,e,n){var r=e*n,i=Math.floor(r/8),a=16-(r-8*i+n),o=(1<<n)-1;return ae(t,i)>>a&o}function ie(t,e,n,r){var i=n*r,a=Math.floor(i/8),o=16-(i-8*a+r),s=(1<<r)-1,u=(e&s)<<o;!function(t,e,n){if(e+1<t.byteLength)t.setUint16(e,n,!1);else{var r=n>>8&255;t.setUint8(e,r)}}
+function(t){var e=function(){var t=void 0;Object.defineProperty(this,"pdf",{get:function(){return t},set:function(e){t=e}});var e=150;Object.defineProperty(this,"width",{get:function(){return e},set:function(t){e=isNaN(t)||!1===Number.isInteger(t)||t<0?150:t,this.getContext("2d").pageWrapXEnabled&&(this.getContext("2d").pageWrapX=e+1)}});var n=300;Object.defineProperty(this,"height",{get:function(){return n},set:function(t){n=isNaN(t)||!1===Number.isInteger(t)||t<0?300:t,this.getContext("2d").pageWrapYEnabled&&(this.getContext("2d").pageWrapY=n+1)}});var r=[];Object.defineProperty(this,"childNodes",{get:function(){return r},set:function(t){r=t}});var i={};Object.defineProperty(this,"style",{get:function(){return i},set:function(t){i=t}}),Object.defineProperty(this,"parentNode",{})};e.prototype.getContext=function(t,e){var n;if("2d"!==(t=t||"2d"))return null;for(n in e)this.pdf.context2d.hasOwnProperty(n)&&(this.pdf.context2d[n]=e[n]);return this.pdf.context2d._canvas=this,this.pdf.context2d},e.prototype.toDataURL=function(){throw new Error("toDataURL is not implemented.")},t.events.push(["initialized",function(){this.canvas=new e,this.canvas.pdf=this}])}(E.API),function(e){var n={left:0,top:0,bottom:0,right:0},r=!1,i=function(){void 0===this.internal.__cell__&&(this.internal.__cell__={},this.internal.__cell__.padding=3,this.internal.__cell__.headerFunction=void 0,this.internal.__cell__.margins=Object.assign({},n),this.internal.__cell__.margins.width=this.getPageWidth(),a.call(this))},a=function(){this.internal.__cell__.lastCell=new o,this.internal.__cell__.pages=1},o=function(){var t=arguments[0];Object.defineProperty(this,"x",{enumerable:!0,get:function(){return t},set:function(e){t=e}});var e=arguments[1];Object.defineProperty(this,"y",{enumerable:!0,get:function(){return e},set:function(t){e=t}});var n=arguments[2];Object.defineProperty(this,"width",{enumerable:!0,get:function(){return n},set:function(t){n=t}});var r=arguments[3];Object.defineProperty(this,"height",{enumerable:!0,get:function(){return r},set:function(t){r=t}});var i=arguments[4];Object.defineProperty(this,"text",{enumerable:!0,get:function(){return i},set:function(t){i=t}});var a=arguments[5];Object.defineProperty(this,"lineNumber",{enumerable:!0,get:function(){return a},set:function(t){a=t}});var o=arguments[6];return Object.defineProperty(this,"align",{enumerable:!0,get:function(){return o},set:function(t){o=t}}),this};o.prototype.clone=function(){return new o(this.x,this.y,this.width,this.height,this.text,this.lineNumber,this.align)},o.prototype.toArray=function(){return[this.x,this.y,this.width,this.height,this.text,this.lineNumber,this.align]},e.setHeaderFunction=function(t){return i.call(this),this.internal.__cell__.headerFunction="function"==typeof t?t:void 0,this},e.getTextDimensions=function(t,e){i.call(this);var n=(e=e||{}).fontSize||this.getFontSize(),r=e.font||this.getFont(),a=e.scaleFactor||this.internal.scaleFactor,o=0,s=0,u=0,c=this;if(!Array.isArray(t)&&"string"!=typeof t){if("number"!=typeof t)throw new Error("getTextDimensions expects text-parameter to be of type String or type Number or an Array of Strings.");t=String(t)}var l=e.maxWidth;l>0?"string"==typeof t?t=this.splitTextToSize(t,l):"[object Array]"===Object.prototype.toString.call(t)&&(t=t.reduce(function(t,e){return t.concat(c.splitTextToSize(e,l))},[])):t=Array.isArray(t)?t:[t];for(var h=0;h<t.length;h++)o<(u=this.getStringUnitWidth(t[h],{font:r})*n)&&(o=u);return 0!==o&&(s=t.length),{w:o/=a,h:Math.max((s*n*this.getLineHeightFactor()-n*(this.getLineHeightFactor()-1))/a,0)}},e.cellAddPage=function(){i.call(this),this.addPage();var t=this.internal.__cell__.margins||n;return this.internal.__cell__.lastCell=new o(t.left,t.top,void 0,void 0),this.internal.__cell__.pages+=1,this};var s=e.cell=function(){var t;t=arguments[0]instanceof o?arguments[0]:new o(arguments[0],arguments[1],arguments[2],arguments[3],arguments[4],arguments[5]),i.call(this);var e=this.internal.__cell__.lastCell,a=this.internal.__cell__.padding,s=this.internal.__cell__.margins||n,u=this.internal.__cell__.tableHeaderRow,c=this.internal.__cell__.printHeaders;return void 0!==e.lineNumber&&(e.lineNumber===t.lineNumber?(t.x=(e.x||0)+(e.width||0),t.y=e.y||0):e.y+e.height+t.height+s.bottom>this.getPageHeight()?(this.cellAddPage(),t.y=s.top,c&&u&&(this.printHeaderRow(t.lineNumber,!0),t.y+=u[0].height)):t.y=e.y+e.height||t.y),void 0!==t.text[0]&&(this.rect(t.x,t.y,t.width,t.height,!0===r?"FD":void 0),"right"===t.align?this.text(t.text,t.x+t.width-a,t.y+a,{align:"right",baseline:"top"}):"center"===t.align?this.text(t.text,t.x+t.width/2,t.y+a,{align:"center",baseline:"top",maxWidth:t.width-a-a}):this.text(t.text,t.x+a,t.y+a,{align:"left",baseline:"top",maxWidth:t.width-a-a})),this.internal.__cell__.lastCell=t,this};e.table=function(e,r,c,l,h){if(i.call(this),!c)throw new Error("No data for PDF table.");var f,d,p,g,m=[],v=[],b=[],y={},w={},N=[],L=[],x=(h=h||{}).autoSize||!1,A=!1!==h.printHeaders,S=h.css&&void 0!==h.css["font-size"]?16*h.css["font-size"]:h.fontSize||12,_=h.margins||Object.assign({width:this.getPageWidth()},n),P="number"==typeof h.padding?h.padding:3,k=h.headerBackgroundColor||"#c8c8c8",F=h.headerTextColor||"#000";if(a.call(this),this.internal.__cell__.printHeaders=A,this.internal.__cell__.margins=_,this.internal.__cell__.table_font_size=S,this.internal.__cell__.padding=P,this.internal.__cell__.headerBackgroundColor=k,this.internal.__cell__.headerTextColor=F,this.setFontSize(S),null==l)v=m=Object.keys(c[0]),b=m.map(function(){return"left"});else if(Array.isArray(l)&&"object"===(0,_babel_runtime_helpers_typeof__WEBPACK_IMPORTED_MODULE_0__["default"])(l[0]))for(m=l.map(function(t){return t.name}),v=l.map(function(t){return t.prompt||t.name||""}),b=l.map(function(t){return t.align||"left"}),f=0;f<l.length;f+=1)w[l[f].name]=.7499990551181103*l[f].width;else Array.isArray(l)&&"string"==typeof l[0]&&(v=m=l,b=m.map(function(){return"left"}));if(x||Array.isArray(l)&&"string"==typeof l[0])for(f=0;f<m.length;f+=1){for(y[g=m[f]]=c.map(function(t){return t[g]}),this.setFont(void 0,"bold"),N.push(this.getTextDimensions(v[f],{fontSize:this.internal.__cell__.table_font_size,scaleFactor:this.internal.scaleFactor}).w),d=y[g],this.setFont(void 0,"normal"),p=0;p<d.length;p+=1)N.push(this.getTextDimensions(d[p],{fontSize:this.internal.__cell__.table_font_size,scaleFactor:this.internal.scaleFactor}).w);w[g]=Math.max.apply(null,N)+P+P,N=[]}if(A){var I={};for(f=0;f<m.length;f+=1)I[m[f]]={},I[m[f]].text=v[f],I[m[f]].align=b[f];var j=u.call(this,I,w);L=m.map(function(t){return new o(e,r,w[t],j,I[t].text,void 0,I[t].align)}),this.setTableHeaderRow(L),this.printHeaderRow(1,!1)}var C=l.reduce(function(t,e){return t[e.name]=e.align,t},{});for(f=0;f<c.length;f+=1){"rowStart"in h&&h.rowStart instanceof Function&&h.rowStart({row:f,data:c[f]},this);var O=u.call(this,c[f],w);for(p=0;p<m.length;p+=1){var B=c[f][m[p]];"cellStart"in h&&h.cellStart instanceof Function&&h.cellStart({row:f,col:p,data:B},this),s.call(this,new o(e,r,w[m[p]],O,B,f+2,C[m[p]]))}}return this.internal.__cell__.table_x=e,this.internal.__cell__.table_y=r,this};var u=function(t,e){var n=this.internal.__cell__.padding,r=this.internal.__cell__.table_font_size,i=this.internal.scaleFactor;return Object.keys(t).map(function(r){var i=t[r];return this.splitTextToSize(i.hasOwnProperty("text")?i.text:i,e[r]-n-n)},this).map(function(t){return this.getLineHeightFactor()*t.length*r/i+n+n},this).reduce(function(t,e){return Math.max(t,e)},0)};e.setTableHeaderRow=function(t){i.call(this),this.internal.__cell__.tableHeaderRow=t},e.printHeaderRow=function(t,e){if(i.call(this),!this.internal.__cell__.tableHeaderRow)throw new Error("Property tableHeaderRow does not exist.");var n;if(r=!0,"function"==typeof this.internal.__cell__.headerFunction){var a=this.internal.__cell__.headerFunction(this,this.internal.__cell__.pages);this.internal.__cell__.lastCell=new o(a[0],a[1],a[2],a[3],void 0,-1)}this.setFont(void 0,"bold");for(var u=[],c=0;c<this.internal.__cell__.tableHeaderRow.length;c+=1){n=this.internal.__cell__.tableHeaderRow[c].clone(),e&&(n.y=this.internal.__cell__.margins.top||0,u.push(n)),n.lineNumber=t;var l=this.getTextColor();this.setTextColor(this.internal.__cell__.headerTextColor),this.setFillColor(this.internal.__cell__.headerBackgroundColor),s.call(this,n),this.setTextColor(l)}u.length>0&&this.setTableHeaderRow(u),this.setFont(void 0,"normal"),r=!1}}(E.API);var Pt={italic:["italic","oblique","normal"],oblique:["oblique","italic","normal"],normal:["normal","oblique","italic"]},kt=["ultra-condensed","extra-condensed","condensed","semi-condensed","normal","semi-expanded","expanded","extra-expanded","ultra-expanded"],Ft=_t(kt),It=[100,200,300,400,500,600,700,800,900],jt=_t(It);function Ct(t){var e=t.family.replace(/"|'/g,"").toLowerCase(),n=function(t){return Pt[t=t||"normal"]?t:"normal"}(t.style),r=function(t){return t?"number"==typeof t?t>=100&&t<=900&&t%100==0?t:400:/^\d00$/.test(t)?parseInt(t):"bold"===t?700:400:400}(t.weight),i=function(t){return"number"==typeof Ft[t=t||"normal"]?t:"normal"}(t.stretch);return{family:e,style:n,weight:r,stretch:i,src:t.src||[],ref:t.ref||{name:e,style:[i,n,r].join(" ")}}}function Ot(t,e,n,r){var i;for(i=n;i>=0&&i<e.length;i+=r)if(t[e[i]])return t[e[i]];for(i=n;i>=0&&i<e.length;i-=r)if(t[e[i]])return t[e[i]]}var Bt={"sans-serif":"helvetica",fixed:"courier",monospace:"courier",terminal:"courier",cursive:"times",fantasy:"times",serif:"times"},Mt={caption:"times",icon:"times",menu:"times","message-box":"times","small-caption":"times","status-bar":"times"};function qt(t){return[t.stretch,t.style,t.weight,t.family].join(" ")}function Et(t){return t.trimLeft()}function Rt(t,e){for(var n=0;n<t.length;){if(t.charAt(n)===e)return[t.substring(0,n),t.substring(n+1)];n+=1}return null}function Dt(t){var e=t.match(/^(-[a-z_]|[a-z_])[a-z0-9_-]*/i);return null===e?null:[e[0],t.substring(e[0].length)]}var Tt,zt,Ut,Ht,Wt,Vt,Gt,Yt,Jt=["times"];function Xt(t,n,r,i,a){var o=4,s=$t;switch(a){case E.API.image_compression.FAST:o=1,s=Zt;break;case E.API.image_compression.MEDIUM:o=6,s=Qt;break;case E.API.image_compression.SLOW:o=9,s=te}t=function(t,e,n,r){for(var i,a=t.length/e,o=new Uint8Array(t.length+a),s=[Kt,Zt,$t,Qt,te],u=0;u<a;u+=1){var c=u*e,l=t.subarray(c,c+e);if(r)o.set(r(l,n,i),c+u);else{for(var h=s.length,f=[],d=0;d<h;d+=1)f[d]=s[d](l,n,i);var p=ne(f.concat());o.set(f[p],c+u)}i=l}return o}(t,n,Math.ceil(r*i/8),s);var u=(0,fflate__WEBPACK_IMPORTED_MODULE_1__.zlibSync)(t,{level:o});return E.API.__addimage__.arrayBufferToBinaryString(u)}function Kt(t){var e=Array.apply([],t);return e.unshift(0),e}function Zt(t,e){var n=t.length,r=[];r[0]=1;for(var i=0;i<n;i+=1){var a=t[i-e]||0;r[i+1]=t[i]-a+256&255}return r}function $t(t,e,n){var r=t.length,i=[];i[0]=2;for(var a=0;a<r;a+=1){var o=n&&n[a]||0;i[a+1]=t[a]-o+256&255}return i}function Qt(t,e,n){var r=t.length,i=[];i[0]=3;for(var a=0;a<r;a+=1){var o=t[a-e]||0,s=n&&n[a]||0;i[a+1]=t[a]+256-(o+s>>>1)&255}return i}function te(t,e,n){var r=t.length,i=[];i[0]=4;for(var a=0;a<r;a+=1){var o=ee(t[a-e]||0,n&&n[a]||0,n&&n[a-e]||0);i[a+1]=t[a]-o+256&255}return i}function ee(t,e,n){if(t===e&&e===n)return t;var r=Math.abs(e-n),i=Math.abs(t-n),a=Math.abs(t+e-n-n);return r<=i&&r<=a?t:i<=a?e:n}function ne(t){var e=t.map(function(t){return t.reduce(function(t,e){return t+Math.abs(e)},0)});return e.indexOf(Math.min.apply(null,e))}function re(t,e,n){var r=e*n,i=Math.floor(r/8),a=16-(r-8*i+n),o=(1<<n)-1;return ae(t,i)>>a&o}function ie(t,e,n,r){var i=n*r,a=Math.floor(i/8),o=16-(i-8*a+r),s=(1<<r)-1,u=(e&s)<<o;!function(t,e,n){if(e+1<t.byteLength)t.setUint16(e,n,!1);else{var r=n>>8&255;t.setUint8(e,r)}}
 /**
  * @license
  * (c) Dean McNamee <dean@gmail.com>, 2013.
@@ -30717,7 +39367,7 @@ function(t){var e;t.events.push(["postPutResources",function(){var t=this,n=/^(\
  * Licensed under the MIT License.
  * http://opensource.org/licenses/mit-license
  */
-function(t){var e=[192,193,194,195,196,197,198,199];t.processJPEG=function(t,n,r,i,a,o){var s,u=this.decode.DCT_DECODE,c=null;if("string"==typeof t||this.__addimage__.isArrayBuffer(t)||this.__addimage__.isArrayBufferView(t)){switch(t=a||t,t=this.__addimage__.isArrayBuffer(t)?new Uint8Array(t):t,s=function(t){for(var n,r=256*t.charCodeAt(4)+t.charCodeAt(5),i=t.length,a={width:0,height:0,numcomponents:1},o=4;o<i;o+=2){if(o+=r,-1!==e.indexOf(t.charCodeAt(o+1))){n=256*t.charCodeAt(o+5)+t.charCodeAt(o+6),a={width:256*t.charCodeAt(o+7)+t.charCodeAt(o+8),height:n,numcomponents:t.charCodeAt(o+9)};break}r=256*t.charCodeAt(o+2)+t.charCodeAt(o+3)}return a}(t=this.__addimage__.isArrayBufferView(t)?this.__addimage__.arrayBufferToBinaryString(t):t),s.numcomponents){case 1:o=this.color_spaces.DEVICE_GRAY;break;case 4:o=this.color_spaces.DEVICE_CMYK;break;case 3:o=this.color_spaces.DEVICE_RGB}c={data:t,width:s.width,height:s.height,colorSpace:o,bitsPerComponent:8,filter:u,index:n,alias:r}}return c}}(E.API),E.API.processPNG=function(t,i,a,o){if(this.__addimage__.isArrayBuffer(t)&&(t=new Uint8Array(t)),this.__addimage__.isArrayBufferView(t)){var s,u=(0,fast_png__WEBPACK_IMPORTED_MODULE_3__.decode)(t,{checkCrc:!0}),c=u.width,l=u.height,h=u.channels,f=u.palette,d=u.depth;s=f&&1===h?function(t){for(var e=t.width,r=t.height,i=t.data,a=t.palette,o=t.depth,s=!1,u=[],c=[],l=void 0,h=!1,f=0,d=0;d<a.length;d++){var p=(0,_babel_runtime_helpers_slicedToArray__WEBPACK_IMPORTED_MODULE_2__["default"])(a[d],4),g=p[0],m=p[1],v=p[2],b=p[3];u.push(g,m,v),null!=b&&(0===b?(f++,c.length<1&&c.push(d)):b<255&&(h=!0))}if(h||f>1){s=!0,c=void 0;var y=e*r;l=new Uint8Array(y);for(var w=new DataView(i.buffer),N=0;N<y;N++){var L=re(w,N,o),x=(0,_babel_runtime_helpers_slicedToArray__WEBPACK_IMPORTED_MODULE_2__["default"])(a[L],4)[3];l[N]=x}}return{colorSpace:"Indexed",colorsPerPixel:1,colorBytes:i,alphaBytes:l,needSMask:s,palette:u,mask:c}}(u):2===h||4===h?function(t){for(var e=t.data,n=t.width,r=t.height,i=t.channels,a=t.depth,o=2===i?"DeviceGray":"DeviceRGB",s=i-1,u=n*r,c=s,l=u*c,h=1*u,f=Math.ceil(l*a/8),d=Math.ceil(h*a/8),p=new Uint8Array(f),g=new Uint8Array(d),m=new DataView(e.buffer),v=new DataView(p.buffer),b=new DataView(g.buffer),y=!1,w=0;w<u;w++){for(var N=w*i,L=0;L<c;L++)ie(v,re(m,N+L,a),w*c+L,a);var x=re(m,N+c,a);x<(1<<a)-1&&(y=!0),ie(b,x,1*w,a)}return{colorSpace:o,colorsPerPixel:s,colorBytes:p,alphaBytes:g,needSMask:y}}(u):function(t){var e=t.data,n=1===t.channels?"DeviceGray":"DeviceRGB";return{colorSpace:n,colorsPerPixel:"DeviceGray"===n?1:3,colorBytes:e instanceof Uint8Array?e:new Uint8Array(e.buffer),needSMask:!1}}(u);var p,g,m,v=s,b=v.colorSpace,y=v.colorsPerPixel,w=v.colorBytes,N=v.alphaBytes,L=v.needSMask,x=v.palette,A=v.mask,S=null;return o!==E.API.image_compression.NONE&&"function"==typeof fflate__WEBPACK_IMPORTED_MODULE_1__.zlibSync?(S=function(t){var e;switch(t){case E.API.image_compression.FAST:e=11;break;case E.API.image_compression.MEDIUM:e=13;break;case E.API.image_compression.SLOW:e=14;break;default:e=12}return e}(o),p=this.decode.FLATE_DECODE,g="/Predictor ".concat(S," "),t=Xt(w,c*y,y,o),L&&(m=Xt(N,c,1,o))):(p=void 0,g="",t=w,L&&(m=N)),g+="/Colors ".concat(y," /BitsPerComponent ").concat(d," /Columns ").concat(c),(this.__addimage__.isArrayBuffer(t)||this.__addimage__.isArrayBufferView(t))&&(t=this.__addimage__.arrayBufferToBinaryString(t)),(m&&this.__addimage__.isArrayBuffer(m)||this.__addimage__.isArrayBufferView(m))&&(m=this.__addimage__.arrayBufferToBinaryString(m)),{alias:a,data:t,index:i,filter:p,decodeParameters:g,transparency:A,palette:x,sMask:m,predictor:S,width:c,height:l,bitsPerComponent:d,colorSpace:b}}},function(t){t.processGIF89A=function(e,n,r,i){var a=new oe(e),o=a.width,s=a.height,u=[];a.decodeAndBlitFrameRGBA(0,u);var c={data:u,width:o,height:s},l=new ue(100).encode(c,100);return t.processJPEG.call(this,l,n,r,i)},t.processGIF87A=t.processGIF89A}(E.API),ce.prototype.parseHeader=function(){if(this.fileSize=this.datav.getUint32(this.pos,!0),this.pos+=4,this.reserved=this.datav.getUint32(this.pos,!0),this.pos+=4,this.offset=this.datav.getUint32(this.pos,!0),this.pos+=4,this.headerSize=this.datav.getUint32(this.pos,!0),this.pos+=4,this.width=this.datav.getUint32(this.pos,!0),this.pos+=4,this.height=this.datav.getInt32(this.pos,!0),this.pos+=4,this.planes=this.datav.getUint16(this.pos,!0),this.pos+=2,this.bitPP=this.datav.getUint16(this.pos,!0),this.pos+=2,this.compress=this.datav.getUint32(this.pos,!0),this.pos+=4,this.rawSize=this.datav.getUint32(this.pos,!0),this.pos+=4,this.hr=this.datav.getUint32(this.pos,!0),this.pos+=4,this.vr=this.datav.getUint32(this.pos,!0),this.pos+=4,this.colors=this.datav.getUint32(this.pos,!0),this.pos+=4,this.importantColors=this.datav.getUint32(this.pos,!0),this.pos+=4,16===this.bitPP&&this.is_with_alpha&&(this.bitPP=15),this.bitPP<15){var t=0===this.colors?1<<this.bitPP:this.colors;this.palette=new Array(t);for(var e=0;e<t;e++){var n=this.datav.getUint8(this.pos++,!0),r=this.datav.getUint8(this.pos++,!0),i=this.datav.getUint8(this.pos++,!0),a=this.datav.getUint8(this.pos++,!0);this.palette[e]={red:i,green:r,blue:n,quad:a}}}this.height<0&&(this.height*=-1,this.bottom_up=!1)},ce.prototype.parseBGR=function(){this.pos=this.offset;try{var t="bit"+this.bitPP,e=this.width*this.height*4;this.data=new Uint8Array(e),this[t]()}catch(n){o.log("bit decode error:"+n)}},ce.prototype.bit1=function(){var t,e=Math.ceil(this.width/8),n=e%4;for(t=this.height-1;t>=0;t--){for(var r=this.bottom_up?t:this.height-1-t,i=0;i<e;i++)for(var a=this.datav.getUint8(this.pos++,!0),o=r*this.width*4+8*i*4,s=0;s<8&&8*i+s<this.width;s++){var u=this.palette[a>>7-s&1];this.data[o+4*s]=u.blue,this.data[o+4*s+1]=u.green,this.data[o+4*s+2]=u.red,this.data[o+4*s+3]=255}0!==n&&(this.pos+=4-n)}},ce.prototype.bit4=function(){for(var t=Math.ceil(this.width/2),e=t%4,n=this.height-1;n>=0;n--){for(var r=this.bottom_up?n:this.height-1-n,i=0;i<t;i++){var a=this.datav.getUint8(this.pos++,!0),o=r*this.width*4+2*i*4,s=a>>4,u=15&a,c=this.palette[s];if(this.data[o]=c.blue,this.data[o+1]=c.green,this.data[o+2]=c.red,this.data[o+3]=255,2*i+1>=this.width)break;c=this.palette[u],this.data[o+4]=c.blue,this.data[o+4+1]=c.green,this.data[o+4+2]=c.red,this.data[o+4+3]=255}0!==e&&(this.pos+=4-e)}},ce.prototype.bit8=function(){for(var t=this.width%4,e=this.height-1;e>=0;e--){for(var n=this.bottom_up?e:this.height-1-e,r=0;r<this.width;r++){var i=this.datav.getUint8(this.pos++,!0),a=n*this.width*4+4*r;if(i<this.palette.length){var o=this.palette[i];this.data[a]=o.red,this.data[a+1]=o.green,this.data[a+2]=o.blue,this.data[a+3]=255}else this.data[a]=255,this.data[a+1]=255,this.data[a+2]=255,this.data[a+3]=255}0!==t&&(this.pos+=4-t)}},ce.prototype.bit15=function(){for(var t=this.width%3,e=parseInt("11111",2),n=this.height-1;n>=0;n--){for(var r=this.bottom_up?n:this.height-1-n,i=0;i<this.width;i++){var a=this.datav.getUint16(this.pos,!0);this.pos+=2;var o=(a&e)/e*255|0,s=(a>>5&e)/e*255|0,u=(a>>10&e)/e*255|0,c=a>>15?255:0,l=r*this.width*4+4*i;this.data[l]=u,this.data[l+1]=s,this.data[l+2]=o,this.data[l+3]=c}this.pos+=t}},ce.prototype.bit16=function(){for(var t=this.width%3,e=parseInt("11111",2),n=parseInt("111111",2),r=this.height-1;r>=0;r--){for(var i=this.bottom_up?r:this.height-1-r,a=0;a<this.width;a++){var o=this.datav.getUint16(this.pos,!0);this.pos+=2;var s=(o&e)/e*255|0,u=(o>>5&n)/n*255|0,c=(o>>11)/e*255|0,l=i*this.width*4+4*a;this.data[l]=c,this.data[l+1]=u,this.data[l+2]=s,this.data[l+3]=255}this.pos+=t}},ce.prototype.bit24=function(){for(var t=this.height-1;t>=0;t--){for(var e=this.bottom_up?t:this.height-1-t,n=0;n<this.width;n++){var r=this.datav.getUint8(this.pos++,!0),i=this.datav.getUint8(this.pos++,!0),a=this.datav.getUint8(this.pos++,!0),o=e*this.width*4+4*n;this.data[o]=a,this.data[o+1]=i,this.data[o+2]=r,this.data[o+3]=255}this.pos+=this.width%4}},ce.prototype.bit32=function(){for(var t=this.height-1;t>=0;t--)for(var e=this.bottom_up?t:this.height-1-t,n=0;n<this.width;n++){var r=this.datav.getUint8(this.pos++,!0),i=this.datav.getUint8(this.pos++,!0),a=this.datav.getUint8(this.pos++,!0),o=this.datav.getUint8(this.pos++,!0),s=e*this.width*4+4*n;this.data[s]=a,this.data[s+1]=i,this.data[s+2]=r,this.data[s+3]=o}},ce.prototype.getData=function(){return this.data},
+function(t){var e=[192,193,194,195,196,197,198,199];t.processJPEG=function(t,n,r,i,a,o){var s,u=this.decode.DCT_DECODE,c=null;if("string"==typeof t||this.__addimage__.isArrayBuffer(t)||this.__addimage__.isArrayBufferView(t)){switch(t=a||t,t=this.__addimage__.isArrayBuffer(t)?new Uint8Array(t):t,s=function(t){for(var n,r=256*t.charCodeAt(4)+t.charCodeAt(5),i=t.length,a={width:0,height:0,numcomponents:1},o=4;o<i;o+=2){if(o+=r,-1!==e.indexOf(t.charCodeAt(o+1))){n=256*t.charCodeAt(o+5)+t.charCodeAt(o+6),a={width:256*t.charCodeAt(o+7)+t.charCodeAt(o+8),height:n,numcomponents:t.charCodeAt(o+9)};break}r=256*t.charCodeAt(o+2)+t.charCodeAt(o+3)}return a}(t=this.__addimage__.isArrayBufferView(t)?this.__addimage__.arrayBufferToBinaryString(t):t),s.numcomponents){case 1:o=this.color_spaces.DEVICE_GRAY;break;case 4:o=this.color_spaces.DEVICE_CMYK;break;case 3:o=this.color_spaces.DEVICE_RGB}c={data:t,width:s.width,height:s.height,colorSpace:o,bitsPerComponent:8,filter:u,index:n,alias:r}}return c}}(E.API),E.API.processPNG=function(t,i,a,o){if(this.__addimage__.isArrayBuffer(t)&&(t=new Uint8Array(t)),this.__addimage__.isArrayBufferView(t)){var s,u=(0,fast_png__WEBPACK_IMPORTED_MODULE_3__.decode)(t,{checkCrc:!0}),c=u.width,l=u.height,h=u.channels,f=u.palette,d=u.depth;s=f&&1===h?function(t){for(var e=t.width,r=t.height,i=t.data,a=t.palette,o=t.depth,s=!1,u=[],c=[],l=void 0,h=!1,f=0,d=0;d<a.length;d++){var p=(0,_babel_runtime_helpers_slicedToArray__WEBPACK_IMPORTED_MODULE_2__["default"])(a[d],4),g=p[0],m=p[1],v=p[2],b=p[3];u.push(g,m,v),null!=b&&(0===b?(f++,c.length<1&&c.push(d)):b<255&&(h=!0))}if(h||f>1){s=!0,c=void 0;var y=e*r;l=new Uint8Array(y);for(var w=new DataView(i.buffer),N=0;N<y;N++){var L=re(w,N,o),x=(0,_babel_runtime_helpers_slicedToArray__WEBPACK_IMPORTED_MODULE_2__["default"])(a[L],4)[3];l[N]=x}}else 0===f&&(c=void 0);return{colorSpace:"Indexed",colorsPerPixel:1,sMaskBitsPerComponent:s?8:void 0,colorBytes:i,alphaBytes:l,needSMask:s,palette:u,mask:c}}(u):2===h||4===h?function(t){for(var e=t.data,n=t.width,r=t.height,i=t.channels,a=t.depth,o=2===i?"DeviceGray":"DeviceRGB",s=i-1,u=n*r,c=s,l=u*c,h=1*u,f=Math.ceil(l*a/8),d=Math.ceil(h*a/8),p=new Uint8Array(f),g=new Uint8Array(d),m=new DataView(e.buffer),v=new DataView(p.buffer),b=new DataView(g.buffer),y=!1,w=0;w<u;w++){for(var N=w*i,L=0;L<c;L++)ie(v,re(m,N+L,a),w*c+L,a);var x=re(m,N+c,a);x<(1<<a)-1&&(y=!0),ie(b,x,1*w,a)}return{colorSpace:o,colorsPerPixel:s,sMaskBitsPerComponent:y?a:void 0,colorBytes:p,alphaBytes:g,needSMask:y}}(u):function(t){var e=t.data,n=1===t.channels?"DeviceGray":"DeviceRGB";return{colorSpace:n,colorsPerPixel:"DeviceGray"===n?1:3,colorBytes:e instanceof Uint16Array?function(t){for(var e=t.length,n=new Uint8Array(2*e),r=new DataView(n.buffer,n.byteOffset,n.byteLength),i=0;i<e;i++)r.setUint16(2*i,t[i],!1);return n}(e):e,needSMask:!1}}(u);var p,g,m,v=s,b=v.colorSpace,y=v.colorsPerPixel,w=v.sMaskBitsPerComponent,N=v.colorBytes,L=v.alphaBytes,x=v.needSMask,A=v.palette,S=v.mask,_=null;return o!==E.API.image_compression.NONE&&"function"==typeof fflate__WEBPACK_IMPORTED_MODULE_1__.zlibSync?(_=function(t){var e;switch(t){case E.API.image_compression.FAST:e=11;break;case E.API.image_compression.MEDIUM:e=13;break;case E.API.image_compression.SLOW:e=14;break;default:e=12}return e}(o),p=this.decode.FLATE_DECODE,g="/Predictor ".concat(_," /Colors ").concat(y," /BitsPerComponent ").concat(d," /Columns ").concat(c),t=Xt(N,Math.ceil(c*y*d/8),y,d,o),x&&(m=Xt(L,Math.ceil(c*w/8),1,w,o))):(p=void 0,g=void 0,t=N,x&&(m=L)),(this.__addimage__.isArrayBuffer(t)||this.__addimage__.isArrayBufferView(t))&&(t=this.__addimage__.arrayBufferToBinaryString(t)),(m&&this.__addimage__.isArrayBuffer(m)||this.__addimage__.isArrayBufferView(m))&&(m=this.__addimage__.arrayBufferToBinaryString(m)),{alias:a,data:t,index:i,filter:p,decodeParameters:g,transparency:S,palette:A,sMask:m,predictor:_,width:c,height:l,bitsPerComponent:d,sMaskBitsPerComponent:w,colorSpace:b}}},function(t){t.processGIF89A=function(e,n,r,i){var a=new oe(e),o=a.width,s=a.height,u=[];a.decodeAndBlitFrameRGBA(0,u);var c={data:u,width:o,height:s},l=new ue(100).encode(c,100);return t.processJPEG.call(this,l,n,r,i)},t.processGIF87A=t.processGIF89A}(E.API),ce.prototype.parseHeader=function(){if(this.fileSize=this.datav.getUint32(this.pos,!0),this.pos+=4,this.reserved=this.datav.getUint32(this.pos,!0),this.pos+=4,this.offset=this.datav.getUint32(this.pos,!0),this.pos+=4,this.headerSize=this.datav.getUint32(this.pos,!0),this.pos+=4,this.width=this.datav.getUint32(this.pos,!0),this.pos+=4,this.height=this.datav.getInt32(this.pos,!0),this.pos+=4,this.planes=this.datav.getUint16(this.pos,!0),this.pos+=2,this.bitPP=this.datav.getUint16(this.pos,!0),this.pos+=2,this.compress=this.datav.getUint32(this.pos,!0),this.pos+=4,this.rawSize=this.datav.getUint32(this.pos,!0),this.pos+=4,this.hr=this.datav.getUint32(this.pos,!0),this.pos+=4,this.vr=this.datav.getUint32(this.pos,!0),this.pos+=4,this.colors=this.datav.getUint32(this.pos,!0),this.pos+=4,this.importantColors=this.datav.getUint32(this.pos,!0),this.pos+=4,16===this.bitPP&&this.is_with_alpha&&(this.bitPP=15),this.bitPP<15){var t=0===this.colors?1<<this.bitPP:this.colors;this.palette=new Array(t);for(var e=0;e<t;e++){var n=this.datav.getUint8(this.pos++,!0),r=this.datav.getUint8(this.pos++,!0),i=this.datav.getUint8(this.pos++,!0),a=this.datav.getUint8(this.pos++,!0);this.palette[e]={red:i,green:r,blue:n,quad:a}}}this.height<0&&(this.height*=-1,this.bottom_up=!1)},ce.prototype.parseBGR=function(){this.pos=this.offset;try{var t="bit"+this.bitPP,e=this.width*this.height*4;this.data=new Uint8Array(e),this[t]()}catch(n){o.log("bit decode error:"+n)}},ce.prototype.bit1=function(){var t,e=Math.ceil(this.width/8),n=e%4;for(t=this.height-1;t>=0;t--){for(var r=this.bottom_up?t:this.height-1-t,i=0;i<e;i++)for(var a=this.datav.getUint8(this.pos++,!0),o=r*this.width*4+8*i*4,s=0;s<8&&8*i+s<this.width;s++){var u=this.palette[a>>7-s&1];this.data[o+4*s]=u.blue,this.data[o+4*s+1]=u.green,this.data[o+4*s+2]=u.red,this.data[o+4*s+3]=255}0!==n&&(this.pos+=4-n)}},ce.prototype.bit4=function(){for(var t=Math.ceil(this.width/2),e=t%4,n=this.height-1;n>=0;n--){for(var r=this.bottom_up?n:this.height-1-n,i=0;i<t;i++){var a=this.datav.getUint8(this.pos++,!0),o=r*this.width*4+2*i*4,s=a>>4,u=15&a,c=this.palette[s];if(this.data[o]=c.blue,this.data[o+1]=c.green,this.data[o+2]=c.red,this.data[o+3]=255,2*i+1>=this.width)break;c=this.palette[u],this.data[o+4]=c.blue,this.data[o+4+1]=c.green,this.data[o+4+2]=c.red,this.data[o+4+3]=255}0!==e&&(this.pos+=4-e)}},ce.prototype.bit8=function(){for(var t=this.width%4,e=this.height-1;e>=0;e--){for(var n=this.bottom_up?e:this.height-1-e,r=0;r<this.width;r++){var i=this.datav.getUint8(this.pos++,!0),a=n*this.width*4+4*r;if(i<this.palette.length){var o=this.palette[i];this.data[a]=o.red,this.data[a+1]=o.green,this.data[a+2]=o.blue,this.data[a+3]=255}else this.data[a]=255,this.data[a+1]=255,this.data[a+2]=255,this.data[a+3]=255}0!==t&&(this.pos+=4-t)}},ce.prototype.bit15=function(){for(var t=this.width%3,e=parseInt("11111",2),n=this.height-1;n>=0;n--){for(var r=this.bottom_up?n:this.height-1-n,i=0;i<this.width;i++){var a=this.datav.getUint16(this.pos,!0);this.pos+=2;var o=(a&e)/e*255|0,s=(a>>5&e)/e*255|0,u=(a>>10&e)/e*255|0,c=a>>15?255:0,l=r*this.width*4+4*i;this.data[l]=u,this.data[l+1]=s,this.data[l+2]=o,this.data[l+3]=c}this.pos+=t}},ce.prototype.bit16=function(){for(var t=this.width%3,e=parseInt("11111",2),n=parseInt("111111",2),r=this.height-1;r>=0;r--){for(var i=this.bottom_up?r:this.height-1-r,a=0;a<this.width;a++){var o=this.datav.getUint16(this.pos,!0);this.pos+=2;var s=(o&e)/e*255|0,u=(o>>5&n)/n*255|0,c=(o>>11)/e*255|0,l=i*this.width*4+4*a;this.data[l]=c,this.data[l+1]=u,this.data[l+2]=s,this.data[l+3]=255}this.pos+=t}},ce.prototype.bit24=function(){for(var t=this.height-1;t>=0;t--){for(var e=this.bottom_up?t:this.height-1-t,n=0;n<this.width;n++){var r=this.datav.getUint8(this.pos++,!0),i=this.datav.getUint8(this.pos++,!0),a=this.datav.getUint8(this.pos++,!0),o=e*this.width*4+4*n;this.data[o]=a,this.data[o+1]=i,this.data[o+2]=r,this.data[o+3]=255}this.pos+=this.width%4}},ce.prototype.bit32=function(){for(var t=this.height-1;t>=0;t--)for(var e=this.bottom_up?t:this.height-1-t,n=0;n<this.width;n++){var r=this.datav.getUint8(this.pos++,!0),i=this.datav.getUint8(this.pos++,!0),a=this.datav.getUint8(this.pos++,!0),o=this.datav.getUint8(this.pos++,!0),s=e*this.width*4+4*n;this.data[s]=a,this.data[s+1]=i,this.data[s+2]=r,this.data[s+3]=o}},ce.prototype.getData=function(){return this.data},
 /**
  * @license
  * Copyright (c) 2018 Aras Abbasi
@@ -39727,8 +48377,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var core_js_modules_web_timers_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! core-js/modules/web.timers.js */ "./node_modules/core-js/modules/web.timers.js");
 /* harmony import */ var core_js_modules_web_timers_js__WEBPACK_IMPORTED_MODULE_13___default = /*#__PURE__*/__webpack_require__.n(core_js_modules_web_timers_js__WEBPACK_IMPORTED_MODULE_13__);
 /* harmony import */ var jspdf__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! jspdf */ "./node_modules/jspdf/dist/jspdf.es.min.js");
-/* harmony import */ var html2canvas__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! html2canvas */ "./node_modules/html2canvas/dist/html2canvas.js");
-/* harmony import */ var html2canvas__WEBPACK_IMPORTED_MODULE_15___default = /*#__PURE__*/__webpack_require__.n(html2canvas__WEBPACK_IMPORTED_MODULE_15__);
+/* harmony import */ var html2canvas_pro__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! html2canvas-pro */ "./node_modules/html2canvas-pro/dist/html2canvas-pro.esm.js");
 /* harmony import */ var _snapdom_clone_js__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! ./snapdom/clone.js */ "./src/snapdom/clone.js");
 /* harmony import */ var _utils_js__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(/*! ./utils.js */ "./src/utils.js");
 
@@ -39920,7 +48569,7 @@ Worker.prototype.toCanvas = function toCanvas() {
     // Handle old-fashioned 'onrendered' argument.
     var options = Object.assign({}, this.opt.html2canvas);
     delete options.onrendered;
-    return html2canvas__WEBPACK_IMPORTED_MODULE_15___default()(this.prop.container, options);
+    return (0,html2canvas_pro__WEBPACK_IMPORTED_MODULE_15__["default"])(this.prop.container, options);
   }).then(function toCanvas_post(canvas) {
     // Handle old-fashioned 'onrendered' argument.
     var onRendered = this.opt.html2canvas.onrendered || function () {};
